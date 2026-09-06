@@ -4,7 +4,31 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
   <style>
-    html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; }
+    @font-face {
+      font-family: 'Noto Serif';
+      src: url('fonts/NotoSerif-Regular.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Noto Serif';
+      src: url('fonts/NotoSerif-Italic.ttf') format('truetype');
+      font-weight: normal;
+      font-style: italic;
+    }
+    @font-face {
+      font-family: 'Noto Serif';
+      src: url('fonts/NotoSerif-Bold.ttf') format('truetype');
+      font-weight: bold;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'Noto Serif';
+      src: url('fonts/NotoSerif-BoldItalic.ttf') format('truetype');
+      font-weight: bold;
+      font-style: italic;
+    }
+    html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: 'Noto Serif', serif; }
     foliate-view { display: block; width: 100%; height: 100%; }
   </style>
 </head>
@@ -2723,14 +2747,15 @@ ${doc.querySelector("parsererror").innerText}`);
             display: "none",
             overflow: "hidden"
           });
-          iframe.setAttribute("sandbox", "allow-same-origin allow-scripts");
+          // Removed iframe sandbox attribute to allow local file asset and blob loading in Android WebView
           iframe.setAttribute("scrolling", "no");
           iframe.setAttribute("part", "filter");
           this.#root.append(element);
           if (!src) return { blank: true, element, iframe };
-          return new Promise((resolve) => {
+          return new Promise(async (resolve) => {
             iframe.addEventListener("load", () => {
               const doc = iframe.contentDocument;
+              if (!doc || !doc.body) return;
               this.dispatchEvent(new CustomEvent("load", { detail: { doc, index } }));
               const { width, height } = getViewport(doc, this.defaultViewport);
               resolve({
@@ -2741,7 +2766,13 @@ ${doc.querySelector("parsererror").innerText}`);
                 onZoom
               });
             }, { once: true });
-            iframe.src = src;
+            try {
+              const res = await fetch(src);
+              const html = await res.text();
+              iframe.srcdoc = html;
+            } catch (err) {
+              iframe.src = src;
+            }
           });
         }
         #render(side = this.#side) {
@@ -3150,7 +3181,7 @@ ${doc.querySelector("parsererror").innerText}`);
             width: "100%",
             height: "100%"
           });
-          this.#iframe.setAttribute("sandbox", "allow-same-origin allow-scripts");
+          // Removed iframe sandbox attribute to allow local file asset and blob loading in Android WebView
           this.#iframe.setAttribute("scrolling", "no");
         }
         get element() {
@@ -3161,9 +3192,12 @@ ${doc.querySelector("parsererror").innerText}`);
         }
         async load(src, afterLoad, beforeRender) {
           if (typeof src !== "string") throw new Error(`${src} is not string`);
-          return new Promise((resolve) => {
-            this.#iframe.addEventListener("load", () => {
+          return new Promise(async (resolve) => {
+            const onLoad = () => {
               const doc = this.document;
+              if (!doc || !doc.body || (doc.location?.href === 'about:blank' && !doc.body.hasChildNodes())) {
+                return;
+              }
               afterLoad?.(doc);
               this.#iframe.style.display = "block";
               const { vertical, rtl } = getDirection(doc);
@@ -3176,10 +3210,17 @@ ${doc.querySelector("parsererror").innerText}`);
               this.#iframe.style.display = "block";
               this.render(layout);
               this.#observer.observe(doc.body);
-              doc.fonts.ready.then(() => this.expand());
+              doc.fonts?.ready?.then?.(() => this.expand());
               resolve();
-            }, { once: true });
-            this.#iframe.src = src;
+            };
+            this.#iframe.addEventListener("load", onLoad, { once: true });
+            try {
+              const res = await fetch(src);
+              const html = await res.text();
+              this.#iframe.srcdoc = html;
+            } catch (err) {
+              this.#iframe.src = src;
+            }
           });
         }
         render(layout) {
@@ -3817,7 +3858,7 @@ ${doc.querySelector("parsererror").innerText}`);
           if (src) {
             const view = this.#createView();
             const afterLoad = (doc) => {
-              if (doc.head) {
+              if (doc && doc.head) {
                 const $styleBefore = doc.createElement("style");
                 doc.head.prepend($styleBefore);
                 const $style = doc.createElement("style");
@@ -4681,6 +4722,7 @@ ${doc.querySelector("parsererror").innerText}`);
       return image;
     }
   };
+  window.Overlayer = Overlayer;
 
   // text-walker.js
   var walkRange = (range, walker) => {
@@ -5235,7 +5277,7 @@ ${doc.querySelector("parsererror").innerText}`);
           this.#searchResults.set(result.index, list2);
           for (const item of list2) this.addAnnotation(item);
           yield {
-            label: this.#tocProgress.getProgress(result.index)?.label ?? "",
+            label: this.#tocProgress?.getProgress(result.index)?.label ?? "",
             subitems: result.subitems
           };
         } else {
@@ -5272,6 +5314,32 @@ ${doc.querySelector("parsererror").innerText}`);
   </script>
 
   <script>
+    // Universal Bridge Shim: ensures compatibility with Flutter (FoliateChannel)
+    // and React Native (ReactNativeWebView).
+    (function setupBridge() {
+      const origPostMessage = window.ReactNativeWebView && window.ReactNativeWebView.postMessage;
+      window.postToHost = function(type, payload) {
+        const messageObj = payload !== undefined ? { type, payload } : { type };
+        const messageStr = JSON.stringify(messageObj);
+        if (window.FoliateChannel && typeof window.FoliateChannel.postMessage === 'function') {
+          window.FoliateChannel.postMessage(messageStr);
+        }
+        if (origPostMessage) {
+          origPostMessage.call(window.ReactNativeWebView, messageStr);
+        }
+      };
+
+      if (!window.ReactNativeWebView) {
+        window.ReactNativeWebView = {
+          postMessage: function(msg) {
+            if (window.FoliateChannel && typeof window.FoliateChannel.postMessage === 'function') {
+              window.FoliateChannel.postMessage(msg);
+            }
+          }
+        };
+      }
+    })();
+
     // The current <foliate-view>. It is REPLACED (not reused) on every
     // openBook call: foliate-js's <foliate-view> is not designed to be
     // reopened, so calling open() twice on one instance leaves the previous
@@ -5315,10 +5383,11 @@ ${doc.querySelector("parsererror").innerText}`);
       let runningPage = 0;
 
       bookSectionPages = sections.map((s) => {
-        if (s.linear === 'no' || !s.size || s.size <= 0) {
+        const rawSize = s.size || (s.linear !== 'no' ? 3000 : 0);
+        if (s.linear === 'no' || rawSize <= 0) {
           return { startPage: runningPage, pageCount: 0 };
         }
-        const pageCount = Math.max(1, Math.round(s.size / effectiveBytesPerPage));
+        const pageCount = Math.max(1, Math.round(rawSize / effectiveBytesPerPage));
         const startPage = runningPage;
         runningPage += pageCount;
         return { startPage, pageCount };
@@ -5367,15 +5436,20 @@ ${doc.querySelector("parsererror").innerText}`);
             currentDisplayPage = Math.min(bookTotalPages, secInfo.startPage + pageOffset + 1);
             totalDisplayPages = bookTotalPages;
           } else {
-            currentDisplayPage = Math.min(bookTotalPages, Math.max(1, Math.round(d.fraction * bookTotalPages) + 1));
+            currentDisplayPage = Math.min(bookTotalPages, Math.max(1, Math.round(d.fraction * (bookTotalPages - 1)) + 1));
             totalDisplayPages = bookTotalPages;
           }
         } catch (err) {}
       }
 
-      const locationData = currentDisplayPage != null && totalDisplayPages != null
-        ? { current: currentDisplayPage, total: totalDisplayPages }
-        : (d.location ?? null);
+      if (currentDisplayPage == null || totalDisplayPages == null) {
+        totalDisplayPages = Math.max(1, bookTotalPages || view?.book?.sections?.length || 1);
+        currentDisplayPage = typeof d.fraction === 'number'
+          ? Math.max(1, Math.min(totalDisplayPages, Math.round(d.fraction * (totalDisplayPages - 1)) + 1))
+          : 1;
+      }
+
+      const locationData = { current: currentDisplayPage, total: totalDisplayPages };
 
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'RELOCATE',
@@ -5423,20 +5497,30 @@ ${doc.querySelector("parsererror").innerText}`);
           const dy = Math.abs(t.screenY - startY);
           const dt = Date.now() - startTime;
 
-          if (dx < 8 && dy < 8 && dt < 300) {
+          // Natural thumb tap tolerance: up to 20px drift and 450ms duration
+          if (dx < 20 && dy < 20 && dt < 450) {
             if (touchEvent.target?.closest?.('a[href]')) return;
             try {
               const sel = doc.defaultView?.getSelection?.();
               if (sel && !sel.isCollapsed) return;
             } catch (selErr) {}
 
-            const windowWidth = doc.defaultView?.innerWidth || window.innerWidth || document.documentElement.clientWidth || 360;
-            const tapX = t.clientX;
-            const ratio = tapX / windowWidth;
+            // Screen/viewport width in pixels
+            let ratio = null;
+            if (t.screenX && window.screen?.width) {
+              ratio = t.screenX / window.screen.width;
+            }
+            if (ratio == null || isNaN(ratio) || ratio <= 0) {
+              const screenWidth = window.innerWidth || document.documentElement.clientWidth || 360;
+              const scrollOffset = view?.renderer?.start || 0;
+              const viewportX = t.clientX - scrollOffset;
+              ratio = viewportX / screenWidth;
+            }
 
-            if (ratio <= 0.15) {
+            // Left ~28% goes previous, Right ~28% goes next, Center toggles HUD
+            if (ratio <= 0.28) {
               view?.prev();
-            } else if (ratio >= 0.85) {
+            } else if (ratio >= 0.72) {
               view?.next();
             } else {
               window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'TOGGLE_CONTROLS' }));
@@ -5486,6 +5570,7 @@ ${doc.querySelector("parsererror").innerText}`);
       document.body.appendChild(view);
       view.addEventListener('relocate', onRelocate);
       view.addEventListener('load', (e) => attachDocTapListener(e.detail?.doc));
+      attachDocTapListener(document);
       return view;
     };
 
@@ -5559,28 +5644,49 @@ ${doc.querySelector("parsererror").innerText}`);
 
       const {
         theme,
+        isDarkMode,
         fontSize,
+        minFontSize,
         fontFamily,
+        overridePublisherFont,
         lineHeight,
+        fullJustification,
+        hyphenation,
+        margin,
         pageFlipping,
         fontWeight,
         textAlign,
         pageMargins,
         twoPagesLandscape,
+        reduceAnimation,
+        invertColors,
       } = settings;
 
-      let bg = '#FFFFFF';
-      let fg = '#1C1C1E';
+      const THEMES = {
+        'default':      { light: { bg: '#FFFFFF', fg: '#1A1A1A' }, dark: { bg: '#1E1D1B', fg: '#EDEDED' } },
+        'defaulttheme': { light: { bg: '#FFFFFF', fg: '#1A1A1A' }, dark: { bg: '#1E1D1B', fg: '#EDEDED' } },
+        'day':          { light: { bg: '#FFFFFF', fg: '#1A1A1A' }, dark: { bg: '#FFFFFF', fg: '#1A1A1A' } },
+        'gray':         { light: { bg: '#F0F0F0', fg: '#202020' }, dark: { bg: '#2E2E2E', fg: '#D8D8D8' } },
+        'sepia':        { light: { bg: '#F8F1E5', fg: '#4D3826' }, dark: { bg: '#2D241E', fg: '#EBD8C3' } },
+        'grass':        { light: { bg: '#EBF2E8', fg: '#1D381D' }, dark: { bg: '#1E2A20', fg: '#D2E4D2' } },
+        'cherry':       { light: { bg: '#F5EBEF', fg: '#3D1B25' }, dark: { bg: '#2D1C22', fg: '#E8D2DA' } },
+        'sky':          { light: { bg: '#EBF1F7', fg: '#1D2D3D' }, dark: { bg: '#1C232E', fg: '#D2E0F0' } },
+        'solarized':    { light: { bg: '#FDF6E3', fg: '#657B83' }, dark: { bg: '#002B36', fg: '#93A1A1' } },
+        'gruvbox':      { light: { bg: '#FBF1C7', fg: '#3C3836' }, dark: { bg: '#282828', fg: '#EBDBB2' } },
+        'nord':         { light: { bg: '#ECEFF4', fg: '#2E3440' }, dark: { bg: '#2E3440', fg: '#ECEFF4' } },
+        'night':        { light: { bg: '#1E1D1B', fg: '#EDEDED' }, dark: { bg: '#1E1D1B', fg: '#EDEDED' } },
+        'black':        { light: { bg: '#000000', fg: '#D1D1D6' }, dark: { bg: '#000000', fg: '#D1D1D6' } }
+      };
 
-      if (theme === 'sepia') {
-        bg = '#F8F1E5';
-        fg = '#4A3B32';
-      } else if (theme === 'dark') {
-        bg = '#1C1C1E';
-        fg = '#E5E5EA';
-      } else if (theme === 'black') {
-        bg = '#000000';
-        fg = '#D1D1D6';
+      const themeKey = (theme || 'default').toLowerCase();
+      const themeConfig = THEMES[themeKey] || THEMES['default'];
+      const isDark = isDarkMode !== undefined ? isDarkMode : true;
+      let { bg, fg } = isDark ? themeConfig.dark : themeConfig.light;
+
+      if (invertColors) {
+        const tmp = bg;
+        bg = fg;
+        fg = tmp;
       }
 
       document.documentElement.style.backgroundColor = bg;
@@ -5600,42 +5706,87 @@ ${doc.querySelector("parsererror").innerText}`);
         view.renderer.setAttribute('max-column-count', '1');
       }
 
-      const fontCss = fontFamily ? `font-family: ${fontFamily}, sans-serif !important;` : '';
-      const sizeCss = fontSize ? `font-size: ${fontSize}pt !important;` : '';
-      const lineCss = lineHeight ? `line-height: ${lineHeight} !important;` : '';
-      const weightCss = fontWeight ? `font-weight: ${fontWeight} !important;` : '';
-      const paddingCss = pageMargins === false ? 'padding: 8px 8px !important;' : 'padding: 12px 16px !important;';
-
-      let alignCss = '';
-      if (textAlign === 'justify') {
-        alignCss = 'text-align: justify !important; hyphens: auto; -webkit-hyphens: auto;';
-      } else if (textAlign === 'left') {
-        alignCss = 'text-align: left !important; hyphens: manual; -webkit-hyphens: manual;';
-      } else if (textAlign === 'center') {
-        alignCss = 'text-align: center !important;';
-      } else if (textAlign === 'right') {
-        alignCss = 'text-align: right !important;';
+      // Font Family: Default to Noto Serif
+      let selectedFont = '"Noto Serif", "Linux Libertine", "Libertinus Serif", "Charter", "Georgia", serif';
+      if (fontFamily === 'sans') {
+        selectedFont = 'system-ui, -apple-system, sans-serif';
+      } else if (fontFamily === 'monospace') {
+        selectedFont = '"JetBrains Mono", monospace';
+      } else if (fontFamily === 'publisher') {
+        selectedFont = 'inherit';
       }
 
+      const fontImp = overridePublisherFont !== false ? '!important' : '';
+      const fontCss = selectedFont !== 'inherit' ? `font-family: ${selectedFont} ${fontImp};` : '';
+      const sizeCss = fontSize ? `font-size: ${fontSize}pt !important;` : '';
+      const minSizeCss = minFontSize && minFontSize > 0 ? `min-font-size: ${minFontSize}pt !important;` : '';
+      const lineCss = lineHeight ? `line-height: ${lineHeight} !important;` : 'line-height: 1.5 !important;';
+      const weightCss = fontWeight ? `font-weight: ${fontWeight} !important;` : '';
+
+      // Margins
+      let padH = '16px';
+      if (margin !== undefined) {
+        padH = `${Math.round(margin * 100)}%`;
+      } else if (pageMargins === false) {
+        padH = '8px';
+      }
+      const paddingCss = `padding: 12px ${padH} !important;`;
+
+      // Text Alignment & Hyphenation
+      const isJustify = fullJustification !== false;
+      const isHyphen = hyphenation !== false;
+      const alignCss = `text-align: ${isJustify ? 'justify' : 'left'} !important; hyphens: ${isHyphen ? 'auto' : 'manual'} !important; -webkit-hyphens: ${isHyphen ? 'auto' : 'manual'} !important;`;
+
+      // Animations
+      const animCss = reduceAnimation ? '* { transition: none !important; animation: none !important; }' : '';
+
       const styleCss = `
+        @font-face {
+          font-family: 'Noto Serif';
+          src: url('fonts/NotoSerif-Regular.ttf') format('truetype');
+          font-weight: normal;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'Noto Serif';
+          src: url('fonts/NotoSerif-Italic.ttf') format('truetype');
+          font-weight: normal;
+          font-style: italic;
+        }
+        @font-face {
+          font-family: 'Noto Serif';
+          src: url('fonts/NotoSerif-Bold.ttf') format('truetype');
+          font-weight: bold;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'Noto Serif';
+          src: url('fonts/NotoSerif-BoldItalic.ttf') format('truetype');
+          font-weight: bold;
+          font-style: italic;
+        }
         body {
           background-color: ${bg} !important;
           color: ${fg} !important;
           ${paddingCss}
           ${fontCss}
           ${sizeCss}
-          ${lineCss}
-          ${weightCss}
-        }
-        p, div, span, li, h1, h2, h3, h4, h5, h6 {
-          background-color: ${bg} !important;
-          color: ${fg} !important;
-          ${fontCss}
-          ${sizeCss}
+          ${minSizeCss}
           ${lineCss}
           ${weightCss}
           ${alignCss}
         }
+        p, div, span, li, h1, h2, h3, h4, h5, h6, a, blockquote {
+          background-color: ${bg} !important;
+          color: ${fg} !important;
+          ${fontCss}
+          ${sizeCss}
+          ${minSizeCss}
+          ${lineCss}
+          ${weightCss}
+          ${alignCss}
+        }
+        ${animCss}
       `;
 
       view.renderer.setStyles(styleCss);
@@ -5645,24 +5796,38 @@ ${doc.querySelector("parsererror").innerText}`);
       }
     };
 
-    window.searchBook = async (query) => {
+    let currentSearchId = 0;
+    window.searchBook = async (query, matchCase = false) => {
       if (!view || !query) return;
+      const searchId = ++currentSearchId;
       try {
-        for await (const result of view.search({ query })) {
+        const sensitivity = matchCase ? 'variant' : 'base';
+        const highlightFn = (window.Overlayer && window.Overlayer.highlight) ? window.Overlayer.highlight : undefined;
+        for await (const result of view.search({
+          query,
+          sensitivity,
+          draw: highlightFn,
+          drawOptions: { color: '#e5a50a' }
+        })) {
+          if (searchId !== currentSearchId) return;
           if (result === 'done') break;
           if (result?.subitems?.length) {
             window.ReactNativeWebView.postMessage(JSON.stringify({
               type: 'SEARCH_RESULT',
               payload: {
-                label: result.label,
+                label: result.label || 'Section',
                 subitems: result.subitems,
               },
             }));
           }
         }
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SEARCH_DONE' }));
+        if (searchId === currentSearchId) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SEARCH_DONE' }));
+        }
       } catch (e) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ERROR', payload: e.message }));
+        if (searchId === currentSearchId) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ERROR', payload: e.message }));
+        }
       }
     };
 
@@ -5704,7 +5869,12 @@ ${doc.querySelector("parsererror").innerText}`);
       }
     };
 
-    // Tell React Native the WebView is ready to receive the book.
+    // Expose ready check for host environment
+    window.checkReady = () => {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'WEBVIEW_READY' }));
+    };
+
+    // Tell host the WebView is ready to receive the book.
     window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'WEBVIEW_READY' }));
   </script>
 </body>

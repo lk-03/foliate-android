@@ -46,3 +46,10 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Development, AI Context & Internal Tooling
+.dev/
+
+# Android build cache & Gradle artifacts
+/android/build/
+.gradle/
