@@ -472,6 +472,10 @@ void main() {
       expect(book1Annotations.map((a) => a.id), containsAll(['ann-1', 'ann-2']));
       expect(book2Annotations.first.id, equals('ann-3'));
 
+      final allAnnotations = await storage.getAllAnnotations();
+      expect(allAnnotations.length, equals(3));
+      expect(allAnnotations.first.id, equals('ann-3'));
+
       // Delete one annotation
       await storage.deleteAnnotation(bookHash1, 'cfi-1');
       final afterDelete = await storage.getAnnotations(bookHash1);
