@@ -5529,22 +5529,34 @@ ${doc.querySelector("parsererror").innerText}`);
         }
       }, { passive: true });
 
+      let selectionDebounceTimer = null;
       doc.addEventListener('selectionchange', () => {
         try {
+          if (selectionDebounceTimer) clearTimeout(selectionDebounceTimer);
           const sel = doc.defaultView?.getSelection?.();
           if (sel && !sel.isCollapsed) {
             const text = sel.toString().trim();
             if (text.length > 0) {
-              const range = sel.getRangeAt(0);
-              const contents = view?.renderer?.getContents?.() || [];
-              const item = contents.find((x) => x.doc === doc);
-              const index = item ? item.index : 0;
-              const cfi = view?.getCFI ? view.getCFI(index, range) : null;
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'TEXT_SELECTED',
-                payload: { text, cfi },
-              }));
+              selectionDebounceTimer = setTimeout(() => {
+                try {
+                  const currentSel = doc.defaultView?.getSelection?.();
+                  if (!currentSel || currentSel.isCollapsed) return;
+                  const range = currentSel.getRangeAt(0);
+                  const contents = view?.renderer?.getContents?.() || [];
+                  const item = contents.find((x) => x.doc === doc);
+                  const index = item ? item.index : 0;
+                  const cfi = view?.getCFI ? view.getCFI(index, range) : null;
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'TEXT_SELECTED',
+                    payload: { text, cfi },
+                  }));
+                } catch (e) {}
+              }, 120);
             }
+          } else if (sel && sel.isCollapsed) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'SELECTION_CLEARED',
+            }));
           }
         } catch (e) {}
       });
@@ -5560,6 +5572,8 @@ ${doc.querySelector("parsererror").innerText}`);
       } catch (e) {}
     };
 
+    const activeAnnotations = new Map();
+
     const mountFreshView = () => {
       if (view) {
         try { view.close?.(); } catch (e) { /* nothing to close on first run */ }
@@ -5570,6 +5584,34 @@ ${doc.querySelector("parsererror").innerText}`);
       document.body.appendChild(view);
       view.addEventListener('relocate', onRelocate);
       view.addEventListener('load', (e) => attachDocTapListener(e.detail?.doc));
+      view.addEventListener('draw-annotation', (e) => {
+        try {
+          const { draw, annotation } = e.detail;
+          const color = annotation?.color || '#FFE066';
+          const drawFn = (window.Overlayer && window.Overlayer.highlight) ? window.Overlayer.highlight : undefined;
+          if (draw && drawFn) {
+            draw(drawFn, { color });
+          }
+        } catch (err) {}
+      });
+      view.addEventListener('show-annotation', (e) => {
+        try {
+          const { value } = e.detail;
+          if (value) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'ANNOTATION_CLICKED',
+              payload: { cfi: value },
+            }));
+          }
+        } catch (err) {}
+      });
+      view.addEventListener('create-overlay', (e) => {
+        try {
+          for (const [cfi, color] of activeAnnotations.entries()) {
+            view.addAnnotation({ value: cfi, color });
+          }
+        } catch (err) {}
+      });
       attachDocTapListener(document);
       return view;
     };
@@ -5837,13 +5879,28 @@ ${doc.querySelector("parsererror").innerText}`);
 
     window.addAnnotation = (cfi, color) => {
       if (view && cfi) {
-        view.addAnnotation({ value: cfi, color });
+        const c = color || '#FFE066';
+        activeAnnotations.set(cfi, c);
+        view.addAnnotation({ value: cfi, color: c });
       }
     };
 
     window.deleteAnnotation = (cfi) => {
       if (view && cfi) {
+        activeAnnotations.delete(cfi);
         view.deleteAnnotation({ value: cfi });
+      }
+    };
+
+    window.loadAnnotations = (list) => {
+      activeAnnotations.clear();
+      if (!view || !Array.isArray(list)) return;
+      for (const item of list) {
+        if (item?.cfi) {
+          const c = item.color || '#FFE066';
+          activeAnnotations.set(item.cfi, c);
+          view.addAnnotation({ value: item.cfi, color: c });
+        }
       }
     };
 

@@ -241,6 +241,33 @@ void main() {
       expect(selectedCfi, equals('epubcfi(/6/4!/4/2/8)'));
     });
 
+    test('Dispatches ANNOTATION_CLICKED event', () {
+      final bridge = ReaderBridge();
+      String? clickedCfi;
+      bridge.onAnnotationClicked = (cfi) => clickedCfi = cfi;
+
+      bridge.handleMessage(json.encode({
+        'type': 'ANNOTATION_CLICKED',
+        'payload': {
+          'cfi': 'epubcfi(/6/4!/4/2/8)',
+        },
+      }));
+
+      expect(clickedCfi, equals('epubcfi(/6/4!/4/2/8)'));
+    });
+
+    test('Dispatches SELECTION_CLEARED event', () {
+      final bridge = ReaderBridge();
+      bool cleared = false;
+      bridge.onSelectionCleared = () => cleared = true;
+
+      bridge.handleMessage(json.encode({
+        'type': 'SELECTION_CLEARED',
+      }));
+
+      expect(cleared, isTrue);
+    });
+
     test('Dispatches TTS_TEXT event', () {
       final bridge = ReaderBridge();
       List<String>? paragraphs;
@@ -394,6 +421,70 @@ void main() {
 
       bridge.handleMessage(searchDoneMsg);
       expect(searchDoneCalled, isTrue);
+    });
+  });
+
+  group('Annotations Storage CRUD Tests (Phase 4)', () {
+    test('Saves, retrieves, and deletes annotations per book', () async {
+      SharedPreferences.setMockInitialValues({});
+      final storage = StorageService.instance;
+
+      const bookHash1 = 'book-hash-111';
+      const bookHash2 = 'book-hash-222';
+
+      const ann1 = Annotation(
+        id: 'ann-1',
+        bookHash: bookHash1,
+        cfi: 'cfi-1',
+        text: 'First highlight',
+        note: 'My note',
+        color: Annotation.colorGreen,
+        createdAt: 1000,
+      );
+
+      const ann2 = Annotation(
+        id: 'ann-2',
+        bookHash: bookHash1,
+        cfi: 'cfi-2',
+        text: 'Second highlight',
+        color: Annotation.colorPink,
+        createdAt: 2000,
+      );
+
+      const ann3 = Annotation(
+        id: 'ann-3',
+        bookHash: bookHash2,
+        cfi: 'cfi-3',
+        text: 'Other book highlight',
+        color: Annotation.colorYellow,
+        createdAt: 3000,
+      );
+
+      await storage.saveAnnotation(ann1);
+      await storage.saveAnnotation(ann2);
+      await storage.saveAnnotation(ann3);
+
+      final book1Annotations = await storage.getAnnotations(bookHash1);
+      final book2Annotations = await storage.getAnnotations(bookHash2);
+
+      expect(book1Annotations.length, equals(2));
+      expect(book2Annotations.length, equals(1));
+      expect(book1Annotations.map((a) => a.id), containsAll(['ann-1', 'ann-2']));
+      expect(book2Annotations.first.id, equals('ann-3'));
+
+      // Delete one annotation
+      await storage.deleteAnnotation(bookHash1, 'cfi-1');
+      final afterDelete = await storage.getAnnotations(bookHash1);
+      expect(afterDelete.length, equals(1));
+      expect(afterDelete.first.id, equals('ann-2'));
+
+      // Update existing annotation
+      final updatedAnn2 = ann2.copyWith(note: 'Updated note', color: Annotation.colorBlue);
+      await storage.saveAnnotation(updatedAnn2);
+      final afterUpdate = await storage.getAnnotations(bookHash1);
+      expect(afterUpdate.length, equals(1));
+      expect(afterUpdate.first.note, equals('Updated note'));
+      expect(afterUpdate.first.color, equals(Annotation.colorBlue));
     });
   });
 }

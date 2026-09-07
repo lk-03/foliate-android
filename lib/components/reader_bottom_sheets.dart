@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/models.dart';
 import '../theme/theme.dart';
 
@@ -1287,6 +1288,16 @@ class _ReaderAnnotationBarState extends State<ReaderAnnotationBar> {
                 ),
               ),
               IconButton(
+                icon: const Icon(Icons.copy_rounded, size: 18),
+                tooltip: 'Copy',
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: widget.selectedText));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Quote copied to clipboard')),
+                  );
+                },
+              ),
+              IconButton(
                 icon: const Icon(Icons.close_rounded, size: 18),
                 onPressed: widget.onDismiss,
               ),
@@ -1365,6 +1376,197 @@ class _ReaderAnnotationBarState extends State<ReaderAnnotationBar> {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Modal bottom sheet to view, edit color/note, or delete an existing highlight
+class AnnotationEditSheet extends StatefulWidget {
+  final Annotation annotation;
+  final void Function(Annotation updated) onUpdate;
+  final VoidCallback onDelete;
+
+  const AnnotationEditSheet({
+    super.key,
+    required this.annotation,
+    required this.onUpdate,
+    required this.onDelete,
+  });
+
+  @override
+  State<AnnotationEditSheet> createState() => _AnnotationEditSheetState();
+}
+
+class _AnnotationEditSheetState extends State<AnnotationEditSheet> {
+  late String _currentColor;
+  late final TextEditingController _noteController;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentColor = widget.annotation.color;
+    _noteController = TextEditingController(text: widget.annotation.note ?? '');
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  Color _parseHex(String hex) {
+    final clean = hex.replaceAll('#', '');
+    return Color(int.parse('FF$clean', radix: 16));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<FoliateThemeColors>() ??
+        FoliateThemeColors.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surfaceCard,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        border: Border.all(color: colors.border),
+      ),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 12,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Grab handle
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: colors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Highlight',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.copy_rounded, size: 18),
+                  tooltip: 'Copy',
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: widget.annotation.text));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Quote copied to clipboard')),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    size: 20,
+                    color: AdwaitaColors.libadwaitaRed,
+                  ),
+                  tooltip: 'Delete',
+                  onPressed: () {
+                    widget.onDelete();
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colors.inputBackground,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: colors.border),
+              ),
+              child: Text(
+                '“${widget.annotation.text}”',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Color selection row
+            Row(
+              children: [
+                for (final colorHex in Annotation.defaultColors)
+                  GestureDetector(
+                    onTap: () {
+                      setState(() => _currentColor = colorHex);
+                      final updated = widget.annotation.copyWith(
+                        color: colorHex,
+                        note: _noteController.text.trim().isNotEmpty
+                            ? _noteController.text.trim()
+                            : null,
+                      );
+                      widget.onUpdate(updated);
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 10),
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: _parseHex(colorHex),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _currentColor == colorHex
+                              ? Colors.white
+                              : Colors.transparent,
+                          width: 2.5,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            TextField(
+              controller: _noteController,
+              decoration: InputDecoration(
+                hintText: 'Add an optional note...',
+                filled: true,
+                fillColor: colors.inputBackground,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: colors.border),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+              onChanged: (text) {
+                final updated = widget.annotation.copyWith(
+                  color: _currentColor,
+                  note: text.trim().isNotEmpty ? text.trim() : null,
+                );
+                widget.onUpdate(updated);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

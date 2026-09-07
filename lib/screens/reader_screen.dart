@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import '../components/components.dart';
 import '../models/models.dart';
 import '../reader/reader.dart';
@@ -148,6 +149,21 @@ class _ReaderScreenState extends State<ReaderScreen> {
       }
     };
 
+    _bridge.onSelectionCleared = () {
+      if (mounted && _selectedText != null) {
+        setState(() {
+          _selectedText = null;
+          _selectedCfi = null;
+        });
+      }
+    };
+
+    _bridge.onAnnotationClicked = (cfi) {
+      if (mounted) {
+        _showAnnotationEditSheet(cfi);
+      }
+    };
+
     _bridge.onToggleControls = () {
       if (mounted) _toggleControls();
     };
@@ -176,6 +192,47 @@ class _ReaderScreenState extends State<ReaderScreen> {
     } else if (widget.book.cfi != null) {
       await _bridge.goToHref(widget.book.cfi!);
     }
+    final annotations =
+        await StorageService.instance.getAnnotations(widget.book.hash);
+    if (annotations.isNotEmpty) {
+      await _bridge.loadAnnotations(annotations);
+    }
+  }
+
+  Future<void> _showAnnotationEditSheet(String cfi) async {
+    _hideControlsTimer?.cancel();
+    final annotations =
+        await StorageService.instance.getAnnotations(widget.book.hash);
+    final index = annotations.indexWhere((a) => a.cfi == cfi);
+    final annotation = index != -1
+        ? annotations[index]
+        : Annotation(
+            id: const Uuid().v4(),
+            bookHash: widget.book.hash,
+            cfi: cfi,
+            text: '',
+            createdAt: DateTime.now().millisecondsSinceEpoch,
+          );
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => AnnotationEditSheet(
+        annotation: annotation,
+        onUpdate: (updated) async {
+          await StorageService.instance.saveAnnotation(updated);
+          await _bridge.addAnnotation(updated.cfi, updated.color);
+        },
+        onDelete: () async {
+          await StorageService.instance
+              .deleteAnnotation(widget.book.hash, cfi);
+          await _bridge.deleteAnnotation(cfi);
+        },
+      ),
+    ).then((_) => _resetInactivityTimer());
   }
 
   void _showAppearanceSheet() {
@@ -614,11 +671,29 @@ class _ReaderScreenState extends State<ReaderScreen> {
               child: ReaderAnnotationBar(
                 selectedText: _selectedText!,
                 cfi: _selectedCfi,
-                onSave: (cfi, color, note) {
-                  _bridge.addAnnotation(cfi, color);
-                  setState(() => _selectedText = null);
+                onSave: (cfi, color, note) async {
+                  final annotation = Annotation(
+                    id: const Uuid().v4(),
+                    bookHash: widget.book.hash,
+                    cfi: cfi,
+                    text: _selectedText!,
+                    note: note,
+                    color: color,
+                    createdAt: DateTime.now().millisecondsSinceEpoch,
+                  );
+                  await StorageService.instance.saveAnnotation(annotation);
+                  await _bridge.addAnnotation(cfi, color);
+                  if (mounted) {
+                    setState(() {
+                      _selectedText = null;
+                      _selectedCfi = null;
+                    });
+                  }
                 },
-                onDismiss: () => setState(() => _selectedText = null),
+                onDismiss: () => setState(() {
+                  _selectedText = null;
+                  _selectedCfi = null;
+                }),
               ),
             ),
 

@@ -270,4 +270,88 @@ class StorageService {
     await prefs.setString('$_bookSettingsPrefKeyPrefix$bookHash', jsonStr);
     await prefs.setString(_globalReaderSettingsPrefKey, jsonStr);
   }
+
+  static const String _annotationsPrefKeyPrefix = 'foliate_annotations_';
+
+  /// Retrieves all annotations for a specific book by hash.
+  Future<List<Annotation>> getAnnotations(String bookHash) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList('$_annotationsPrefKeyPrefix$bookHash') ?? [];
+    return list
+        .map((s) {
+          try {
+            return Annotation.fromJson(s);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<Annotation>()
+        .toList();
+  }
+
+  /// Saves or updates an annotation for a book.
+  Future<void> saveAnnotation(Annotation annotation) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_annotationsPrefKeyPrefix${annotation.bookHash}';
+    final list = prefs.getStringList(key) ?? [];
+    final current = list
+        .map((s) {
+          try {
+            return Annotation.fromJson(s);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<Annotation>()
+        .toList();
+
+    final idx = current.indexWhere((a) => a.id == annotation.id || a.cfi == annotation.cfi);
+    if (idx >= 0) {
+      current[idx] = annotation;
+    } else {
+      current.add(annotation);
+    }
+
+    await prefs.setStringList(key, current.map((a) => a.toJson()).toList());
+  }
+
+  /// Deletes an annotation by CFI for a given book hash.
+  Future<void> deleteAnnotation(String bookHash, String cfi) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_annotationsPrefKeyPrefix$bookHash';
+    final list = prefs.getStringList(key) ?? [];
+    final current = list
+        .map((s) {
+          try {
+            return Annotation.fromJson(s);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<Annotation>()
+        .toList();
+
+    current.removeWhere((a) => a.cfi == cfi);
+    await prefs.setStringList(key, current.map((a) => a.toJson()).toList());
+  }
+
+  /// Retrieves all annotations across all books sorted by creation timestamp.
+  Future<List<Annotation>> getAllAnnotations() async {
+    final prefs = await SharedPreferences.getInstance();
+    final allKeys = prefs.getKeys();
+    final annotationKeys = allKeys.where((k) => k.startsWith(_annotationsPrefKeyPrefix));
+    final result = <Annotation>[];
+
+    for (final k in annotationKeys) {
+      final list = prefs.getStringList(k) ?? [];
+      for (final s in list) {
+        try {
+          result.add(Annotation.fromJson(s));
+        } catch (_) {}
+      }
+    }
+
+    result.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return result;
+  }
 }
