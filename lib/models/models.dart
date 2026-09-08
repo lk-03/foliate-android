@@ -1,5 +1,6 @@
 export 'annotation.dart';
 export 'book.dart';
+export 'bookmark.dart';
 export 'catalog.dart';
 export 'reader_settings.dart';
 export 'reading_location.dart';

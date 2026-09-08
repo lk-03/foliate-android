@@ -96,7 +96,7 @@ void main() {
     expect(find.text('Layout'), findsOneWidget);
     expect(find.text('Color'), findsOneWidget);
     expect(find.text('Behavior'), findsOneWidget);
-    expect(find.text('Default Font Size'), findsOneWidget);
+    expect(find.byType(DottedFontSizeStepper), findsOneWidget);
     expect(find.text('Serif (Noto)'), findsOneWidget);
     expect(find.text('Override Publisher Font'), findsOneWidget);
 
@@ -222,6 +222,103 @@ void main() {
     await tester.pumpAndSettle();
     expect(lastMatchCase, isTrue);
   });
+
+  testWidgets('DottedFontSizeStepper snaps and steps without numeric text',
+      (WidgetTester tester) async {
+    double currentSize = 16.0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              return DottedFontSizeStepper(
+                currentFontSize: currentSize,
+                onFontSizeChanged: (newSize) {
+                  setState(() {
+                    currentSize = newSize;
+                  });
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify stepper rendered
+    expect(find.byType(DottedFontSizeStepper), findsOneWidget);
+
+    // Verify zero numeric font size labels are displayed
+    expect(find.textContaining('pt'), findsNothing);
+    expect(find.textContaining('16'), findsNothing);
+
+    // Verify small 'A' and large 'A' buttons
+    final smallerFinder = find.widgetWithText(IconButton, 'A').first;
+    final largerFinder = find.widgetWithText(IconButton, 'A').last;
+
+    // Tap larger 'A' (16.0 -> 18.0)
+    await tester.tap(largerFinder);
+    await tester.pumpAndSettle();
+    expect(currentSize, equals(18.0));
+
+    // Tap larger 'A' again (18.0 -> 20.0)
+    await tester.tap(largerFinder);
+    await tester.pumpAndSettle();
+    expect(currentSize, equals(20.0));
+
+    // Tap smaller 'A' (20.0 -> 18.0)
+    await tester.tap(smallerFinder);
+    await tester.pumpAndSettle();
+    expect(currentSize, equals(18.0));
+  });
+
+  testWidgets('SilkRibbonBookmark renders and triggers toggle',
+      (WidgetTester tester) async {
+    bool isBookmarked = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: Stack(
+            children: [
+              StatefulBuilder(
+                builder: (context, setState) {
+                  return SilkRibbonBookmark(
+                    isBookmarked: isBookmarked,
+                    onToggle: () {
+                      setState(() {
+                        isBookmarked = !isBookmarked;
+                      });
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SilkRibbonBookmark), findsOneWidget);
+
+    // Tap the bookmark ribbon trigger area
+    await tester.tap(find.byType(SilkRibbonBookmark));
+    await tester.pumpAndSettle();
+
+    expect(isBookmarked, isTrue);
+
+    // Tap again to untoggle
+    await tester.tap(find.byType(SilkRibbonBookmark));
+    await tester.pumpAndSettle();
+
+    expect(isBookmarked, isFalse);
+  });
 }
+
 
 

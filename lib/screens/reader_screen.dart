@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 import '../components/components.dart';
 import '../models/models.dart';
@@ -45,6 +46,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
   String _currentSearchQuery = '';
   bool _matchCase = false;
   bool _isSearchActive = false;
+  // Bookmark & Orientation State (Apple Books controls)
+  bool _isBookmarked = false;
+  bool _isOrientationLocked = false;
 
   @override
   void initState() {
@@ -67,6 +71,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _searchSectionsNotifier.dispose();
     _isSearchingNotifier.dispose();
     _totalMatchesNotifier.dispose();
+    SystemChrome.setPreferredOrientations([]);
     super.dispose();
   }
 
@@ -101,6 +106,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _bridge.onRelocate = (location) {
       if (mounted) {
         setState(() => _currentLocation = location);
+        _checkBookmarkStatus();
         // Persist reading progress to local storage
         StorageService.instance.updateBookProgress(
           widget.book.hash,
@@ -113,6 +119,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _bridge.onProgressUpdate = (percentage, location) {
       if (mounted) {
         setState(() => _currentLocation = location);
+        _checkBookmarkStatus();
       }
     };
 
@@ -197,6 +204,60 @@ class _ReaderScreenState extends State<ReaderScreen> {
     if (annotations.isNotEmpty) {
       await _bridge.loadAnnotations(annotations);
     }
+    await _checkBookmarkStatus();
+  }
+
+  Future<void> _checkBookmarkStatus() async {
+    if (_currentLocation?.cfi == null) return;
+    final bookmarked = await StorageService.instance.isBookmarked(
+      widget.book.hash,
+      _currentLocation!.cfi,
+    );
+    if (mounted && bookmarked != _isBookmarked) {
+      setState(() => _isBookmarked = bookmarked);
+    }
+  }
+
+  Future<void> _toggleBookmark() async {
+    if (_currentLocation?.cfi == null) return;
+    final cfi = _currentLocation!.cfi;
+    final isCurrently =
+        await StorageService.instance.isBookmarked(widget.book.hash, cfi);
+
+    if (isCurrently) {
+      await StorageService.instance.deleteBookmark(widget.book.hash, cfi);
+      if (mounted) setState(() => _isBookmarked = false);
+    } else {
+      final bookmark = Bookmark(
+        id: const Uuid().v4(),
+        bookHash: widget.book.hash,
+        cfi: cfi,
+        chapterTitle: _getCurrentChapterTitle(),
+        percentage: _currentLocation?.percentage ?? widget.book.percentage,
+        pageNumber: _currentLocation?.currentLocation,
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+      );
+      await StorageService.instance.saveBookmark(bookmark);
+      if (mounted) setState(() => _isBookmarked = true);
+    }
+  }
+
+  String? _getCurrentChapterTitle() {
+    if (_tableOfContents.isEmpty || _currentLocation?.cfi == null) return null;
+    if (_currentLocation!.currentSection != null &&
+        _currentLocation!.currentSection! < _tableOfContents.length) {
+      return _tableOfContents[_currentLocation!.currentSection!].label;
+    }
+    return null;
+  }
+
+  void _toggleOrientationLock() {
+    setState(() => _isOrientationLocked = !_isOrientationLocked);
+    if (_isOrientationLocked) {
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    } else {
+      SystemChrome.setPreferredOrientations([]);
+    }
   }
 
   Future<void> _showAnnotationEditSheet(String cfi) async {
@@ -252,15 +313,24 @@ class _ReaderScreenState extends State<ReaderScreen> {
     ).then((_) => _resetInactivityTimer());
   }
 
-  void _showTOCSheet() {
+  Future<void> _showTOCSheet() async {
     _hideControlsTimer?.cancel();
+    final bookmarks =
+        await StorageService.instance.getBookmarks(widget.book.hash);
+    if (!mounted) return;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => ReaderTOCSheet(
         toc: _tableOfContents,
+        bookmarks: bookmarks,
         onChapterSelected: (href) => _bridge.goToHref(href),
+        onDeleteBookmark: (b) async {
+          await StorageService.instance.deleteBookmark(widget.book.hash, b.cfi);
+          _checkBookmarkStatus();
+        },
       ),
     ).then((_) => _resetInactivityTimer());
   }
@@ -542,122 +612,63 @@ class _ReaderScreenState extends State<ReaderScreen> {
               ),
             ),
 
-          // Top Header Action Icons (Top Right)
+          // Animated Silk Ribbon Bookmark (Top Right)
+          SilkRibbonBookmark(
+            isBookmarked: _isBookmarked,
+            onToggle: _toggleBookmark,
+          ),
+
+          // Apple Books-style Floating Reader Menu
           if (_showControls && !_isSearchActive)
             Positioned(
-              top: MediaQuery.of(context).padding.top + 8,
-              right: 12,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: colors.headerBar.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: colors.border),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.search_rounded, size: 18),
-                      tooltip: 'Search',
-                      onPressed: _showSearchSheet,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.text_fields_rounded, size: 19),
-                      tooltip: 'Appearance',
-                      onPressed: _showAppearanceSheet,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.list_rounded, size: 20),
-                      tooltip: 'Contents',
-                      onPressed: _showTOCSheet,
-                    ),
-                  ],
-                ),
+              bottom: 20,
+              left: 0,
+              right: 0,
+              child: FloatingReaderMenu(
+                currentFontSize: _settings.fontSize,
+                onFontSizeChanged: (newSize) {
+                  setState(() => _settings = _settings.copyWith(fontSize: newSize));
+                  _bridge.applyReaderSettings(_settings);
+                  StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+                },
+                progressPercentage: (_currentLocation?.percentage ?? widget.book.percentage),
+                progressLabel: _currentLocation != null
+                    ? (_currentLocation!.totalLocations != null &&
+                            _currentLocation!.totalLocations! > 0
+                        ? 'Page ${_currentLocation!.currentLocation ?? 1} of ${_currentLocation!.totalLocations}  •  ${_currentLocation!.percentage.round()}%'
+                        : '${_currentLocation!.percentage.round()}%')
+                    : '${widget.book.percentage.round()}%',
+                onScrubPercentage: (val) {
+                  _resetInactivityTimer();
+                  _bridge.goToPercentage(val);
+                },
+                onPrevPage: () {
+                  _resetInactivityTimer();
+                  _bridge.goPrev();
+                },
+                onNextPage: () {
+                  _resetInactivityTimer();
+                  _bridge.goNext();
+                },
+                onBackToLibrary: () => Navigator.of(context).pop(),
+                onOpenTOC: _showTOCSheet,
+                onOpenSearch: _showSearchSheet,
+                onOpenAppearance: _showAppearanceSheet,
+                isOrientationLocked: _isOrientationLocked,
+                onToggleOrientation: _toggleOrientationLock,
               ),
             ),
 
-          // Bottom Controls HUD Bar
-          if (_showControls)
+          // Uncluttered Floating Action Capsule (Bottom Right)
+          if (!_showControls && !_isSearchActive && _selectedText == null)
             Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: colors.headerBar.withValues(alpha: 0.95),
-                  border: Border(top: BorderSide(color: colors.border)),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: SafeArea(
-                  top: false,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Scrubber Slider
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.chevron_left_rounded, size: 24),
-                            onPressed: () {
-                              _resetInactivityTimer();
-                              _bridge.goPrev();
-                            },
-                          ),
-                          Expanded(
-                            child: Slider(
-                              value: (_currentLocation?.percentage ??
-                                      widget.book.percentage)
-                                  .clamp(0.0, 100.0),
-                              min: 0.0,
-                              max: 100.0,
-                              activeColor: AdwaitaColors.foliateGreen,
-                              inactiveColor: colors.border,
-                              onChanged: (val) {
-                                _resetInactivityTimer();
-                                _bridge.goToPercentage(val);
-                              },
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.chevron_right_rounded, size: 24),
-                            onPressed: () {
-                              _resetInactivityTimer();
-                              _bridge.goNext();
-                            },
-                          ),
-                        ],
-                      ),
-
-                      // Location & Progress Label
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _currentLocation?.formattedTimeLeftBook != null
-                                ? '${_currentLocation!.formattedTimeLeftBook} left'
-                                : '',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: colors.textMuted,
-                            ),
-                          ),
-                          Text(
-                            _currentLocation != null
-                                ? (_currentLocation!.totalLocations != null &&
-                                        _currentLocation!.totalLocations! > 0
-                                    ? 'Page ${_currentLocation!.currentLocation ?? 1} / ${_currentLocation!.totalLocations}  •  ${_currentLocation!.percentage.round()}%'
-                                    : '${_currentLocation!.percentage.round()}%')
-                                : '${widget.book.percentage.round()}%',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: colors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+              bottom: 20,
+              right: 18,
+              child: AnimatedOpacity(
+                opacity: _isReady ? 0.75 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: FloatingReaderCapsule(
+                  onTap: _toggleControls,
                 ),
               ),
             ),

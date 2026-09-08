@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/models.dart';
 import '../theme/theme.dart';
+import 'apple_books_controls.dart';
 
 /// Bottom sheet for Reader Appearance, Typography & Layout settings
 class ReaderAppearanceSheet extends StatefulWidget {
@@ -169,33 +170,9 @@ class _ReaderAppearanceSheetState extends State<ReaderAppearanceSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader('Font Size'),
-        _buildCard(
-          colors: colors,
-          children: [
-            _buildStepper(
-              label: 'Default Font Size',
-              valueText: '${_current.fontSize.round()} pt',
-              onDecrement: _current.fontSize > 10
-                  ? () => _update(_current.copyWith(fontSize: _current.fontSize - 1))
-                  : null,
-              onIncrement: _current.fontSize < 36
-                  ? () => _update(_current.copyWith(fontSize: _current.fontSize + 1))
-                  : null,
-              colors: colors,
-            ),
-            Divider(color: colors.border, height: 1),
-            _buildStepper(
-              label: 'Minimum Font Size',
-              valueText: '${_current.minFontSize.round()} pt',
-              onDecrement: _current.minFontSize > 0
-                  ? () => _update(_current.copyWith(minFontSize: _current.minFontSize - 1))
-                  : null,
-              onIncrement: _current.minFontSize < 20
-                  ? () => _update(_current.copyWith(minFontSize: _current.minFontSize + 1))
-                  : null,
-              colors: colors,
-            ),
-          ],
+        DottedFontSizeStepper(
+          currentFontSize: _current.fontSize,
+          onFontSizeChanged: (newSize) => _update(_current.copyWith(fontSize: newSize)),
         ),
         const SizedBox(height: 18),
 
@@ -674,16 +651,27 @@ class _ReaderAppearanceSheetState extends State<ReaderAppearanceSheet> {
   }
 }
 
-/// Slide-up Hierarchical Table of Contents Sheet
-class ReaderTOCSheet extends StatelessWidget {
+/// Slide-up Hierarchical Table of Contents & Bookmarks Sheet
+class ReaderTOCSheet extends StatefulWidget {
   final List<TOCItem> toc;
+  final List<Bookmark> bookmarks;
   final ValueChanged<String> onChapterSelected;
+  final ValueChanged<Bookmark>? onDeleteBookmark;
 
   const ReaderTOCSheet({
     super.key,
     required this.toc,
+    this.bookmarks = const [],
     required this.onChapterSelected,
+    this.onDeleteBookmark,
   });
+
+  @override
+  State<ReaderTOCSheet> createState() => _ReaderTOCSheetState();
+}
+
+class _ReaderTOCSheetState extends State<ReaderTOCSheet> {
+  int _selectedTab = 0; // 0: Contents, 1: Bookmarks
 
   @override
   Widget build(BuildContext context) {
@@ -712,27 +700,135 @@ class ReaderTOCSheet extends StatelessWidget {
                 ),
               ),
             ),
-            const Text(
-              'Table of Contents',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+
+            // Segmented Header Bar
+            Row(
+              children: [
+                _buildTabButton('Contents', 0, colors),
+                const SizedBox(width: 8),
+                _buildTabButton('Bookmarks (${widget.bookmarks.length})', 1, colors),
+              ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
+
             Expanded(
-              child: toc.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No chapters found',
-                        style: TextStyle(color: colors.textMuted),
-                      ),
-                    )
-                  : ListView(
-                      children: _buildTOCList(toc, colors, context),
-                    ),
+              child: _selectedTab == 0
+                  ? (widget.toc.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No chapters found',
+                            style: TextStyle(color: colors.textMuted),
+                          ),
+                        )
+                      : ListView(
+                          children: _buildTOCList(widget.toc, colors, context),
+                        ))
+                  : (widget.bookmarks.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.bookmark_border_rounded,
+                                  size: 40,
+                                  color: colors.textMuted,
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'No Bookmarks Yet',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Tap the top-right ribbon while reading to bookmark any page.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: colors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ListView.separated(
+                          itemCount: widget.bookmarks.length,
+                          separatorBuilder: (_, _) => Divider(color: colors.border, height: 1),
+                          itemBuilder: (context, index) {
+                            final b = widget.bookmarks[index];
+                            return ListTile(
+                              leading: const Icon(
+                                Icons.bookmark_rounded,
+                                color: Color(0xFFE01B24),
+                                size: 22,
+                              ),
+                              title: Text(
+                                b.chapterTitle ?? 'Page ${b.pageNumber ?? 1}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${b.percentage.round()}% through book',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: colors.textMuted,
+                                ),
+                              ),
+                              trailing: widget.onDeleteBookmark != null
+                                  ? IconButton(
+                                      icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                                      tooltip: 'Delete Bookmark',
+                                      onPressed: () {
+                                        widget.onDeleteBookmark!(b);
+                                        setState(() {});
+                                      },
+                                    )
+                                  : null,
+                              onTap: () {
+                                widget.onChapterSelected(b.cfi);
+                                Navigator.of(context).pop();
+                              },
+                            );
+                          },
+                        )),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabButton(String title, int tabIndex, FoliateThemeColors colors) {
+    final isSelected = _selectedTab == tabIndex;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _selectedTab = tabIndex);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? colors.activePill : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? AdwaitaColors.foliateGreen : colors.border,
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? colors.textPrimary : colors.textMuted,
+          ),
         ),
       ),
     );
@@ -757,7 +853,7 @@ class ReaderTOCSheet extends StatelessWidget {
           ),
           onTap: () {
             if (item.href != null) {
-              onChapterSelected(item.href!);
+              widget.onChapterSelected(item.href!);
               Navigator.of(context).pop();
             }
           },

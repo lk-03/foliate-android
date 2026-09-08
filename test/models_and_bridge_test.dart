@@ -54,6 +54,29 @@ void main() {
       expect(restored.color, equals(Annotation.colorYellow));
     });
 
+    test('Bookmark model serialization round-trip', () {
+      const bookmark = Bookmark(
+        id: 'bm-123',
+        bookHash: 'book-abc',
+        cfi: 'epubcfi(/6/14!/4/2/10)',
+        chapterTitle: 'Chapter 2: The Carpet-Bag',
+        percentage: 12.5,
+        pageNumber: 34,
+        createdAt: 1725460000000,
+      );
+
+      final jsonString = bookmark.toJson();
+      final restored = Bookmark.fromJson(jsonString);
+
+      expect(restored.id, equals(bookmark.id));
+      expect(restored.bookHash, equals(bookmark.bookHash));
+      expect(restored.cfi, equals(bookmark.cfi));
+      expect(restored.chapterTitle, equals('Chapter 2: The Carpet-Bag'));
+      expect(restored.percentage, equals(12.5));
+      expect(restored.pageNumber, equals(34));
+      expect(restored.createdAt, equals(1725460000000));
+    });
+
     test('ReaderSettings model serialization round-trip', () {
       const settings = ReaderSettings(
         theme: ReaderThemeMode.gruvbox,
@@ -491,5 +514,54 @@ void main() {
       expect(afterUpdate.first.color, equals(Annotation.colorBlue));
     });
   });
+
+  group('Bookmarks Storage CRUD Tests (Phase 4)', () {
+    test('Saves, retrieves, checks, and deletes bookmarks per book', () async {
+      SharedPreferences.setMockInitialValues({});
+      final storage = StorageService.instance;
+
+      const bookHash = 'book-hash-999';
+      const bm1 = Bookmark(
+        id: 'bm-1',
+        bookHash: bookHash,
+        cfi: 'epubcfi(/6/4!/4/2/10)',
+        chapterTitle: 'Chapter 1: Loomings',
+        percentage: 5.0,
+        pageNumber: 12,
+        createdAt: 1000,
+      );
+
+      const bm2 = Bookmark(
+        id: 'bm-2',
+        bookHash: bookHash,
+        cfi: 'epubcfi(/6/6!/4/2/20)',
+        chapterTitle: 'Chapter 2: The Carpet-Bag',
+        percentage: 12.0,
+        pageNumber: 25,
+        createdAt: 2000,
+      );
+
+      expect(await storage.isBookmarked(bookHash, bm1.cfi), isFalse);
+
+      await storage.saveBookmark(bm1);
+      await storage.saveBookmark(bm2);
+
+      expect(await storage.isBookmarked(bookHash, bm1.cfi), isTrue);
+      expect(await storage.isBookmarked(bookHash, bm2.cfi), isTrue);
+      expect(await storage.isBookmarked(bookHash, 'nonexistent-cfi'), isFalse);
+
+      final bookmarks = await storage.getBookmarks(bookHash);
+      expect(bookmarks.length, equals(2));
+      expect(bookmarks.map((b) => b.id), containsAll(['bm-1', 'bm-2']));
+
+      await storage.deleteBookmark(bookHash, bm1.cfi);
+      expect(await storage.isBookmarked(bookHash, bm1.cfi), isFalse);
+
+      final afterDelete = await storage.getBookmarks(bookHash);
+      expect(afterDelete.length, equals(1));
+      expect(afterDelete.first.id, equals('bm-2'));
+    });
+  });
 }
+
 

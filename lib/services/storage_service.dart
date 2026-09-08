@@ -354,4 +354,75 @@ class StorageService {
     result.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return result;
   }
+
+  static const String _bookmarksPrefKeyPrefix = 'foliate_bookmarks_';
+
+  /// Retrieves all bookmarks for a specific book by hash.
+  Future<List<Bookmark>> getBookmarks(String bookHash) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList('$_bookmarksPrefKeyPrefix$bookHash') ?? [];
+    return list
+        .map((s) {
+          try {
+            return Bookmark.fromJson(s);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<Bookmark>()
+        .toList();
+  }
+
+  /// Saves or updates a bookmark for a book.
+  Future<void> saveBookmark(Bookmark bookmark) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_bookmarksPrefKeyPrefix${bookmark.bookHash}';
+    final list = prefs.getStringList(key) ?? [];
+    final current = list
+        .map((s) {
+          try {
+            return Bookmark.fromJson(s);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<Bookmark>()
+        .toList();
+
+    final idx = current.indexWhere((b) => b.id == bookmark.id || b.cfi == bookmark.cfi);
+    if (idx >= 0) {
+      current[idx] = bookmark;
+    } else {
+      current.add(bookmark);
+    }
+
+    await prefs.setStringList(key, current.map((b) => b.toJson()).toList());
+  }
+
+  /// Deletes a bookmark by CFI for a given book hash.
+  Future<void> deleteBookmark(String bookHash, String cfi) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = '$_bookmarksPrefKeyPrefix$bookHash';
+    final list = prefs.getStringList(key) ?? [];
+    final current = list
+        .map((s) {
+          try {
+            return Bookmark.fromJson(s);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<Bookmark>()
+        .toList();
+
+    current.removeWhere((b) => b.cfi == cfi);
+    await prefs.setStringList(key, current.map((b) => b.toJson()).toList());
+  }
+
+  /// Checks if a CFI is bookmarked in a book.
+  Future<bool> isBookmarked(String bookHash, String cfi) async {
+    final bookmarks = await getBookmarks(bookHash);
+    return bookmarks.any((b) => b.cfi == cfi);
+  }
 }
+
