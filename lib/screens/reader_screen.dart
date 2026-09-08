@@ -409,6 +409,17 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 setState(() => _settings = _settings.copyWith(progressDisplayLocation: loc));
                 StorageService.instance.saveBookSettings(widget.book.hash, _settings);
               },
+              currentTheme: _settings.theme,
+              isDarkMode: _settings.isDarkMode,
+              onThemeChanged: (newTheme, isDark) {
+                setSheetState(() {});
+                setState(() => _settings = _settings.copyWith(
+                  theme: newTheme,
+                  isDarkMode: isDark,
+                ));
+                _bridge.applyReaderSettings(_settings);
+                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+              },
               showPageSlider: _settings.showPageSlider,
               onShowPageSliderChanged: (val) {
                 setSheetState(() {});
@@ -630,13 +641,50 @@ class _ReaderScreenState extends State<ReaderScreen> {
             ),
           ),
 
-          // Customizable Reading Progress Indicator with 1-tap cycling
-          if (!_isSearchActive)
+          // Minimal Reading Page Number (Bottom Center when controls are hidden)
+          if (!_showControls && !_isSearchActive)
+            Positioned(
+              bottom: 12 + MediaQuery.of(context).padding.bottom,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: colors.headerBar.withValues(alpha: 0.75),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: colors.border.withValues(alpha: 0.5),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Text(
+                    _currentLocation != null &&
+                            _currentLocation!.currentLocation != null &&
+                            _currentLocation!.totalLocations != null &&
+                            _currentLocation!.totalLocations! > 0
+                        ? 'Page ${_currentLocation!.currentLocation} of ${_currentLocation!.totalLocations}'
+                        : '${(_currentLocation?.percentage ?? widget.book.percentage).round()}%',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textSecondary.withValues(alpha: 0.8),
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Chapter / Book Progress Metric in Top Center (when controls are visible)
+          if (_showControls && !_isSearchActive)
             ReaderProgressIndicator(
               location: _currentLocation,
               percentage: _currentLocation?.percentage ?? widget.book.percentage,
-              displayType: _settings.progressDisplayType,
-              displayLocation: _settings.progressDisplayLocation,
+              displayType: _settings.progressDisplayType == ProgressDisplayType.pageNumber
+                  ? ProgressDisplayType.pagesLeftInChapter
+                  : _settings.progressDisplayType,
+              displayLocation: ProgressDisplayLocation.topCenter,
               accentColor: themeAccent,
               onCycleDisplayType: () {
                 final nextType = _settings.progressDisplayType.next();
@@ -671,6 +719,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
           if (_showControls && !_isSearchActive && _settings.showPageSlider)
             ReaderPageSliderBar(
               progressPercentage: (_currentLocation?.percentage ?? widget.book.percentage),
+              location: _currentLocation,
               accentColor: themeAccent,
               onScrubPercentage: (val) {
                 _resetInactivityTimer();

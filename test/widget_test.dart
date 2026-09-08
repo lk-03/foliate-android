@@ -95,7 +95,6 @@ void main() {
     expect(find.text('Font'), findsOneWidget);
     expect(find.text('Layout'), findsOneWidget);
     expect(find.text('Color'), findsOneWidget);
-    expect(find.text('Behavior'), findsOneWidget);
     expect(find.byType(DottedFontSizeStepper), findsOneWidget);
     expect(find.text('Serif (Noto)'), findsOneWidget);
     expect(find.text('Override Publisher Font'), findsOneWidget);
@@ -119,11 +118,6 @@ void main() {
     expect(find.text('Grass'), findsOneWidget);
     expect(find.text('Cherry'), findsOneWidget);
     expect(find.text('Solarized'), findsOneWidget);
-
-    // 4. Switch to Behavior Tab
-    await tester.tap(find.text('Behavior'));
-    await tester.pumpAndSettle();
-    expect(find.text('Reduce Animation'), findsOneWidget);
   });
 
   testWidgets('ReaderSearchSheet displays streaming results and responds to match taps',
@@ -470,6 +464,9 @@ void main() {
             onShowPageSliderChanged: (_) {},
             quickActionsBar: true,
             onQuickActionsBarChanged: (_) {},
+            currentTheme: ReaderThemeMode.sepia,
+            isDarkMode: false,
+            onThemeChanged: (theme, dark) {},
           ),
         ),
       ),
@@ -479,6 +476,10 @@ void main() {
     expect(find.byType(FloatingReaderMenu), findsOneWidget);
     expect(find.text('Close'), findsOneWidget);
     expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+    expect(find.text('Theme Palette'), findsOneWidget);
+    expect(find.text('Calm Sepia'), findsWidgets);
+    expect(find.text('Quiet Black'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
 
     // Verify container height is 60% of screen height (600 * 0.60 = 360)
     final renderBox = tester.renderObject<RenderBox>(find.byType(FloatingReaderMenu));
@@ -520,6 +521,7 @@ void main() {
     expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
     expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
     expect(find.byType(Slider), findsOneWidget);
+    expect(find.text('Page 100 of 200  •  50%'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.chevron_left_rounded));
     expect(prevPressed, isTrue);

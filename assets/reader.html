@@ -5766,14 +5766,14 @@ ${doc.querySelector("parsererror").innerText}`);
       const weightCss = fontWeight ? `font-weight: ${fontWeight} !important;` : '';
 
       // Margins & Safe Area Padding
-      let padH = '16px';
+      let padH = '28px';
       if (margin !== undefined) {
         padH = `${Math.round(margin * 100)}%`;
       } else if (pageMargins === false) {
-        padH = '8px';
+        padH = '16px';
       }
-      const padTop = (settings.paddingTop !== undefined ? settings.paddingTop : 56) + 'px';
-      const padBottom = (settings.paddingBottom !== undefined ? settings.paddingBottom : 64) + 'px';
+      const padTop = (settings.paddingTop !== undefined ? settings.paddingTop : 84) + 'px';
+      const padBottom = (settings.paddingBottom !== undefined ? settings.paddingBottom : 88) + 'px';
       const paddingCss = `padding: ${padTop} ${padH} ${padBottom} !important; box-sizing: border-box !important;`;
 
       // Text Alignment & Hyphenation

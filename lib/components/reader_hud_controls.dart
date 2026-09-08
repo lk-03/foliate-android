@@ -647,6 +647,8 @@ class ReaderPageSliderBar extends StatelessWidget {
   final ValueChanged<double> onScrubPercentage;
   final VoidCallback onPrevPage;
   final VoidCallback onNextPage;
+  final ReadingLocation? location;
+  final String? pageLabel;
   final Color? accentColor;
 
   const ReaderPageSliderBar({
@@ -655,83 +657,134 @@ class ReaderPageSliderBar extends StatelessWidget {
     required this.onScrubPercentage,
     required this.onPrevPage,
     required this.onNextPage,
+    this.location,
+    this.pageLabel,
     this.accentColor,
   });
+
+  String _formatPageLabel() {
+    if (pageLabel != null && pageLabel!.isNotEmpty) return pageLabel!;
+    if (location?.currentLocation != null &&
+        location!.totalLocations != null &&
+        location!.totalLocations! > 0) {
+      return 'Page ${location!.currentLocation} of ${location!.totalLocations}';
+    }
+    final estimatedPage = (progressPercentage * 2.0).clamp(1.0, 200.0).round();
+    if (progressPercentage > 0) {
+      return 'Page $estimatedPage of 200  •  ${progressPercentage.round()}%';
+    }
+    return '${progressPercentage.round()}%';
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
     final activeColor = accentColor ?? AdwaitaColors.foliateGreen;
+    final pageText = _formatPageLabel();
 
     return Positioned(
       bottom: 16 + MediaQuery.of(context).padding.bottom,
       left: 18,
       right: 74,
       child: RepaintBoundary(
-        child: Container(
-          height: 44,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-            color: colors.headerBar.withValues(alpha: 0.92),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: colors.border.withValues(alpha: 0.8),
-              width: 1.0,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left_rounded, size: 22),
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                onPressed: () {
-                  HapticFeedback.selectionClick();
-                  onPrevPage();
-                },
-              ),
-              Expanded(
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 3,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-                    activeTrackColor: activeColor,
-                    inactiveTrackColor: colors.border,
-                    thumbColor: activeColor,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Page Number Badge centered above slider bar
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: colors.headerBar.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: colors.border.withValues(alpha: 0.8),
+                  width: 0.8,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
                   ),
-                  child: Slider(
-                    value: progressPercentage.clamp(0.0, 100.0),
-                    min: 0.0,
-                    max: 100.0,
-                    onChanged: (val) {
-                      HapticFeedback.selectionClick();
-                      onScrubPercentage(val);
-                    },
-                  ),
+                ],
+              ),
+              child: Text(
+                pageText,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
+                  color: colors.textSecondary,
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.chevron_right_rounded, size: 22),
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                onPressed: () {
-                  HapticFeedback.selectionClick();
-                  onNextPage();
-                },
+            ),
+            const SizedBox(height: 5),
+            Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: colors.headerBar.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: colors.border.withValues(alpha: 0.8),
+                  width: 1.0,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ],
-          ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left_rounded, size: 22),
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      onPrevPage();
+                    },
+                  ),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 3,
+                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                        activeTrackColor: activeColor,
+                        inactiveTrackColor: colors.border,
+                        thumbColor: activeColor,
+                      ),
+                      child: Slider(
+                        value: progressPercentage.clamp(0.0, 100.0),
+                        min: 0.0,
+                        max: 100.0,
+                        onChanged: (val) {
+                          HapticFeedback.selectionClick();
+                          onScrubPercentage(val);
+                        },
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right_rounded, size: 22),
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      onNextPage();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -748,6 +801,8 @@ class QuickActionsToolbar extends StatelessWidget {
   final VoidCallback onOpenSearch;
   final VoidCallback onOpenAppearance;
   final VoidCallback onOpenMenu;
+  final ReadingLocation? location;
+  final String? pageLabel;
   final Color? accentColor;
 
   const QuickActionsToolbar({
@@ -760,6 +815,8 @@ class QuickActionsToolbar extends StatelessWidget {
     required this.onOpenSearch,
     required this.onOpenAppearance,
     required this.onOpenMenu,
+    this.location,
+    this.pageLabel,
     this.accentColor,
   });
 
@@ -770,10 +827,66 @@ class QuickActionsToolbar extends StatelessWidget {
       onScrubPercentage: onScrubPercentage,
       onPrevPage: onPrevPage,
       onNextPage: onNextPage,
+      location: location,
+      pageLabel: pageLabel,
       accentColor: accentColor,
     );
   }
 }
+
+class _ReaderThemeOption {
+  final String label;
+  final ReaderThemeMode mode;
+  final bool isDark;
+  final Color bg;
+  final Color text;
+
+  const _ReaderThemeOption({
+    required this.label,
+    required this.mode,
+    required this.isDark,
+    required this.bg,
+    required this.text,
+  });
+}
+
+const List<_ReaderThemeOption> _kReaderThemeOptions = [
+  _ReaderThemeOption(
+    label: 'White',
+    mode: ReaderThemeMode.defaultTheme,
+    isDark: false,
+    bg: Color(0xFFFFFFFF),
+    text: Color(0xFF1A1A1A),
+  ),
+  _ReaderThemeOption(
+    label: 'Calm Sepia',
+    mode: ReaderThemeMode.sepia,
+    isDark: false,
+    bg: Color(0xFFF8F1E5),
+    text: Color(0xFF4D3826),
+  ),
+  _ReaderThemeOption(
+    label: 'Grey',
+    mode: ReaderThemeMode.gray,
+    isDark: true,
+    bg: Color(0xFF2E2E2E),
+    text: Color(0xFFD8D8D8),
+  ),
+  _ReaderThemeOption(
+    label: 'Quiet Black',
+    mode: ReaderThemeMode.night,
+    isDark: true,
+    bg: Color(0xFF1E1D1B),
+    text: Color(0xFFEDEDED),
+  ),
+  _ReaderThemeOption(
+    label: 'Contrast Black',
+    mode: ReaderThemeMode.black,
+    isDark: true,
+    bg: Color(0xFF000000),
+    text: Color(0xFFD1D1D6),
+  ),
+];
 
 /// Floating Reader Menu bottom sheet.
 class FloatingReaderMenu extends StatelessWidget {
@@ -786,12 +899,15 @@ class FloatingReaderMenu extends StatelessWidget {
   final VoidCallback onOpenAppearance;
   final bool isOrientationLocked;
   final VoidCallback onToggleOrientation;
-  final ProgressDisplayType progressDisplayType;
-  final ValueChanged<ProgressDisplayType> onProgressDisplayTypeChanged;
-  final ProgressDisplayLocation progressDisplayLocation;
-  final ValueChanged<ProgressDisplayLocation> onProgressDisplayLocationChanged;
+  final ReaderThemeMode currentTheme;
+  final bool isDarkMode;
+  final void Function(ReaderThemeMode theme, bool isDarkMode)? onThemeChanged;
+  final ProgressDisplayType? progressDisplayType;
+  final ValueChanged<ProgressDisplayType>? onProgressDisplayTypeChanged;
+  final ProgressDisplayLocation? progressDisplayLocation;
+  final ValueChanged<ProgressDisplayLocation>? onProgressDisplayLocationChanged;
   final bool showPageSlider;
-  final ValueChanged<bool> onShowPageSliderChanged;
+  final ValueChanged<bool>? onShowPageSliderChanged;
   final bool? quickActionsBar;
   final ValueChanged<bool>? onQuickActionsBarChanged;
   final double? progressPercentage;
@@ -812,12 +928,15 @@ class FloatingReaderMenu extends StatelessWidget {
     required this.onOpenAppearance,
     required this.isOrientationLocked,
     required this.onToggleOrientation,
-    required this.progressDisplayType,
-    required this.onProgressDisplayTypeChanged,
-    required this.progressDisplayLocation,
-    required this.onProgressDisplayLocationChanged,
+    this.currentTheme = ReaderThemeMode.defaultTheme,
+    this.isDarkMode = true,
+    this.onThemeChanged,
+    this.progressDisplayType,
+    this.onProgressDisplayTypeChanged,
+    this.progressDisplayLocation,
+    this.onProgressDisplayLocationChanged,
     this.showPageSlider = true,
-    required this.onShowPageSliderChanged,
+    this.onShowPageSliderChanged,
     this.quickActionsBar,
     this.onQuickActionsBarChanged,
     this.progressPercentage,
@@ -828,13 +947,41 @@ class FloatingReaderMenu extends StatelessWidget {
     this.accentColor,
   });
 
+  bool _isOptionSelected(_ReaderThemeOption opt) {
+    if (opt.mode == ReaderThemeMode.defaultTheme) {
+      return (currentTheme == ReaderThemeMode.defaultTheme ||
+              currentTheme == ReaderThemeMode.day) &&
+          !isDarkMode;
+    }
+    if (opt.mode == ReaderThemeMode.sepia) {
+      return currentTheme == ReaderThemeMode.sepia;
+    }
+    if (opt.mode == ReaderThemeMode.gray) {
+      return currentTheme == ReaderThemeMode.gray;
+    }
+    if (opt.mode == ReaderThemeMode.night) {
+      return currentTheme == ReaderThemeMode.night;
+    }
+    if (opt.mode == ReaderThemeMode.black) {
+      return currentTheme == ReaderThemeMode.black;
+    }
+    return currentTheme == opt.mode && isDarkMode == opt.isDark;
+  }
+
+  String _getActiveThemeLabel() {
+    for (final opt in _kReaderThemeOptions) {
+      if (_isOptionSelected(opt)) return opt.label;
+    }
+    return currentTheme.name;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
     final activeColor = accentColor ?? AdwaitaColors.foliateGreen;
     final screenHeight = MediaQuery.of(context).size.height;
-    final sheetHeight = screenHeight * 0.60;
+    final sheetHeight = (screenHeight * 0.60).clamp(320.0, 560.0);
 
     return RepaintBoundary(
       child: Container(
@@ -878,7 +1025,7 @@ class FloatingReaderMenu extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Row 1: Action Shortcuts Bar (Close icon dismisses the popup)
+                        // Row 1: Action Shortcuts Bar
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -904,8 +1051,8 @@ class FloatingReaderMenu extends StatelessWidget {
                               activeColor: activeColor,
                             ),
                             _buildActionButton(
-                              icon: Icons.text_fields_rounded,
-                              label: 'Themes',
+                              icon: Icons.tune_rounded,
+                              label: 'Settings',
                               onTap: onOpenAppearance,
                               colors: colors,
                               activeColor: activeColor,
@@ -930,15 +1077,15 @@ class FloatingReaderMenu extends StatelessWidget {
                           onFontSizeChanged: onFontSizeChanged,
                           accentColor: activeColor,
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         Divider(color: colors.border, height: 16),
 
-                        // Reading Display Preferences Section
+                        // Row 3: Reading Theme Palettes
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Reading Display',
+                              'Theme Palette',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -946,7 +1093,7 @@ class FloatingReaderMenu extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              'Tap to cycle',
+                              _getActiveThemeLabel(),
                               style: TextStyle(
                                 fontSize: 11,
                                 color: colors.textMuted,
@@ -954,89 +1101,67 @@ class FloatingReaderMenu extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-
-                        // Display Type Picker Chips
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: ProgressDisplayType.values.map((type) {
-                              final isSelected = progressDisplayType == type;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 6),
-                                child: ChoiceChip(
-                                  label: Text(type.label),
-                                  labelStyle: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
-                                    color: isSelected ? Colors.white : colors.textMuted,
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: _kReaderThemeOptions.map((opt) {
+                            final isSelected = _isOptionSelected(opt);
+                            return GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                onThemeChanged?.call(opt.mode, opt.isDark);
+                              },
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: opt.bg,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? activeColor
+                                            : colors.border.withValues(alpha: 0.8),
+                                        width: isSelected ? 2.5 : 1.2,
+                                      ),
+                                      boxShadow: [
+                                        if (isSelected)
+                                          BoxShadow(
+                                            color: activeColor.withValues(alpha: 0.4),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        'Aa',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                          color: opt.text,
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                  selected: isSelected,
-                                  selectedColor: activeColor,
-                                  backgroundColor: colors.inputBackground,
-                                  side: BorderSide(color: colors.border),
-                                  onSelected: (_) {
-                                    HapticFeedback.selectionClick();
-                                    onProgressDisplayTypeChanged(type);
-                                  },
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Display Location Picker Chips
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: ProgressDisplayLocation.values.map((loc) {
-                              final isSelected = progressDisplayLocation == loc;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 6),
-                                child: ChoiceChip(
-                                  label: Text(loc.label),
-                                  labelStyle: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
-                                    color: isSelected ? Colors.white : colors.textMuted,
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    opt.label,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                      color: isSelected ? activeColor : colors.textMuted,
+                                    ),
                                   ),
-                                  selected: isSelected,
-                                  selectedColor: activeColor,
-                                  backgroundColor: colors.inputBackground,
-                                  side: BorderSide(color: colors.border),
-                                  onSelected: (_) {
-                                    HapticFeedback.selectionClick();
-                                    onProgressDisplayLocationChanged(loc);
-                                  },
-                                ),
-                              );
-                            }).toList(),
-                          ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
                         ),
-                        const SizedBox(height: 10),
-                        Divider(color: colors.border, height: 16),
-
-                        // Bottom Page Slider Toggle
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                          title: const Text(
-                            'Bottom Page Slider',
-                            style: TextStyle(fontSize: 13),
-                          ),
-                          subtitle: Text(
-                            'Show scrubber slider at bottom when tapping screen',
-                            style: TextStyle(fontSize: 11, color: colors.textMuted),
-                          ),
-                          value: showPageSlider,
-                          activeThumbColor: activeColor,
-                          onChanged: (val) {
-                            HapticFeedback.selectionClick();
-                            onShowPageSliderChanged(val);
-                            onQuickActionsBarChanged?.call(val);
-                          },
-                        ),
+                        const SizedBox(height: 12),
                       ],
                     ),
                   ),

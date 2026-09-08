@@ -82,7 +82,6 @@ class _ReaderAppearanceSheetState extends State<ReaderAppearanceSheet> {
                           _buildTabPill(0, 'Font', Icons.format_size_rounded, colors),
                           _buildTabPill(1, 'Layout', Icons.auto_stories_rounded, colors),
                           _buildTabPill(2, 'Color', Icons.palette_rounded, colors),
-                          _buildTabPill(3, 'Behavior', Icons.tune_rounded, colors),
                         ],
                       ),
                     ),
@@ -157,10 +156,8 @@ class _ReaderAppearanceSheetState extends State<ReaderAppearanceSheet> {
       case 1:
         return _buildLayoutTab(colors);
       case 2:
-        return _buildColorTab(colors);
-      case 3:
       default:
-        return _buildBehaviorTab(colors);
+        return _buildColorTab(colors);
     }
   }
 
@@ -538,115 +535,6 @@ class _ReaderAppearanceSheetState extends State<ReaderAppearanceSheet> {
           ],
         ),
       ),
-    );
-  }
-
-  // --- TAB 4: BEHAVIOR ---
-  Widget _buildBehaviorTab(FoliateThemeColors colors) {
-    final themeAccent = AdwaitaColors.getThemeAccent(_current.theme.id, _current.isDarkMode);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader('Animation & Motion'),
-        _buildCard(
-          colors: colors,
-          children: [
-            SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              title: const Text('Reduce Animation', style: TextStyle(fontSize: 14)),
-              subtitle: Text(
-                'Instant page turns with no sliding or fading transitions',
-                style: TextStyle(fontSize: 12, color: colors.textMuted),
-              ),
-              value: _current.reduceAnimation,
-              activeThumbColor: themeAccent,
-              onChanged: (val) => _update(_current.copyWith(reduceAnimation: val)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-
-        _buildSectionHeader('Reading Display'),
-        _buildCard(
-          colors: colors,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Progress Metric', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 6),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: ProgressDisplayType.values.map((type) {
-                        final isSelected = _current.progressDisplayType == type;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: ChoiceChip(
-                            label: Text(type.label),
-                            labelStyle: TextStyle(
-                              fontSize: 11,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
-                              color: isSelected ? Colors.white : colors.textMuted,
-                            ),
-                            selected: isSelected,
-                            selectedColor: themeAccent,
-                            backgroundColor: colors.inputBackground,
-                            side: BorderSide(color: colors.border),
-                            onSelected: (_) => _update(_current.copyWith(progressDisplayType: type)),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text('Display Location', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 6),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: ProgressDisplayLocation.values.map((loc) {
-                        final isSelected = _current.progressDisplayLocation == loc;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 6),
-                          child: ChoiceChip(
-                            label: Text(loc.label),
-                            labelStyle: TextStyle(
-                              fontSize: 11,
-                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
-                              color: isSelected ? Colors.white : colors.textMuted,
-                            ),
-                            selected: isSelected,
-                            selectedColor: themeAccent,
-                            backgroundColor: colors.inputBackground,
-                            side: BorderSide(color: colors.border),
-                            onSelected: (_) => _update(_current.copyWith(progressDisplayLocation: loc)),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Divider(color: colors.border, height: 1),
-            SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              title: const Text('Quick Action Toolbar', style: TextStyle(fontSize: 14)),
-              subtitle: Text(
-                'Show quick action bar & slider above progress indicator',
-                style: TextStyle(fontSize: 12, color: colors.textMuted),
-              ),
-              value: _current.quickActionsBar,
-              activeThumbColor: themeAccent,
-              onChanged: (val) => _update(_current.copyWith(quickActionsBar: val)),
-            ),
-          ],
-        ),
-      ],
     );
   }
 
