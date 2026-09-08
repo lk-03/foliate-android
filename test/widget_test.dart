@@ -75,14 +75,14 @@ void main() {
   });
 
 
-  testWidgets('ReaderAppearanceSheet tabs and controls test', (WidgetTester tester) async {
+  testWidgets('ReaderLayoutSheet controls and stepper test', (WidgetTester tester) async {
     ReaderSettings currentSettings = const ReaderSettings();
 
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData.dark(),
         home: Scaffold(
-          body: ReaderAppearanceSheet(
+          body: ReaderLayoutSheet(
             settings: currentSettings,
             onSettingsChanged: (newVal) => currentSettings = newVal,
           ),
@@ -91,20 +91,38 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // 1. Verify Font Tab (default)
-    expect(find.text('Font'), findsOneWidget);
     expect(find.text('Layout'), findsOneWidget);
-    expect(find.byType(DottedFontSizeStepper), findsOneWidget);
-    expect(find.text('Serif (Noto)'), findsOneWidget);
-    expect(find.text('Override Publisher Font'), findsOneWidget);
-
-    // 2. Switch to Layout Tab
-    await tester.tap(find.text('Layout'));
-    await tester.pumpAndSettle();
-    expect(find.text('Line Height'), findsOneWidget);
-    expect(find.text('Full Justification'), findsOneWidget);
+    expect(find.text('Side Margins'), findsOneWidget);
     expect(find.text('Hyphenation'), findsOneWidget);
     expect(find.text('Continuous Scrolled Mode'), findsOneWidget);
+    expect(find.text('Two Columns (Landscape)'), findsOneWidget);
+    expect(find.text('Pages Left'), findsOneWidget);
+  });
+
+  testWidgets('ReaderThemeCustomizeSheet live preview and font controls test', (WidgetTester tester) async {
+    ReaderSettings currentSettings = const ReaderSettings();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: ReaderThemeCustomizeSheet(
+            settings: currentSettings,
+            onSettingsChanged: (newVal) => currentSettings = newVal,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Customize Theme'), findsOneWidget);
+    expect(find.text('Aa'), findsWidgets);
+    expect(find.text('Font'), findsOneWidget);
+    expect(find.text('Override Publisher Font'), findsOneWidget);
+    expect(find.text('Bold Text'), findsOneWidget);
+    expect(find.text('Line Spacing'), findsOneWidget);
+    expect(find.text('Alignment'), findsOneWidget);
+    expect(find.text('Reset Typography'), findsOneWidget);
   });
 
   testWidgets('ReaderSearchSheet displays streaming results and responds to match taps',
@@ -465,13 +483,19 @@ void main() {
     expect(find.byIcon(Icons.close_rounded), findsOneWidget);
     expect(find.text('Theme Palette'), findsOneWidget);
     expect(find.text('Calm Sepia'), findsWidgets);
-    expect(find.text('Quiet Black'), findsOneWidget);
     expect(find.text('Warm Cream'), findsOneWidget);
     expect(find.text('Layout'), findsOneWidget);
-    expect(find.text('Settings'), findsOneWidget);
     expect(find.text('Light'), findsOneWidget);
-    expect(find.text('Serif (Noto)'), findsOneWidget);
-    expect(find.text('Override Font'), findsOneWidget);
+    expect(find.text('Customize Font & Typography'), findsOneWidget);
+
+    // Verify vertical scrolling reveals lower themes like Quiet Black
+    await tester.scrollUntilVisible(
+      find.text('Quiet Black'),
+      50.0,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Quiet Black'), findsOneWidget);
 
     // Verify container height is 60% of screen height (600 * 0.60 = 360)
     final renderBox = tester.renderObject<RenderBox>(find.byType(FloatingReaderMenu));

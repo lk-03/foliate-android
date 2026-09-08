@@ -5750,8 +5750,20 @@ ${doc.querySelector("parsererror").innerText}`);
 
       // Font Family: Default to Noto Serif
       let selectedFont = '"Noto Serif", "Linux Libertine", "Libertinus Serif", "Charter", "Georgia", serif';
-      if (fontFamily === 'sans') {
-        selectedFont = 'system-ui, -apple-system, sans-serif';
+      if (fontFamily === 'literata') {
+        selectedFont = '"Literata", serif';
+      } else if (fontFamily === 'ebgaramond') {
+        selectedFont = '"EB Garamond", serif';
+      } else if (fontFamily === 'newsreader') {
+        selectedFont = '"Newsreader", serif';
+      } else if (fontFamily === 'lora') {
+        selectedFont = '"Lora", serif';
+      } else if (fontFamily === 'sourceserif4') {
+        selectedFont = '"Source Serif 4", serif';
+      } else if (fontFamily === 'bitter') {
+        selectedFont = '"Bitter", serif';
+      } else if (fontFamily === 'inter' || fontFamily === 'sans') {
+        selectedFont = '"Inter", system-ui, -apple-system, sans-serif';
       } else if (fontFamily === 'monospace') {
         selectedFont = '"JetBrains Mono", monospace';
       } else if (fontFamily === 'publisher') {
@@ -5808,6 +5820,48 @@ ${doc.querySelector("parsererror").innerText}`);
           src: url('fonts/NotoSerif-BoldItalic.ttf') format('truetype');
           font-weight: bold;
           font-style: italic;
+        }
+        @font-face {
+          font-family: 'Literata';
+          src: url('fonts/Literata.ttf') format('truetype');
+          font-weight: 100 900;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'EB Garamond';
+          src: url('fonts/EBGaramond.ttf') format('truetype');
+          font-weight: 100 900;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'Newsreader';
+          src: url('fonts/Newsreader.ttf') format('truetype');
+          font-weight: 100 900;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'Lora';
+          src: url('fonts/Lora.ttf') format('truetype');
+          font-weight: 100 900;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'Source Serif 4';
+          src: url('fonts/SourceSerif4.ttf') format('truetype');
+          font-weight: 100 900;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'Bitter';
+          src: url('fonts/Bitter.ttf') format('truetype');
+          font-weight: 100 900;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'Inter';
+          src: url('fonts/Inter.ttf') format('truetype');
+          font-weight: 100 900;
+          font-style: normal;
         }
         body {
           background-color: ${bg} !important;

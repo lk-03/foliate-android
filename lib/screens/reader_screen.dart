@@ -296,14 +296,42 @@ class _ReaderScreenState extends State<ReaderScreen> {
     ).then((_) => _resetInactivityTimer());
   }
 
-  void _showAppearanceSheet() {
+  void _showLayoutSheet() {
     _hideControlsTimer?.cancel();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => ReaderAppearanceSheet(
+      builder: (_) => ReaderLayoutSheet(
         settings: _settings,
+        accentColor: AdwaitaColors.getThemeAccent(
+          _settings.theme.id,
+          _settings.isDarkMode,
+        ),
+        onSettingsChanged: (newSettings) {
+          setState(() => _settings = newSettings);
+          _bridge.applyReaderSettings(newSettings);
+          StorageService.instance.saveBookSettings(widget.book.hash, newSettings);
+        },
+      ),
+    ).then((_) => _resetInactivityTimer());
+  }
+
+  void _showThemeCustomizeSheet() {
+    _hideControlsTimer?.cancel();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ReaderThemeCustomizeSheet(
+        settings: _settings,
+        sampleExcerpt: _currentLocation?.sectionTitle != null
+            ? 'Section: ${_currentLocation!.sectionTitle}\n\nHe sighed. \u201cBel, you have known your whole life that you cannot remain in Tyre.\u201d \u201cI am not a child,\u201d I hissed, heat rising in my cheeks...'
+            : null,
+        accentColor: AdwaitaColors.getThemeAccent(
+          _settings.theme.id,
+          _settings.isDarkMode,
+        ),
         onSettingsChanged: (newSettings) {
           setState(() => _settings = newSettings);
           _bridge.applyReaderSettings(newSettings);
@@ -388,9 +416,17 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 Navigator.of(ctx).pop();
                 _showSearchSheet();
               },
+              onOpenLayout: () {
+                Navigator.of(ctx).pop();
+                _showLayoutSheet();
+              },
+              onOpenThemeCustomize: () {
+                Navigator.of(ctx).pop();
+                _showThemeCustomizeSheet();
+              },
               onOpenAppearance: () {
                 Navigator.of(ctx).pop();
-                _showAppearanceSheet();
+                _showLayoutSheet();
               },
               isOrientationLocked: _isOrientationLocked,
               onToggleOrientation: () {
