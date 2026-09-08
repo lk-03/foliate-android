@@ -192,12 +192,47 @@ class _ReaderScreenState extends State<ReaderScreen> {
     };
   }
 
+  ReaderSettings _computeEffectiveSettings(ReaderSettings base) {
+    if (!mounted) return base;
+    final mediaQuery = MediaQuery.of(context);
+    final topSafe = mediaQuery.padding.top;
+    final bottomSafe = mediaQuery.padding.bottom;
+    final screenWidth = mediaQuery.size.width;
+
+    final effectiveTop = (topSafe + 60.0).clamp(96.0, 160.0);
+    final effectiveBottom = (bottomSafe + 64.0).clamp(80.0, 140.0);
+    final effectiveSide = (screenWidth * base.margin).clamp(16.0, 60.0);
+
+    return base.copyWith(
+      paddingTop: effectiveTop,
+      paddingBottom: effectiveBottom,
+      marginSide: effectiveSide,
+    );
+  }
+
+  void _applySettings(ReaderSettings newSettings) {
+    setState(() => _settings = newSettings);
+    final effective = _computeEffectiveSettings(newSettings);
+    _bridge.applyReaderSettings(effective);
+    StorageService.instance.saveBookSettings(widget.book.hash, newSettings);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_isReady) {
+      final effective = _computeEffectiveSettings(_settings);
+      _bridge.applyReaderSettings(effective);
+    }
+  }
+
   Future<void> _loadBook() async {
     final savedSettings =
         await StorageService.instance.getBookSettings(widget.book.hash);
     if (mounted) {
       setState(() => _settings = savedSettings);
-      await _bridge.applyReaderSettings(_settings);
+      final effective = _computeEffectiveSettings(savedSettings);
+      await _bridge.applyReaderSettings(effective);
     }
     final bytes = await StorageService.instance.getBookBytes(widget.book);
     if (bytes != null && bytes.isNotEmpty) {
@@ -357,9 +392,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
           _settings.isDarkMode,
         ),
         onSettingsChanged: (newSettings) {
-          setState(() => _settings = newSettings);
-          _bridge.applyReaderSettings(newSettings);
-          StorageService.instance.saveBookSettings(widget.book.hash, newSettings);
+          _applySettings(newSettings);
         },
       ),
     ).then((_) => _resetInactivityTimer());
@@ -390,9 +423,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
           _settings.isDarkMode,
         ),
         onSettingsChanged: (newSettings) {
-          setState(() => _settings = newSettings);
-          _bridge.applyReaderSettings(newSettings);
-          StorageService.instance.saveBookSettings(widget.book.hash, newSettings);
+          _applySettings(newSettings);
         },
       ),
     ).then((_) => _resetInactivityTimer());
@@ -447,9 +478,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
               accentColor: themeAccent,
               onFontSizeChanged: (newSize) {
                 setSheetState(() {});
-                setState(() => _settings = _settings.copyWith(fontSize: newSize));
-                _bridge.applyReaderSettings(_settings);
-                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+                _applySettings(_settings.copyWith(fontSize: newSize));
               },
               progressPercentage: (_currentLocation?.percentage ?? widget.book.percentage),
               progressLabel: _currentLocation != null
@@ -511,61 +540,45 @@ class _ReaderScreenState extends State<ReaderScreen> {
               isDarkMode: _settings.isDarkMode,
               onThemeChanged: (newTheme, isDark) {
                 setSheetState(() {});
-                setState(() => _settings = _settings.copyWith(
+                _applySettings(_settings.copyWith(
                   theme: newTheme,
                   isDarkMode: isDark,
                 ));
-                _bridge.applyReaderSettings(_settings);
-                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
               },
               currentFontFamily: _settings.fontFamily,
               onFontFamilyChanged: (fam) {
                 setSheetState(() {});
-                setState(() => _settings = _settings.copyWith(fontFamily: fam));
-                _bridge.applyReaderSettings(_settings);
-                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+                _applySettings(_settings.copyWith(fontFamily: fam));
               },
               overridePublisherFont: _settings.overridePublisherFont,
               onOverridePublisherFontChanged: (val) {
                 setSheetState(() {});
-                setState(() => _settings = _settings.copyWith(overridePublisherFont: val));
-                _bridge.applyReaderSettings(_settings);
-                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+                _applySettings(_settings.copyWith(overridePublisherFont: val));
               },
               fontWeight: _settings.fontWeight,
               onFontWeightChanged: (w) {
                 setSheetState(() {});
-                setState(() => _settings = _settings.copyWith(fontWeight: w));
-                _bridge.applyReaderSettings(_settings);
-                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+                _applySettings(_settings.copyWith(fontWeight: w));
               },
               lineHeight: _settings.lineHeight,
               onLineHeightChanged: (lh) {
                 setSheetState(() {});
-                setState(() => _settings = _settings.copyWith(lineHeight: lh));
-                _bridge.applyReaderSettings(_settings);
-                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+                _applySettings(_settings.copyWith(lineHeight: lh));
               },
               fullJustification: _settings.fullJustification,
               onFullJustificationChanged: (just) {
                 setSheetState(() {});
-                setState(() => _settings = _settings.copyWith(fullJustification: just));
-                _bridge.applyReaderSettings(_settings);
-                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+                _applySettings(_settings.copyWith(fullJustification: just));
               },
               hyphenation: _settings.hyphenation,
               onHyphenationChanged: (hyph) {
                 setSheetState(() {});
-                setState(() => _settings = _settings.copyWith(hyphenation: hyph));
-                _bridge.applyReaderSettings(_settings);
-                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+                _applySettings(_settings.copyWith(hyphenation: hyph));
               },
               pageFlipping: _settings.pageFlipping,
               onPageFlippingChanged: (flip) {
                 setSheetState(() {});
-                setState(() => _settings = _settings.copyWith(pageFlipping: flip));
-                _bridge.applyReaderSettings(_settings);
-                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+                _applySettings(_settings.copyWith(pageFlipping: flip));
               },
               showPageSlider: _settings.showPageSlider,
               onShowPageSliderChanged: (val) {

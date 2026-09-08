@@ -3393,6 +3393,8 @@ ${doc.querySelector("parsererror").innerText}`);
         :host {
             display: block;
             container-type: size;
+            width: 100%;
+            height: 100%;
         }
         :host, #top {
             box-sizing: border-box;
@@ -3402,83 +3404,40 @@ ${doc.querySelector("parsererror").innerText}`);
             height: 100%;
         }
         #top {
-            --_gap: var(--reader-gap, 18%);
-            --_margin-top: var(--reader-margin-top, 108px);
-            --_margin-bottom: var(--reader-margin-bottom, 96px);
-            --_margin: 48px;
             --_max-inline-size: 720px;
-            --_max-block-size: 1440px;
             --_max-column-count: 2;
             --_max-column-count-portrait: 1;
             --_max-column-count-spread: var(--_max-column-count);
-            --_half-gap: calc(var(--_gap) / 2);
-            --_max-width: calc(var(--_max-inline-size) * var(--_max-column-count-spread));
-            --_max-height: var(--_max-block-size);
-            display: grid;
-            grid-template-columns:
-                minmax(var(--_half-gap), 1fr)
-                var(--_half-gap)
-                minmax(0, calc(var(--_max-width) - var(--_gap)))
-                var(--_half-gap)
-                minmax(var(--_half-gap), 1fr);
-            grid-template-rows:
-                minmax(var(--_margin-top), 1fr)
-                minmax(0, var(--_max-height))
-                minmax(var(--_margin-bottom), 1fr);
-            &.vertical {
+        }
+        @container (orientation: portrait) {
+            #top {
                 --_max-column-count-spread: var(--_max-column-count-portrait);
-                --_max-width: var(--_max-block-size);
-                --_max-height: calc(var(--_max-inline-size) * var(--_max-column-count-spread));
-            }
-            @container (orientation: portrait) {
-                & {
-                    --_max-column-count-spread: var(--_max-column-count-portrait);
-                }
-                &.vertical {
-                    --_max-column-count-spread: var(--_max-column-count);
-                }
             }
         }
         #background {
-            grid-column: 1 / -1;
-            grid-row: 1 / -1;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
         }
         #container {
-            grid-column: 2 / 5;
-            grid-row: 2;
+            position: absolute;
+            top: var(--reader-margin-top, 108px);
+            bottom: var(--reader-margin-bottom, 96px);
+            left: var(--reader-margin-side, 24px);
+            right: var(--reader-margin-side, 24px);
             overflow: hidden;
+            box-sizing: border-box;
         }
         :host([flow="scrolled"]) #container {
-            grid-column: 1 / -1;
-            grid-row: 1 / -1;
             overflow: auto;
         }
-        #header {
-            grid-column: 3 / 4;
-            grid-row: 1;
-        }
-        #footer {
-            grid-column: 3 / 4;
-            grid-row: 3;
-            align-self: end;
-        }
         #header, #footer {
-            display: grid;
-            height: var(--_margin);
-        }
-        :is(#header, #footer) > * {
-            display: flex;
-            align-items: center;
-            min-width: 0;
-        }
-        :is(#header, #footer) > * > * {
-            width: 100%;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-            text-align: center;
-            font-size: .75em;
-            opacity: .6;
+            display: none !important;
         }
         </style>
         <div id="top">
@@ -3608,12 +3567,10 @@ ${doc.querySelector("parsererror").innerText}`);
           const { width, height } = this.#container.getBoundingClientRect();
           const size = vertical ? height : width;
           const style = getComputedStyle(this.#top);
-          const maxInlineSize = parseFloat(style.getPropertyValue("--_max-inline-size"));
-          const maxColumnCount = parseInt(style.getPropertyValue("--_max-column-count-spread"));
-          const margin = parseFloat(style.getPropertyValue("--_margin"));
+          const maxInlineSize = parseFloat(style.getPropertyValue("--_max-inline-size")) || 720;
+          const maxColumnCount = parseInt(style.getPropertyValue("--_max-column-count-spread")) || 1;
+          const margin = 0;
           this.#margin = margin;
-          const g3 = parseFloat(style.getPropertyValue("--_gap")) / 100;
-          const gap = -g3 / (g3 - 1) * size;
           const flow = this.getAttribute("flow");
           if (flow === "scrolled") {
             this.setAttribute("dir", vertical ? "rtl" : "ltr");
@@ -3623,25 +3580,14 @@ ${doc.querySelector("parsererror").innerText}`);
             this.feet = null;
             this.#header.replaceChildren();
             this.#footer.replaceChildren();
-            return { flow, margin, gap, columnWidth: columnWidth2 };
+            return { flow, margin, gap: 0, columnWidth: columnWidth2 };
           }
-          const divisor = Math.min(maxColumnCount, Math.ceil(size / maxInlineSize));
-          const columnWidth = size / divisor - gap;
+          const divisor = Math.min(maxColumnCount, Math.ceil(size / maxInlineSize)) || 1;
+          const gap = divisor > 1 ? 32 : 0;
+          const columnWidth = (size - (divisor - 1) * gap) / divisor;
           this.setAttribute("dir", rtl ? "rtl" : "ltr");
-          const marginalDivisor = vertical ? Math.min(2, Math.ceil(width / maxInlineSize)) : divisor;
-          const marginalStyle = {
-            gridTemplateColumns: `repeat(${marginalDivisor}, 1fr)`,
-            gap: `${gap}px`,
-            direction: this.bookDir === "rtl" ? "rtl" : "ltr"
-          };
-          Object.assign(this.#header.style, marginalStyle);
-          Object.assign(this.#footer.style, marginalStyle);
-          const heads = makeMarginals(marginalDivisor, "head");
-          const feet = makeMarginals(marginalDivisor, "foot");
-          this.heads = heads.map((el) => el.children[0]);
-          this.feet = feet.map((el) => el.children[0]);
-          this.#header.replaceChildren(...heads);
-          this.#footer.replaceChildren(...feet);
+          this.heads = null;
+          this.feet = null;
           return { height, width, margin, gap, columnWidth };
         }
         render() {
@@ -5846,20 +5792,18 @@ ${doc.querySelector("parsererror").innerText}`);
       const weightCss = fontWeight ? `font-weight: ${fontWeight} !important;` : '';
 
       // Margins & Safe Area Padding
-      const padTopNum = Math.max(104, (settings.paddingTop !== undefined ? settings.paddingTop : 108));
-      const padBottomNum = Math.max(96, (settings.paddingBottom !== undefined ? settings.paddingBottom : 96));
-      const marginVal = (margin !== undefined ? margin : 0.10);
-      const gapVal = Math.round(marginVal * 200); // 0.10 -> 20% gap
-      const padH = `${Math.round(marginVal * 100)}%`;
-      const padTop = `${padTopNum}px`;
-      const padBottom = `${padBottomNum}px`;
-      const paddingCss = `padding: ${padTop} ${padH} ${padBottom} !important; box-sizing: border-box !important;`;
+      const padTopNum = settings.paddingTop !== undefined ? settings.paddingTop : 108;
+      const padBottomNum = settings.paddingBottom !== undefined ? settings.paddingBottom : 96;
+      const marginVal = (margin !== undefined ? margin : 0.06);
+      const marginSideNum = settings.marginSide !== undefined
+          ? settings.marginSide
+          : Math.round(marginVal * (window.innerWidth || 390));
 
       const viewEl = document.getElementById('view');
       if (viewEl) {
         viewEl.style.setProperty('--reader-margin-top', `${padTopNum}px`);
         viewEl.style.setProperty('--reader-margin-bottom', `${padBottomNum}px`);
-        viewEl.style.setProperty('--reader-gap', `${gapVal}%`);
+        viewEl.style.setProperty('--reader-margin-side', `${marginSideNum}px`);
       }
 
       // Text Alignment & Hyphenation
@@ -5940,7 +5884,8 @@ ${doc.querySelector("parsererror").innerText}`);
         body {
           background-color: ${bg} !important;
           color: ${fg} !important;
-          ${paddingCss}
+          margin: 0 !important;
+          padding: 0 !important;
           box-sizing: border-box !important;
           ${fontCss}
           ${sizeCss}

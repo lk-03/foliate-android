@@ -97,6 +97,9 @@ void main() {
         twoPagesLandscape: false,
         reduceAnimation: true,
         invertColors: false,
+        paddingTop: 112.0,
+        paddingBottom: 98.0,
+        marginSide: 28.0,
       );
 
       final jsonString = settings.toJson();
@@ -117,6 +120,9 @@ void main() {
       expect(restored.textAlign, equals('justify'));
       expect(restored.reduceAnimation, isTrue);
       expect(restored.invertColors, isFalse);
+      expect(restored.paddingTop, equals(112.0));
+      expect(restored.paddingBottom, equals(98.0));
+      expect(restored.marginSide, equals(28.0));
 
       // Verify all 9 themes can be deserialized
       for (final mode in [

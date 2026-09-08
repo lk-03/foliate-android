@@ -171,6 +171,7 @@ class ReaderSettings {
   final bool showPageSlider;
   final double paddingTop;
   final double paddingBottom;
+  final double? marginSide;
 
   const ReaderSettings({
     this.theme = ReaderThemeMode.defaultTheme,
@@ -182,7 +183,7 @@ class ReaderSettings {
     this.lineHeight = 1.50,
     this.fullJustification = true,
     this.hyphenation = true,
-    this.margin = 0.10,
+    this.margin = 0.06,
     this.fontWeight = 400,
     this.pageFlipping = 'horizontal',
     this.textAlign = 'justify',
@@ -196,6 +197,7 @@ class ReaderSettings {
     this.showPageSlider = false,
     this.paddingTop = 108.0,
     this.paddingBottom = 96.0,
+    this.marginSide,
   });
 
   ReaderSettings copyWith({
@@ -222,6 +224,7 @@ class ReaderSettings {
     bool? showPageSlider,
     double? paddingTop,
     double? paddingBottom,
+    double? marginSide,
   }) {
     return ReaderSettings(
       theme: theme ?? this.theme,
@@ -247,6 +250,7 @@ class ReaderSettings {
       showPageSlider: showPageSlider ?? this.showPageSlider,
       paddingTop: paddingTop ?? this.paddingTop,
       paddingBottom: paddingBottom ?? this.paddingBottom,
+      marginSide: marginSide ?? this.marginSide,
     );
   }
 
@@ -275,6 +279,7 @@ class ReaderSettings {
       'showPageSlider': showPageSlider,
       'paddingTop': paddingTop,
       'paddingBottom': paddingBottom,
+      'marginSide': marginSide,
     };
   }
 
@@ -289,7 +294,7 @@ class ReaderSettings {
       lineHeight: (map['lineHeight'] as num?)?.toDouble() ?? 1.50,
       fullJustification: map['fullJustification'] as bool? ?? true,
       hyphenation: map['hyphenation'] as bool? ?? true,
-      margin: (map['margin'] as num?)?.toDouble() ?? 0.10,
+      margin: (map['margin'] as num?)?.toDouble() ?? 0.06,
       fontWeight: (map['fontWeight'] as num?)?.toInt() ?? 400,
       pageFlipping: map['pageFlipping'] as String? ?? 'horizontal',
       textAlign: map['textAlign'] as String? ?? 'justify',
@@ -303,6 +308,7 @@ class ReaderSettings {
       showPageSlider: map['showPageSlider'] as bool? ?? false,
       paddingTop: (map['paddingTop'] as num?)?.toDouble() ?? 108.0,
       paddingBottom: (map['paddingBottom'] as num?)?.toDouble() ?? 96.0,
+      marginSide: (map['marginSide'] as num?)?.toDouble(),
     );
   }
 
@@ -337,7 +343,8 @@ class ReaderSettings {
         other.quickActionsBar == quickActionsBar &&
         other.showPageSlider == showPageSlider &&
         other.paddingTop == paddingTop &&
-        other.paddingBottom == paddingBottom;
+        other.paddingBottom == paddingBottom &&
+        other.marginSide == marginSide;
   }
 
   @override
@@ -365,5 +372,6 @@ class ReaderSettings {
         showPageSlider,
         paddingTop,
         paddingBottom,
+        marginSide,
       ]);
 }
