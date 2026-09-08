@@ -335,6 +335,94 @@ class _ReaderScreenState extends State<ReaderScreen> {
     ).then((_) => _resetInactivityTimer());
   }
 
+  void _showReaderMenuSheet() {
+    _hideControlsTimer?.cancel();
+    final themeAccent = AdwaitaColors.getThemeAccent(
+      _settings.theme.id,
+      _settings.isDarkMode,
+    );
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+        ),
+        child: StatefulBuilder(
+          builder: (context, setSheetState) {
+            return FloatingReaderMenu(
+              currentFontSize: _settings.fontSize,
+              accentColor: themeAccent,
+              onFontSizeChanged: (newSize) {
+                setSheetState(() {});
+                setState(() => _settings = _settings.copyWith(fontSize: newSize));
+                _bridge.applyReaderSettings(_settings);
+                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+              },
+              progressPercentage: (_currentLocation?.percentage ?? widget.book.percentage),
+              progressLabel: _currentLocation != null
+                  ? (_currentLocation!.totalLocations != null &&
+                          _currentLocation!.totalLocations! > 0
+                      ? 'Page ${_currentLocation!.currentLocation ?? 1} of ${_currentLocation!.totalLocations}  •  ${_currentLocation!.percentage.round()}%'
+                      : '${_currentLocation!.percentage.round()}%')
+                  : '${widget.book.percentage.round()}%',
+              onScrubPercentage: (val) {
+                _bridge.goToPercentage(val);
+              },
+              onPrevPage: () {
+                _bridge.goPrev();
+              },
+              onNextPage: () {
+                _bridge.goNext();
+              },
+              onBackToLibrary: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context).pop();
+              },
+              onOpenTOC: () {
+                Navigator.of(ctx).pop();
+                _showTOCSheet();
+              },
+              onOpenSearch: () {
+                Navigator.of(ctx).pop();
+                _showSearchSheet();
+              },
+              onOpenAppearance: () {
+                Navigator.of(ctx).pop();
+                _showAppearanceSheet();
+              },
+              isOrientationLocked: _isOrientationLocked,
+              onToggleOrientation: () {
+                setSheetState(() {});
+                _toggleOrientationLock();
+              },
+              progressDisplayType: _settings.progressDisplayType,
+              onProgressDisplayTypeChanged: (type) {
+                setSheetState(() {});
+                setState(() => _settings = _settings.copyWith(progressDisplayType: type));
+                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+              },
+              progressDisplayLocation: _settings.progressDisplayLocation,
+              onProgressDisplayLocationChanged: (loc) {
+                setSheetState(() {});
+                setState(() => _settings = _settings.copyWith(progressDisplayLocation: loc));
+                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+              },
+              quickActionsBar: _settings.quickActionsBar,
+              onQuickActionsBarChanged: (val) {
+                setSheetState(() {});
+                setState(() => _settings = _settings.copyWith(quickActionsBar: val));
+                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+              },
+            );
+          },
+        ),
+      ),
+    ).then((_) => _resetInactivityTimer());
+  }
+
   void _performSearch(String query, bool matchCase) {
     _searchSectionsNotifier.value = [];
     _allSearchMatches.clear();
@@ -482,6 +570,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+    final themeAccent = AdwaitaColors.getThemeAccent(
+      _settings.theme.id,
+      _settings.isDarkMode,
+    );
 
     return Scaffold(
       backgroundColor: AdwaitaColors.darkWindowBg,
@@ -533,36 +625,20 @@ class _ReaderScreenState extends State<ReaderScreen> {
             ),
           ),
 
-          // Subtle Blended Page Counter (x / n) when HUD is hidden
-          Positioned(
-            bottom: 12,
-            right: 18,
-            child: IgnorePointer(
-              child: AnimatedOpacity(
-                opacity: (!_showControls && _isReady) ? 0.55 : 0.0,
-                duration: const Duration(milliseconds: 200),
-                child: Text(
-                  _currentLocation != null &&
-                          _currentLocation!.totalLocations != null &&
-                          _currentLocation!.totalLocations! > 0
-                      ? '${_currentLocation!.currentLocation ?? 1} / ${_currentLocation!.totalLocations}'
-                      : (_currentLocation != null
-                          ? '${_currentLocation!.percentage.round()}%'
-                          : '${widget.book.percentage.round()}%'),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.5,
-                    fontFamily: 'Noto Serif',
-                    color: ReaderThemeColors.forMode(
-                      _settings.theme,
-                      isDark: _settings.isDarkMode,
-                    ).text,
-                  ),
-                ),
-              ),
+          // Customizable Reading Progress Indicator with 1-tap cycling
+          if (!_isSearchActive)
+            ReaderProgressIndicator(
+              location: _currentLocation,
+              percentage: _currentLocation?.percentage ?? widget.book.percentage,
+              displayType: _settings.progressDisplayType,
+              displayLocation: _settings.progressDisplayLocation,
+              accentColor: themeAccent,
+              onCycleDisplayType: () {
+                final nextType = _settings.progressDisplayType.next();
+                setState(() => _settings = _settings.copyWith(progressDisplayType: nextType));
+                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+              },
             ),
-          ),
 
           // Floating In-Reader Search Stepper Bar (Active search match session)
           if (_isSearchActive)
@@ -573,43 +649,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
               child: _buildFloatingSearchBar(colors),
             ),
 
-          // Floating Translucent Back Button (Top Left)
+          // Top Left Close Button (X mark)
           if (_showControls && !_isSearchActive)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 8,
-              left: 12,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => Navigator.of(context).pop(),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colors.headerBar.withValues(alpha: 0.9),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: colors.border),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.arrow_back_ios_new_rounded, size: 13),
-                        SizedBox(width: 6),
-                        Text(
-                          'Library',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+            ReaderCloseButton(
+              onClose: () => Navigator.of(context).pop(),
+              accentColor: themeAccent,
             ),
 
           // Animated Silk Ribbon Bookmark (Top Right)
@@ -618,58 +662,37 @@ class _ReaderScreenState extends State<ReaderScreen> {
             onToggle: _toggleBookmark,
           ),
 
-          // Apple Books-style Floating Reader Menu
-          if (_showControls && !_isSearchActive)
-            Positioned(
-              bottom: 20,
-              left: 0,
-              right: 0,
-              child: FloatingReaderMenu(
-                currentFontSize: _settings.fontSize,
-                onFontSizeChanged: (newSize) {
-                  setState(() => _settings = _settings.copyWith(fontSize: newSize));
-                  _bridge.applyReaderSettings(_settings);
-                  StorageService.instance.saveBookSettings(widget.book.hash, _settings);
-                },
-                progressPercentage: (_currentLocation?.percentage ?? widget.book.percentage),
-                progressLabel: _currentLocation != null
-                    ? (_currentLocation!.totalLocations != null &&
-                            _currentLocation!.totalLocations! > 0
-                        ? 'Page ${_currentLocation!.currentLocation ?? 1} of ${_currentLocation!.totalLocations}  •  ${_currentLocation!.percentage.round()}%'
-                        : '${_currentLocation!.percentage.round()}%')
-                    : '${widget.book.percentage.round()}%',
-                onScrubPercentage: (val) {
-                  _resetInactivityTimer();
-                  _bridge.goToPercentage(val);
-                },
-                onPrevPage: () {
-                  _resetInactivityTimer();
-                  _bridge.goPrev();
-                },
-                onNextPage: () {
-                  _resetInactivityTimer();
-                  _bridge.goNext();
-                },
-                onBackToLibrary: () => Navigator.of(context).pop(),
-                onOpenTOC: _showTOCSheet,
-                onOpenSearch: _showSearchSheet,
-                onOpenAppearance: _showAppearanceSheet,
-                isOrientationLocked: _isOrientationLocked,
-                onToggleOrientation: _toggleOrientationLock,
-              ),
+          // Floating Quick Actions Toolbar with Scrubber (when enabled in settings)
+          if (_showControls && !_isSearchActive && _settings.quickActionsBar)
+            QuickActionsToolbar(
+              progressPercentage: (_currentLocation?.percentage ?? widget.book.percentage),
+              accentColor: themeAccent,
+              onScrubPercentage: (val) {
+                _resetInactivityTimer();
+                _bridge.goToPercentage(val);
+              },
+              onPrevPage: () {
+                _resetInactivityTimer();
+                _bridge.goPrev();
+              },
+              onNextPage: () {
+                _resetInactivityTimer();
+                _bridge.goNext();
+              },
+              onOpenTOC: _showTOCSheet,
+              onOpenSearch: _showSearchSheet,
+              onOpenAppearance: _showAppearanceSheet,
+              onOpenMenu: _showReaderMenuSheet,
             ),
 
-          // Uncluttered Floating Action Capsule (Bottom Right)
-          if (!_showControls && !_isSearchActive && _selectedText == null)
+          // Three-Dot Floating Action Capsule (Bottom Right)
+          if (_showControls && !_isSearchActive && _selectedText == null && !_settings.quickActionsBar)
             Positioned(
-              bottom: 20,
+              bottom: 20 + MediaQuery.of(context).padding.bottom,
               right: 18,
-              child: AnimatedOpacity(
-                opacity: _isReady ? 0.75 : 0.0,
-                duration: const Duration(milliseconds: 200),
-                child: FloatingReaderCapsule(
-                  onTap: _toggleControls,
-                ),
+              child: FloatingReaderCapsule(
+                accentColor: themeAccent,
+                onTap: _showReaderMenuSheet,
               ),
             ),
 

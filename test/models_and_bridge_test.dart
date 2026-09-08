@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:foliate/models/models.dart';
 import 'package:foliate/reader/reader.dart';
@@ -562,6 +563,49 @@ void main() {
       expect(afterDelete.first.id, equals('bm-2'));
     });
   });
+
+  group('Reading Progress Display & HUD Customization Tests', () {
+    test('ProgressDisplayType and ProgressDisplayLocation serialization and cycling', () {
+      const sDefault = ReaderSettings();
+      expect(sDefault.progressDisplayType, equals(ProgressDisplayType.pagesLeftInChapter));
+      expect(sDefault.progressDisplayLocation, equals(ProgressDisplayLocation.bottomCenter));
+      expect(sDefault.quickActionsBar, isFalse);
+
+      // Test next cycling
+      expect(ProgressDisplayType.pagesLeftInChapter.next(), equals(ProgressDisplayType.timeLeftInChapter));
+      expect(ProgressDisplayType.timeLeftInChapter.next(), equals(ProgressDisplayType.timeLeftInBook));
+      expect(ProgressDisplayType.timeLeftInBook.next(), equals(ProgressDisplayType.pageNumber));
+      expect(ProgressDisplayType.pageNumber.next(), equals(ProgressDisplayType.percentage));
+      expect(ProgressDisplayType.percentage.next(), equals(ProgressDisplayType.pagesLeftInChapter));
+
+      // Test copyWith and serialization round-trip
+      final custom = sDefault.copyWith(
+        progressDisplayType: ProgressDisplayType.timeLeftInBook,
+        progressDisplayLocation: ProgressDisplayLocation.topCenter,
+        quickActionsBar: true,
+      );
+
+      final map = custom.toMap();
+      expect(map['progressDisplayType'], equals('timeLeftInBook'));
+      expect(map['progressDisplayLocation'], equals('topCenter'));
+      expect(map['quickActionsBar'], isTrue);
+
+      final restored = ReaderSettings.fromMap(map);
+      expect(restored.progressDisplayType, equals(ProgressDisplayType.timeLeftInBook));
+      expect(restored.progressDisplayLocation, equals(ProgressDisplayLocation.topCenter));
+      expect(restored.quickActionsBar, isTrue);
+      expect(restored, equals(custom));
+    });
+
+    test('Theme accents are correctly mapped across reader themes', () {
+      expect(AdwaitaColors.getThemeAccent('sepia', false), equals(const Color(0xFFC6782E)));
+      expect(AdwaitaColors.getThemeAccent('gruvbox', true), equals(const Color(0xFFD79921)));
+      expect(AdwaitaColors.getThemeAccent('nord', true), equals(const Color(0xFF88C0D0)));
+      expect(AdwaitaColors.getThemeAccent('cherry', false), equals(const Color(0xFFD43C6E)));
+      expect(AdwaitaColors.getThemeAccent('default', true), equals(const Color(0xFF3DB88F)));
+    });
+  });
 }
+
 
 

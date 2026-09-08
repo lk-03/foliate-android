@@ -159,6 +159,38 @@ class AdwaitaColors {
       darkText: Color(0xFFECEFF4),
     ),
   ];
+
+  /// Returns the theme-specific accent color for the reader HUD and controls
+  static Color getThemeAccent(String themeId, bool isDarkMode) {
+    switch (themeId.toLowerCase()) {
+      case 'sepia':
+        return const Color(0xFFC6782E); // Warm amber / terracotta
+      case 'gruvbox':
+        return const Color(0xFFD79921); // Golden warm amber
+      case 'nord':
+        return const Color(0xFF88C0D0); // Frost cyan
+      case 'cherry':
+        return const Color(0xFFD43C6E); // Rose berry
+      case 'grass':
+        return const Color(0xFF26A269); // Forest emerald
+      case 'solarized':
+        return const Color(0xFF2AA198); // Teal cyan
+      case 'sky':
+        return const Color(0xFF3584E4); // Sky blue
+      case 'gray':
+      case 'grey':
+        return isDarkMode ? const Color(0xFF3DB88F) : const Color(0xFF2E6F54);
+      case 'day':
+      case 'light':
+        return const Color(0xFF2EC27E);
+      case 'night':
+      case 'black':
+      case 'default':
+      case 'defaulttheme':
+      default:
+        return const Color(0xFF3DB88F); // Foliate leaf green
+    }
+  }
 }
 
 /// Representation of a Foliate theme with light and dark mode color pairs

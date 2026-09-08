@@ -264,12 +264,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(currentSize, equals(18.0));
 
-    // Tap larger 'A' again (18.0 -> 20.0)
+    // Tap larger 'A' again (18.0 -> 21.0 with new 10pt scale)
     await tester.tap(largerFinder);
     await tester.pumpAndSettle();
-    expect(currentSize, equals(20.0));
+    expect(currentSize, equals(21.0));
 
-    // Tap smaller 'A' (20.0 -> 18.0)
+    // Tap smaller 'A' (21.0 -> 18.0)
     await tester.tap(smallerFinder);
     await tester.pumpAndSettle();
     expect(currentSize, equals(18.0));
@@ -318,7 +318,129 @@ void main() {
 
     expect(isBookmarked, isFalse);
   });
+
+  testWidgets('ReaderCloseButton renders with X mark and fires callback',
+      (WidgetTester tester) async {
+    bool closed = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: Stack(
+            children: [
+              ReaderCloseButton(
+                onClose: () => closed = true,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ReaderCloseButton), findsOneWidget);
+    expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+
+    await tester.tap(find.byType(ReaderCloseButton));
+    await tester.pumpAndSettle();
+
+    expect(closed, isTrue);
+  });
+
+  testWidgets('ReaderProgressIndicator renders and cycles through display types on tap',
+      (WidgetTester tester) async {
+    ProgressDisplayType currentType = ProgressDisplayType.pagesLeftInChapter;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: Stack(
+            children: [
+              StatefulBuilder(
+                builder: (context, setState) {
+                  return ReaderProgressIndicator(
+                    location: const ReadingLocation(
+                      cfi: 'cfi-1',
+                      fraction: 0.25,
+                      percentage: 25.0,
+                      currentLocation: 10,
+                      totalLocations: 40,
+                    ),
+                    percentage: 25.0,
+                    displayType: currentType,
+                    displayLocation: ProgressDisplayLocation.bottomCenter,
+                    onCycleDisplayType: () {
+                      setState(() {
+                        currentType = currentType.next();
+                      });
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 1. Initially: pagesLeftInChapter (40 - 10 = 30)
+    expect(find.text('30 pages left in chapter'), findsOneWidget);
+
+    // 2. Tap to cycle -> timeLeftInChapter
+    await tester.tap(find.byType(ReaderProgressIndicator));
+    await tester.pumpAndSettle();
+    expect(currentType, equals(ProgressDisplayType.timeLeftInChapter));
+    expect(find.text('36 min left in chapter'), findsOneWidget);
+
+    // 3. Tap to cycle -> timeLeftInBook
+    await tester.tap(find.byType(ReaderProgressIndicator));
+    await tester.pumpAndSettle();
+    expect(currentType, equals(ProgressDisplayType.timeLeftInBook));
+    expect(find.text('4h 48m left'), findsOneWidget);
+
+    // 4. Tap to cycle -> pageNumber
+    await tester.tap(find.byType(ReaderProgressIndicator));
+    await tester.pumpAndSettle();
+    expect(currentType, equals(ProgressDisplayType.pageNumber));
+    expect(find.text('Page 10 of 40'), findsOneWidget);
+
+    // 5. Tap to cycle -> percentage
+    await tester.tap(find.byType(ReaderProgressIndicator));
+    await tester.pumpAndSettle();
+    expect(currentType, equals(ProgressDisplayType.percentage));
+    expect(find.text('25%'), findsOneWidget);
+  });
+
+  testWidgets('FloatingReaderCapsule renders three-dot icon and triggers tap',
+      (WidgetTester tester) async {
+    bool tapped = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: FloatingReaderCapsule(
+            onTap: () => tapped = true,
+            accentColor: const Color(0xFFC6782E),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FloatingReaderCapsule), findsOneWidget);
+    expect(find.byIcon(Icons.more_horiz_rounded), findsOneWidget);
+
+    await tester.tap(find.byType(FloatingReaderCapsule));
+    await tester.pumpAndSettle();
+
+    expect(tapped, isTrue);
+  });
 }
+
 
 
 

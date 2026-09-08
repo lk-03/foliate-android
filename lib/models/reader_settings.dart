@@ -67,6 +67,85 @@ enum ReaderThemeMode {
   }
 }
 
+/// What reading progress metric to display in the reader HUD
+enum ProgressDisplayType {
+  pagesLeftInChapter,
+  timeLeftInChapter,
+  timeLeftInBook,
+  pageNumber,
+  percentage;
+
+  String get id => name;
+
+  String get label {
+    switch (this) {
+      case ProgressDisplayType.pagesLeftInChapter:
+        return 'Pages Left in Chapter';
+      case ProgressDisplayType.timeLeftInChapter:
+        return 'Time Left in Chapter';
+      case ProgressDisplayType.timeLeftInBook:
+        return 'Time Left in Book';
+      case ProgressDisplayType.pageNumber:
+        return 'Page Number';
+      case ProgressDisplayType.percentage:
+        return 'Percentage';
+    }
+  }
+
+  ProgressDisplayType next() {
+    final values = ProgressDisplayType.values;
+    return values[(index + 1) % values.length];
+  }
+
+  static ProgressDisplayType fromString(String? value) {
+    if (value == null) return ProgressDisplayType.pagesLeftInChapter;
+    for (final v in ProgressDisplayType.values) {
+      if (v.name.toLowerCase() == value.toLowerCase()) return v;
+    }
+    return ProgressDisplayType.pagesLeftInChapter;
+  }
+}
+
+/// Screen position for the reading progress indicator
+enum ProgressDisplayLocation {
+  bottomCenter,
+  topCenter,
+  bottomLeft,
+  bottomRight,
+  topLeft,
+  topRight,
+  hidden;
+
+  String get id => name;
+
+  String get label {
+    switch (this) {
+      case ProgressDisplayLocation.bottomCenter:
+        return 'Bottom Center';
+      case ProgressDisplayLocation.topCenter:
+        return 'Top Center';
+      case ProgressDisplayLocation.bottomLeft:
+        return 'Bottom Left';
+      case ProgressDisplayLocation.bottomRight:
+        return 'Bottom Right';
+      case ProgressDisplayLocation.topLeft:
+        return 'Top Left';
+      case ProgressDisplayLocation.topRight:
+        return 'Top Right';
+      case ProgressDisplayLocation.hidden:
+        return 'Hidden';
+    }
+  }
+
+  static ProgressDisplayLocation fromString(String? value) {
+    if (value == null) return ProgressDisplayLocation.bottomCenter;
+    for (final v in ProgressDisplayLocation.values) {
+      if (v.name.toLowerCase() == value.toLowerCase()) return v;
+    }
+    return ProgressDisplayLocation.bottomCenter;
+  }
+}
+
 /// Comprehensive reader settings for typography, appearance, and layout.
 class ReaderSettings {
   final ReaderThemeMode theme;
@@ -86,6 +165,9 @@ class ReaderSettings {
   final bool twoPagesLandscape;
   final bool reduceAnimation;
   final bool invertColors;
+  final ProgressDisplayType progressDisplayType;
+  final ProgressDisplayLocation progressDisplayLocation;
+  final bool quickActionsBar;
 
   const ReaderSettings({
     this.theme = ReaderThemeMode.defaultTheme,
@@ -105,6 +187,9 @@ class ReaderSettings {
     this.twoPagesLandscape = false,
     this.reduceAnimation = false,
     this.invertColors = false,
+    this.progressDisplayType = ProgressDisplayType.pagesLeftInChapter,
+    this.progressDisplayLocation = ProgressDisplayLocation.bottomCenter,
+    this.quickActionsBar = false,
   });
 
   ReaderSettings copyWith({
@@ -125,6 +210,9 @@ class ReaderSettings {
     bool? twoPagesLandscape,
     bool? reduceAnimation,
     bool? invertColors,
+    ProgressDisplayType? progressDisplayType,
+    ProgressDisplayLocation? progressDisplayLocation,
+    bool? quickActionsBar,
   }) {
     return ReaderSettings(
       theme: theme ?? this.theme,
@@ -144,6 +232,9 @@ class ReaderSettings {
       twoPagesLandscape: twoPagesLandscape ?? this.twoPagesLandscape,
       reduceAnimation: reduceAnimation ?? this.reduceAnimation,
       invertColors: invertColors ?? this.invertColors,
+      progressDisplayType: progressDisplayType ?? this.progressDisplayType,
+      progressDisplayLocation: progressDisplayLocation ?? this.progressDisplayLocation,
+      quickActionsBar: quickActionsBar ?? this.quickActionsBar,
     );
   }
 
@@ -166,6 +257,9 @@ class ReaderSettings {
       'twoPagesLandscape': twoPagesLandscape,
       'reduceAnimation': reduceAnimation,
       'invertColors': invertColors,
+      'progressDisplayType': progressDisplayType.id,
+      'progressDisplayLocation': progressDisplayLocation.id,
+      'quickActionsBar': quickActionsBar,
     };
   }
 
@@ -188,6 +282,9 @@ class ReaderSettings {
       twoPagesLandscape: map['twoPagesLandscape'] as bool? ?? false,
       reduceAnimation: map['reduceAnimation'] as bool? ?? false,
       invertColors: map['invertColors'] as bool? ?? false,
+      progressDisplayType: ProgressDisplayType.fromString(map['progressDisplayType'] as String?),
+      progressDisplayLocation: ProgressDisplayLocation.fromString(map['progressDisplayLocation'] as String?),
+      quickActionsBar: map['quickActionsBar'] as bool? ?? false,
     );
   }
 
@@ -216,11 +313,14 @@ class ReaderSettings {
         other.pageMargins == pageMargins &&
         other.twoPagesLandscape == twoPagesLandscape &&
         other.reduceAnimation == reduceAnimation &&
-        other.invertColors == invertColors;
+        other.invertColors == invertColors &&
+        other.progressDisplayType == progressDisplayType &&
+        other.progressDisplayLocation == progressDisplayLocation &&
+        other.quickActionsBar == quickActionsBar;
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
         theme,
         isDarkMode,
         fontSize,
@@ -238,5 +338,8 @@ class ReaderSettings {
         twoPagesLandscape,
         reduceAnimation,
         invertColors,
-      );
+        progressDisplayType,
+        progressDisplayLocation,
+        quickActionsBar,
+      ]);
 }

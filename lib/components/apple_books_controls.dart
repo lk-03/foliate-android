@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../models/models.dart';
 import '../theme/theme.dart';
 
-/// Discrete font sizes matching Apple Books typographic scale
+/// Discrete font sizes matching Apple Books typographic scale starting at 10pt
 const List<double> kAppleBooksFontSizes = [
+  10.0,
   12.0,
   14.0,
   16.0,
   18.0,
-  20.0,
-  23.0,
-  27.0,
-  32.0,
+  21.0,
+  25.0,
+  30.0,
 ];
 
 /// Apple Books-style Dotted Font Size Stepper.
@@ -21,11 +22,13 @@ const List<double> kAppleBooksFontSizes = [
 class DottedFontSizeStepper extends StatelessWidget {
   final double currentFontSize;
   final ValueChanged<double> onFontSizeChanged;
+  final Color? accentColor;
 
   const DottedFontSizeStepper({
     super.key,
     required this.currentFontSize,
     required this.onFontSizeChanged,
+    this.accentColor,
   });
 
   int get _currentIndex {
@@ -65,6 +68,7 @@ class DottedFontSizeStepper extends StatelessWidget {
         FoliateThemeColors.dark;
     final totalSteps = kAppleBooksFontSizes.length;
     final activeIdx = _currentIndex;
+    final activeColor = accentColor ?? AdwaitaColors.foliateGreen;
 
     return RepaintBoundary(
       child: Container(
@@ -81,7 +85,7 @@ class DottedFontSizeStepper extends StatelessWidget {
               icon: const Text(
                 'A',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.5,
                 ),
@@ -136,14 +140,14 @@ class DottedFontSizeStepper extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: isPassed
-                                      ? AdwaitaColors.foliateGreen
+                                      ? activeColor
                                       : colors.textMuted.withValues(alpha: 0.4),
                                 ),
                               );
                             }),
                           ),
 
-                          // Active Thumb Pill / Indicator
+                          // Active Thumb Indicator
                           AnimatedPositioned(
                             duration: const Duration(milliseconds: 140),
                             curve: Curves.easeOutCubic,
@@ -153,16 +157,16 @@ class DottedFontSizeStepper extends StatelessWidget {
                               height: 16,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: AdwaitaColors.foliateGreen,
+                                color: activeColor,
                                 border: Border.all(
                                   color: Colors.white.withValues(alpha: 0.9),
                                   width: 2,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.25),
+                                    color: Colors.black.withValues(alpha: 0.35),
                                     blurRadius: 4,
-                                    offset: const Offset(0, 1),
+                                    offset: const Offset(0, 1.5),
                                   ),
                                 ],
                               ),
@@ -221,9 +225,6 @@ class RibbonClipper extends CustomClipper<Path> {
 }
 
 /// Animated silk ribbon bookmark in the top-right corner of the reader.
-///
-/// Features an interactive drop and retract spring animation, silk texture gradient,
-/// and haptic feedback.
 class SilkRibbonBookmark extends StatefulWidget {
   final bool isBookmarked;
   final VoidCallback onToggle;
@@ -248,7 +249,7 @@ class _SilkRibbonBookmarkState extends State<SilkRibbonBookmark>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 380),
+      duration: const Duration(milliseconds: 320),
     );
 
     _dropAnimation = CurvedAnimation(
@@ -372,19 +373,81 @@ class _SilkRibbonBookmarkState extends State<SilkRibbonBookmark>
   }
 }
 
-/// Floating circular trigger button that summons the Apple Books-style reading menu
-class FloatingReaderCapsule extends StatelessWidget {
-  final VoidCallback onTap;
+/// Minimal frosted-glass circular Close button for the top-left corner
+class ReaderCloseButton extends StatelessWidget {
+  final VoidCallback onClose;
+  final Color? accentColor;
 
-  const FloatingReaderCapsule({
+  const ReaderCloseButton({
     super.key,
-    required this.onTap,
+    required this.onClose,
+    this.accentColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 8,
+      left: 16,
+      child: RepaintBoundary(
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              onClose();
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: colors.headerBar.withValues(alpha: 0.88),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: colors.border.withValues(alpha: 0.8),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.close_rounded,
+                size: 20,
+                color: colors.textPrimary,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Floating three-dot circular button that summons the Apple Books menu
+class FloatingReaderCapsule extends StatelessWidget {
+  final VoidCallback onTap;
+  final Color? accentColor;
+
+  const FloatingReaderCapsule({
+    super.key,
+    required this.onTap,
+    this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<FoliateThemeColors>() ??
+        FoliateThemeColors.dark;
+    final activeColor = accentColor ?? AdwaitaColors.foliateGreen;
 
     return RepaintBoundary(
       child: Material(
@@ -413,10 +476,299 @@ class FloatingReaderCapsule extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Icon(
+            child: Icon(
               Icons.more_horiz_rounded,
               size: 22,
-              color: AdwaitaColors.foliateGreen,
+              color: activeColor,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Customizable reading progress indicator supporting 1-tap cycling
+class ReaderProgressIndicator extends StatelessWidget {
+  final ReadingLocation? location;
+  final double percentage;
+  final ProgressDisplayType displayType;
+  final ProgressDisplayLocation displayLocation;
+  final VoidCallback onCycleDisplayType;
+  final Color? accentColor;
+
+  const ReaderProgressIndicator({
+    super.key,
+    required this.location,
+    required this.percentage,
+    required this.displayType,
+    required this.displayLocation,
+    required this.onCycleDisplayType,
+    this.accentColor,
+  });
+
+  String _formatText() {
+    final loc = location;
+    final pct = percentage.clamp(0.0, 100.0);
+
+    switch (displayType) {
+      case ProgressDisplayType.pageNumber:
+        if (loc?.currentLocation != null &&
+            loc?.totalLocations != null &&
+            loc!.totalLocations! > 0) {
+          return 'Page ${loc.currentLocation} of ${loc.totalLocations}';
+        }
+        final estimatedPage = (pct * 2.0).clamp(1.0, 200.0).round();
+        return 'Page $estimatedPage of 200';
+
+      case ProgressDisplayType.pagesLeftInChapter:
+        if (loc?.currentLocation != null && loc?.totalLocations != null) {
+          final left = (loc!.totalLocations! - loc.currentLocation!).clamp(0, 9999);
+          return left == 1 ? '1 page left in chapter' : '$left pages left in chapter';
+        }
+        final leftPct = (100 - pct).clamp(0.0, 100.0).round();
+        return '$leftPct% left in chapter';
+
+      case ProgressDisplayType.timeLeftInChapter:
+        final pagesRemaining = (loc?.currentLocation != null && loc?.totalLocations != null)
+            ? (loc!.totalLocations! - loc.currentLocation!).clamp(1, 9999)
+            : ((100 - pct) / 2).clamp(1.0, 100.0).round();
+        final mins = (pagesRemaining * 1.2).round().clamp(1, 9999);
+        return mins < 60 ? '$mins min left in chapter' : '${mins ~/ 60}h ${mins % 60}m left in chapter';
+
+      case ProgressDisplayType.timeLeftInBook:
+        final totalPages = (loc?.totalLocations != null && loc!.totalLocations! > 0)
+            ? loc.totalLocations! * 8
+            : 240;
+        final remainingPages = ((100 - pct) / 100 * totalPages).round().clamp(1, 99999);
+        final mins = (remainingPages * 1.2).round().clamp(1, 99999);
+        return mins < 60 ? '$mins min left' : '${mins ~/ 60}h ${mins % 60}m left';
+
+      case ProgressDisplayType.percentage:
+        return '${pct.round()}%';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (displayLocation == ProgressDisplayLocation.hidden) {
+      return const SizedBox.shrink();
+    }
+
+    final colors = Theme.of(context).extension<FoliateThemeColors>() ??
+        FoliateThemeColors.dark;
+    final text = _formatText();
+    final topPadding = MediaQuery.of(context).padding.top;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    final pillWidget = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onCycleDisplayType();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: colors.headerBar.withValues(alpha: 0.8),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: colors.border.withValues(alpha: 0.6),
+            width: 0.8,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.2,
+            color: colors.textSecondary,
+          ),
+        ),
+      ),
+    );
+
+    switch (displayLocation) {
+      case ProgressDisplayLocation.bottomCenter:
+        return Positioned(
+          bottom: 24 + bottomPadding,
+          left: 60,
+          right: 60,
+          child: Center(child: pillWidget),
+        );
+      case ProgressDisplayLocation.topCenter:
+        return Positioned(
+          top: 14 + topPadding,
+          left: 60,
+          right: 60,
+          child: Center(child: pillWidget),
+        );
+      case ProgressDisplayLocation.bottomLeft:
+        return Positioned(
+          bottom: 24 + bottomPadding,
+          left: 20,
+          child: pillWidget,
+        );
+      case ProgressDisplayLocation.bottomRight:
+        return Positioned(
+          bottom: 24 + bottomPadding,
+          right: 76,
+          child: pillWidget,
+        );
+      case ProgressDisplayLocation.topLeft:
+        return Positioned(
+          top: 14 + topPadding,
+          left: 64,
+          child: pillWidget,
+        );
+      case ProgressDisplayLocation.topRight:
+        return Positioned(
+          top: 14 + topPadding,
+          right: 64,
+          child: pillWidget,
+        );
+      case ProgressDisplayLocation.hidden:
+        return const SizedBox.shrink();
+    }
+  }
+}
+
+/// Floating Quick Action Toolbar with Scrubber (displayed when quickActionsBar is enabled)
+class QuickActionsToolbar extends StatelessWidget {
+  final double progressPercentage;
+  final ValueChanged<double> onScrubPercentage;
+  final VoidCallback onPrevPage;
+  final VoidCallback onNextPage;
+  final VoidCallback onOpenTOC;
+  final VoidCallback onOpenSearch;
+  final VoidCallback onOpenAppearance;
+  final VoidCallback onOpenMenu;
+  final Color? accentColor;
+
+  const QuickActionsToolbar({
+    super.key,
+    required this.progressPercentage,
+    required this.onScrubPercentage,
+    required this.onPrevPage,
+    required this.onNextPage,
+    required this.onOpenTOC,
+    required this.onOpenSearch,
+    required this.onOpenAppearance,
+    required this.onOpenMenu,
+    this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<FoliateThemeColors>() ??
+        FoliateThemeColors.dark;
+    final activeColor = accentColor ?? AdwaitaColors.foliateGreen;
+
+    return Positioned(
+      bottom: 64 + MediaQuery.of(context).padding.bottom,
+      left: 16,
+      right: 16,
+      child: RepaintBoundary(
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 420),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: colors.headerBar.withValues(alpha: 0.94),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: colors.border.withValues(alpha: 0.8),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Quick Icon Bar
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.list_rounded, size: 22),
+                      tooltip: 'Contents',
+                      onPressed: onOpenTOC,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.search_rounded, size: 20),
+                      tooltip: 'Search',
+                      onPressed: onOpenSearch,
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.text_fields_rounded, size: 20),
+                      tooltip: 'Themes & Settings',
+                      onPressed: onOpenAppearance,
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.more_horiz_rounded, size: 22, color: activeColor),
+                      tooltip: 'Menu',
+                      onPressed: onOpenMenu,
+                    ),
+                  ],
+                ),
+
+                // Scrubber Slider
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left_rounded, size: 22),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        onPrevPage();
+                      },
+                    ),
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          trackHeight: 3,
+                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                          activeTrackColor: activeColor,
+                          inactiveTrackColor: colors.border,
+                          thumbColor: activeColor,
+                        ),
+                        child: Slider(
+                          value: progressPercentage.clamp(0.0, 100.0),
+                          min: 0.0,
+                          max: 100.0,
+                          onChanged: (val) {
+                            HapticFeedback.selectionClick();
+                            onScrubPercentage(val);
+                          },
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right_rounded, size: 22),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        onNextPage();
+                      },
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
@@ -426,9 +778,6 @@ class FloatingReaderCapsule extends StatelessWidget {
 }
 
 /// Apple Books-style Floating Reader Menu Card.
-///
-/// A compact, frosted-glass floating card containing quick actions, scrubber slider,
-/// and immediate font size adjustment without cluttering the viewport.
 class FloatingReaderMenu extends StatelessWidget {
   final double currentFontSize;
   final ValueChanged<double> onFontSizeChanged;
@@ -443,6 +792,13 @@ class FloatingReaderMenu extends StatelessWidget {
   final VoidCallback onOpenAppearance;
   final bool isOrientationLocked;
   final VoidCallback onToggleOrientation;
+  final ProgressDisplayType progressDisplayType;
+  final ValueChanged<ProgressDisplayType> onProgressDisplayTypeChanged;
+  final ProgressDisplayLocation progressDisplayLocation;
+  final ValueChanged<ProgressDisplayLocation> onProgressDisplayLocationChanged;
+  final bool quickActionsBar;
+  final ValueChanged<bool> onQuickActionsBarChanged;
+  final Color? accentColor;
 
   const FloatingReaderMenu({
     super.key,
@@ -459,12 +815,20 @@ class FloatingReaderMenu extends StatelessWidget {
     required this.onOpenAppearance,
     required this.isOrientationLocked,
     required this.onToggleOrientation,
+    required this.progressDisplayType,
+    required this.onProgressDisplayTypeChanged,
+    required this.progressDisplayLocation,
+    required this.onProgressDisplayLocationChanged,
+    required this.quickActionsBar,
+    required this.onQuickActionsBarChanged,
+    this.accentColor,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+    final activeColor = accentColor ?? AdwaitaColors.foliateGreen;
 
     return RepaintBoundary(
       child: Center(
@@ -487,113 +851,195 @@ class FloatingReaderMenu extends StatelessWidget {
             ],
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Row 1: Action Shortcuts Bar
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildActionButton(
-                    icon: Icons.arrow_back_ios_new_rounded,
-                    label: 'Library',
-                    onTap: onBackToLibrary,
-                    colors: colors,
-                  ),
-                  _buildActionButton(
-                    icon: Icons.list_rounded,
-                    label: 'Contents',
-                    onTap: onOpenTOC,
-                    colors: colors,
-                  ),
-                  _buildActionButton(
-                    icon: Icons.search_rounded,
-                    label: 'Search',
-                    onTap: onOpenSearch,
-                    colors: colors,
-                  ),
-                  _buildActionButton(
-                    icon: Icons.text_fields_rounded,
-                    label: 'Themes',
-                    onTap: onOpenAppearance,
-                    colors: colors,
-                  ),
-                  _buildActionButton(
-                    icon: isOrientationLocked
-                        ? Icons.screen_lock_portrait_rounded
-                        : Icons.screen_rotation_rounded,
-                    label: isOrientationLocked ? 'Locked' : 'Rotate',
-                    isActive: isOrientationLocked,
-                    onTap: onToggleOrientation,
-                    colors: colors,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Row 1: Action Shortcuts Bar (Close icon instead of 'Library' text)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildActionButton(
+                      icon: Icons.close_rounded,
+                      label: 'Close',
+                      onTap: onBackToLibrary,
+                      colors: colors,
+                      activeColor: activeColor,
+                    ),
+                    _buildActionButton(
+                      icon: Icons.list_rounded,
+                      label: 'Contents',
+                      onTap: onOpenTOC,
+                      colors: colors,
+                      activeColor: activeColor,
+                    ),
+                    _buildActionButton(
+                      icon: Icons.search_rounded,
+                      label: 'Search',
+                      onTap: onOpenSearch,
+                      colors: colors,
+                      activeColor: activeColor,
+                    ),
+                    _buildActionButton(
+                      icon: Icons.text_fields_rounded,
+                      label: 'Themes',
+                      onTap: onOpenAppearance,
+                      colors: colors,
+                      activeColor: activeColor,
+                    ),
+                    _buildActionButton(
+                      icon: isOrientationLocked
+                          ? Icons.screen_lock_portrait_rounded
+                          : Icons.screen_rotation_rounded,
+                      label: isOrientationLocked ? 'Locked' : 'Rotate',
+                      isActive: isOrientationLocked,
+                      onTap: onToggleOrientation,
+                      colors: colors,
+                      activeColor: activeColor,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
 
-              // Row 2: Tactile Dotted Font Size Stepper
-              DottedFontSizeStepper(
-                currentFontSize: currentFontSize,
-                onFontSizeChanged: onFontSizeChanged,
-              ),
-              const SizedBox(height: 10),
+                // Row 2: Tactile Dotted Font Size Stepper
+                DottedFontSizeStepper(
+                  currentFontSize: currentFontSize,
+                  onFontSizeChanged: onFontSizeChanged,
+                  accentColor: activeColor,
+                ),
+                const SizedBox(height: 10),
 
-              // Row 3: Scrubber Slider with Chevrons
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left_rounded, size: 24),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () {
-                      HapticFeedback.selectionClick();
-                      onPrevPage();
-                    },
-                  ),
-                  Expanded(
-                    child: SliderTheme(
-                      data: SliderTheme.of(context).copyWith(
-                        trackHeight: 3,
-                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-                        activeTrackColor: AdwaitaColors.foliateGreen,
-                        inactiveTrackColor: colors.border,
-                        thumbColor: AdwaitaColors.foliateGreen,
-                      ),
-                      child: Slider(
-                        value: progressPercentage.clamp(0.0, 100.0),
-                        min: 0.0,
-                        max: 100.0,
-                        onChanged: (val) {
-                          HapticFeedback.selectionClick();
-                          onScrubPercentage(val);
-                        },
+                // Row 3: Scrubber Slider with Chevrons
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left_rounded, size: 24),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        onPrevPage();
+                      },
+                    ),
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          trackHeight: 3,
+                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                          activeTrackColor: activeColor,
+                          inactiveTrackColor: colors.border,
+                          thumbColor: activeColor,
+                        ),
+                        child: Slider(
+                          value: progressPercentage.clamp(0.0, 100.0),
+                          min: 0.0,
+                          max: 100.0,
+                          onChanged: (val) {
+                            HapticFeedback.selectionClick();
+                            onScrubPercentage(val);
+                          },
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.chevron_right_rounded, size: 24),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () {
-                      HapticFeedback.selectionClick();
-                      onNextPage();
-                    },
-                  ),
-                ],
-              ),
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right_rounded, size: 24),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        onNextPage();
+                      },
+                    ),
+                  ],
+                ),
 
-              // Progress details label
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  progressLabel,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: colors.textMuted,
+                // Progress details label
+                Padding(
+                  padding: const EdgeInsets.only(top: 2, bottom: 8),
+                  child: Text(
+                    progressLabel,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textMuted,
+                    ),
                   ),
                 ),
-              ),
-            ],
+                Divider(color: colors.border, height: 16),
+
+                // Reading Display Preferences Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Reading Display',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      'Tap to cycle',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Display Type Picker Chips
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: ProgressDisplayType.values.map((type) {
+                      final isSelected = progressDisplayType == type;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ChoiceChip(
+                          label: Text(type.label),
+                          labelStyle: TextStyle(
+                            fontSize: 11,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+                            color: isSelected ? Colors.white : colors.textMuted,
+                          ),
+                          selected: isSelected,
+                          selectedColor: activeColor,
+                          backgroundColor: colors.inputBackground,
+                          side: BorderSide(color: colors.border),
+                          onSelected: (_) {
+                            HapticFeedback.selectionClick();
+                            onProgressDisplayTypeChanged(type);
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Quick Action Toolbar Toggle
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  title: const Text(
+                    'Quick Action Toolbar',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  subtitle: Text(
+                    'Show quick bar & slider above progress indicator',
+                    style: TextStyle(fontSize: 11, color: colors.textMuted),
+                  ),
+                  value: quickActionsBar,
+                  activeThumbColor: activeColor,
+                  onChanged: (val) {
+                    HapticFeedback.selectionClick();
+                    onQuickActionsBarChanged(val);
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -605,6 +1051,7 @@ class FloatingReaderMenu extends StatelessWidget {
     required String label,
     required VoidCallback onTap,
     required FoliateThemeColors colors,
+    required Color activeColor,
     bool isActive = false,
   }) {
     return Material(
@@ -623,7 +1070,7 @@ class FloatingReaderMenu extends StatelessWidget {
               Icon(
                 icon,
                 size: 20,
-                color: isActive ? AdwaitaColors.foliateGreen : colors.textPrimary,
+                color: isActive ? activeColor : colors.textPrimary,
               ),
               const SizedBox(height: 4),
               Text(
@@ -631,7 +1078,7 @@ class FloatingReaderMenu extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w500,
-                  color: isActive ? AdwaitaColors.foliateGreen : colors.textMuted,
+                  color: isActive ? activeColor : colors.textMuted,
                 ),
               ),
             ],
