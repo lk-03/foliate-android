@@ -154,6 +154,9 @@ class ReaderBridge {
 
   ReadingLocation _parseReadingLocation(Map<String, dynamic> data) {
     final locationMap = data['location'] as Map<String, dynamic>?;
+    final chapterMap = data['chapterLocation'] as Map<String, dynamic>?;
+    final sectionData = data['section'];
+    final sectionMap = sectionData is Map<String, dynamic> ? sectionData : null;
     final cfi = (data['cfi'] ?? data['locationCfi'])?.toString() ?? '';
     final fraction = (data['fraction'] as num?)?.toDouble() ?? 0.0;
     final percentage = (data['percentage'] as num?)?.toDouble() ?? (fraction * 100);
@@ -164,10 +167,15 @@ class ReaderBridge {
       percentage: percentage,
       currentLocation: (locationMap?['current'] as num?)?.toInt(),
       totalLocations: (locationMap?['total'] as num?)?.toInt(),
-      currentSection: (data['section'] as num?)?.toInt(),
-      totalSections: (data['totalSections'] as num?)?.toInt(),
+      currentSection: (sectionMap?['current'] as num?)?.toInt() ?? (sectionData as num?)?.toInt(),
+      totalSections: (sectionMap?['total'] as num?)?.toInt() ?? (data['totalSections'] as num?)?.toInt(),
       sectionTitle: data['sectionTitle'] as String?,
       excerpt: data['excerpt'] as String?,
+      chapterCurrentPage: (chapterMap?['current'] as num?)?.toInt(),
+      chapterTotalPages: (chapterMap?['total'] as num?)?.toInt(),
+      pagesLeftInChapter: (chapterMap?['pagesLeft'] as num?)?.toInt(),
+      timeLeftSectionSeconds: (data['timeLeftSectionSeconds'] as num?)?.toInt(),
+      timeLeftBookSeconds: (data['timeLeftBookSeconds'] as num?)?.toInt(),
     );
   }
 

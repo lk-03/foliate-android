@@ -141,6 +141,9 @@ void main() {
         totalLocations: 1206,
         currentSection: 5,
         totalSections: 57,
+        chapterCurrentPage: 3,
+        chapterTotalPages: 8,
+        pagesLeftInChapter: 5,
         timeLeftSectionSeconds: 1260, // 21 mins
         timeLeftBookSeconds: 67320, // 18.7 hrs
         excerpt: 'By 6:45, dinner is almost ready.',
@@ -151,11 +154,17 @@ void main() {
       expect(loc.percentage, equals(5.0));
       expect(loc.currentLocation, equals(11));
       expect(loc.totalLocations, equals(1206));
+      expect(loc.chapterCurrentPage, equals(3));
+      expect(loc.chapterTotalPages, equals(8));
+      expect(loc.pagesLeftInChapter, equals(5));
       expect(loc.excerpt, equals('By 6:45, dinner is almost ready.'));
 
       final map = loc.toMap();
       final roundTrip = ReadingLocation.fromMap(map);
       expect(roundTrip.excerpt, equals('By 6:45, dinner is almost ready.'));
+      expect(roundTrip.chapterCurrentPage, equals(3));
+      expect(roundTrip.chapterTotalPages, equals(8));
+      expect(roundTrip.pagesLeftInChapter, equals(5));
     });
 
     test('TOCItem hierarchy serialization round-trip', () {
@@ -216,9 +225,11 @@ void main() {
           'cfi': 'epubcfi(/6/4[chap01]!/4/2/1)',
           'fraction': 0.15,
           'percentage': 15.0,
-          'section': 2,
-          'totalSections': 20,
+          'section': {'current': 2, 'total': 20},
           'location': {'current': 45, 'total': 300},
+          'chapterLocation': {'current': 4, 'total': 10, 'pagesLeft': 6},
+          'timeLeftSectionSeconds': 420,
+          'timeLeftBookSeconds': 5400,
         },
       }));
 
@@ -228,6 +239,13 @@ void main() {
       expect(receivedLoc!.percentage, equals(15.0));
       expect(receivedLoc!.currentLocation, equals(45));
       expect(receivedLoc!.totalLocations, equals(300));
+      expect(receivedLoc!.currentSection, equals(2));
+      expect(receivedLoc!.totalSections, equals(20));
+      expect(receivedLoc!.chapterCurrentPage, equals(4));
+      expect(receivedLoc!.chapterTotalPages, equals(10));
+      expect(receivedLoc!.pagesLeftInChapter, equals(6));
+      expect(receivedLoc!.timeLeftSectionSeconds, equals(420));
+      expect(receivedLoc!.timeLeftBookSeconds, equals(5400));
     });
 
     test('Dispatches TOC_READY event', () {

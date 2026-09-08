@@ -366,6 +366,10 @@ void main() {
                       percentage: 25.0,
                       currentLocation: 10,
                       totalLocations: 40,
+                      chapterCurrentPage: 2,
+                      chapterTotalPages: 7,
+                      pagesLeftInChapter: 5,
+                      timeLeftSectionSeconds: 360,
                     ),
                     percentage: 25.0,
                     displayType: currentType,
@@ -385,14 +389,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // 1. Initially: pagesLeftInChapter (40 - 10 = 30)
-    expect(find.text('30 pages left in chapter'), findsOneWidget);
+    // 1. Initially: pagesLeftInChapter (5 pages left in chapter)
+    expect(find.text('5 pages left in chapter'), findsOneWidget);
 
-    // 2. Tap to cycle -> timeLeftInChapter
+    // 2. Tap to cycle -> timeLeftInChapter (360s = 6 min left in chapter)
     await tester.tap(find.byType(ReaderProgressIndicator));
     await tester.pumpAndSettle();
     expect(currentType, equals(ProgressDisplayType.timeLeftInChapter));
-    expect(find.text('36 min left in chapter'), findsOneWidget);
+    expect(find.text('6 min left in chapter'), findsOneWidget);
 
     // 3. Tap to cycle -> timeLeftInBook
     await tester.tap(find.byType(ReaderProgressIndicator));

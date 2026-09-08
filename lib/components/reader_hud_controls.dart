@@ -522,17 +522,27 @@ class ReaderProgressIndicator extends StatelessWidget {
         return 'Page $estimatedPage of 200';
 
       case ProgressDisplayType.pagesLeftInChapter:
-        if (loc?.currentLocation != null && loc?.totalLocations != null) {
-          final left = (loc!.totalLocations! - loc.currentLocation!).clamp(0, 9999);
+        if (loc != null && loc.pagesLeftInChapter != null) {
+          final left = loc.pagesLeftInChapter!;
+          return left == 1 ? '1 page left in chapter' : '$left pages left in chapter';
+        }
+        if (loc != null && loc.chapterTotalPages != null && loc.chapterCurrentPage != null) {
+          final left = (loc.chapterTotalPages! - loc.chapterCurrentPage!).clamp(0, 9999);
           return left == 1 ? '1 page left in chapter' : '$left pages left in chapter';
         }
         final leftPct = (100 - pct).clamp(0.0, 100.0).round();
         return '$leftPct% left in chapter';
 
       case ProgressDisplayType.timeLeftInChapter:
-        final pagesRemaining = (loc?.currentLocation != null && loc?.totalLocations != null)
-            ? (loc!.totalLocations! - loc.currentLocation!).clamp(1, 9999)
-            : ((100 - pct) / 2).clamp(1.0, 100.0).round();
+        if (loc != null && loc.timeLeftSectionSeconds != null && loc.timeLeftSectionSeconds! > 0) {
+          final mins = (loc.timeLeftSectionSeconds! / 60).round().clamp(1, 9999);
+          return mins < 60 ? '$mins min left in chapter' : '${mins ~/ 60}h ${mins % 60}m left in chapter';
+        }
+        final pagesRemaining = (loc != null && loc.pagesLeftInChapter != null)
+            ? loc.pagesLeftInChapter!.clamp(1, 9999)
+            : ((loc != null && loc.chapterTotalPages != null && loc.chapterCurrentPage != null)
+                ? (loc.chapterTotalPages! - loc.chapterCurrentPage!).clamp(1, 9999)
+                : ((100 - pct) / 2).clamp(1.0, 100.0).round());
         final mins = (pagesRemaining * 1.2).round().clamp(1, 9999);
         return mins < 60 ? '$mins min left in chapter' : '${mins ~/ 60}h ${mins % 60}m left in chapter';
 

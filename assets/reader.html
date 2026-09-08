@@ -5399,6 +5399,20 @@ ${doc.querySelector("parsererror").innerText}`);
 
       const locationData = { current: currentDisplayPage, total: totalDisplayPages };
 
+      // Chapter-level page metrics from Foliate's paginator
+      const rendererPages = view?.renderer?.pages;
+      const rendererPage = view?.renderer?.page;
+      const sectionPagesTotal = rendererPages && rendererPages > 2 ? rendererPages - 2 : (rendererPages || 1);
+      const sectionPageCurrent = rendererPage ? Math.min(sectionPagesTotal, Math.max(1, rendererPage)) : 1;
+      const pagesLeftInChapter = Math.max(0, sectionPagesTotal - sectionPageCurrent);
+      const chapterLocationData = {
+        current: sectionPageCurrent,
+        total: sectionPagesTotal,
+        pagesLeft: pagesLeftInChapter,
+      };
+      const timeLeftSec = d.time?.section ? Math.round(d.time.section) : null;
+      const timeLeftBook = d.time?.total ? Math.round(d.time.total) : null;
+
       let excerptText = '';
       try {
         if (d.range) {
@@ -5425,6 +5439,9 @@ ${doc.querySelector("parsererror").innerText}`);
         payload: {
           ...d,
           location: locationData,
+          chapterLocation: chapterLocationData,
+          timeLeftSectionSeconds: timeLeftSec,
+          timeLeftBookSeconds: timeLeftBook,
           excerpt: excerptText,
         },
       }));
@@ -5434,6 +5451,9 @@ ${doc.querySelector("parsererror").innerText}`);
           percentage: typeof d.fraction === 'number' ? Math.round(d.fraction * 100) : null,
           fraction: typeof d.fraction === 'number' ? d.fraction : null,
           location: locationData,
+          chapterLocation: chapterLocationData,
+          timeLeftSectionSeconds: timeLeftSec,
+          timeLeftBookSeconds: timeLeftBook,
           locationCfi: d.cfi ?? null,
         },
       }));
