@@ -193,7 +193,7 @@ class ReaderSettings {
     this.progressDisplayType = ProgressDisplayType.pagesLeftInChapter,
     this.progressDisplayLocation = ProgressDisplayLocation.bottomCenter,
     this.quickActionsBar = false,
-    this.showPageSlider = true,
+    this.showPageSlider = false,
     this.paddingTop = 84.0,
     this.paddingBottom = 88.0,
   });
@@ -300,7 +300,7 @@ class ReaderSettings {
       progressDisplayType: ProgressDisplayType.fromString(map['progressDisplayType'] as String?),
       progressDisplayLocation: ProgressDisplayLocation.fromString(map['progressDisplayLocation'] as String?),
       quickActionsBar: map['quickActionsBar'] as bool? ?? false,
-      showPageSlider: map['showPageSlider'] as bool? ?? true,
+      showPageSlider: map['showPageSlider'] as bool? ?? false,
       paddingTop: (map['paddingTop'] as num?)?.toDouble() ?? 84.0,
       paddingBottom: (map['paddingBottom'] as num?)?.toDouble() ?? 88.0,
     );

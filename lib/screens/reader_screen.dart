@@ -420,6 +420,55 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 _bridge.applyReaderSettings(_settings);
                 StorageService.instance.saveBookSettings(widget.book.hash, _settings);
               },
+              currentFontFamily: _settings.fontFamily,
+              onFontFamilyChanged: (fam) {
+                setSheetState(() {});
+                setState(() => _settings = _settings.copyWith(fontFamily: fam));
+                _bridge.applyReaderSettings(_settings);
+                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+              },
+              overridePublisherFont: _settings.overridePublisherFont,
+              onOverridePublisherFontChanged: (val) {
+                setSheetState(() {});
+                setState(() => _settings = _settings.copyWith(overridePublisherFont: val));
+                _bridge.applyReaderSettings(_settings);
+                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+              },
+              fontWeight: _settings.fontWeight,
+              onFontWeightChanged: (w) {
+                setSheetState(() {});
+                setState(() => _settings = _settings.copyWith(fontWeight: w));
+                _bridge.applyReaderSettings(_settings);
+                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+              },
+              lineHeight: _settings.lineHeight,
+              onLineHeightChanged: (lh) {
+                setSheetState(() {});
+                setState(() => _settings = _settings.copyWith(lineHeight: lh));
+                _bridge.applyReaderSettings(_settings);
+                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+              },
+              fullJustification: _settings.fullJustification,
+              onFullJustificationChanged: (just) {
+                setSheetState(() {});
+                setState(() => _settings = _settings.copyWith(fullJustification: just));
+                _bridge.applyReaderSettings(_settings);
+                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+              },
+              hyphenation: _settings.hyphenation,
+              onHyphenationChanged: (hyph) {
+                setSheetState(() {});
+                setState(() => _settings = _settings.copyWith(hyphenation: hyph));
+                _bridge.applyReaderSettings(_settings);
+                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+              },
+              pageFlipping: _settings.pageFlipping,
+              onPageFlippingChanged: (flip) {
+                setSheetState(() {});
+                setState(() => _settings = _settings.copyWith(pageFlipping: flip));
+                _bridge.applyReaderSettings(_settings);
+                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+              },
               showPageSlider: _settings.showPageSlider,
               onShowPageSliderChanged: (val) {
                 setSheetState(() {});
@@ -641,42 +690,50 @@ class _ReaderScreenState extends State<ReaderScreen> {
             ),
           ),
 
-          // Minimal Reading Page Number (Bottom Center when controls are hidden)
+          // Top Center Chapter Title (when controls are hidden - Reference Image 1)
+          if (!_showControls && !_isSearchActive)
+            Positioned(
+              top: 14 + MediaQuery.of(context).padding.top,
+              left: 28,
+              right: 28,
+              child: Center(
+                child: Text(
+                  _getCurrentChapterTitle() ?? widget.book.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: colors.textSecondary.withValues(alpha: 0.6),
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+            ),
+
+          // Minimal Reading Page Number (Bottom Center when controls are hidden - Reference Image 1)
           if (!_showControls && !_isSearchActive)
             Positioned(
               bottom: 12 + MediaQuery.of(context).padding.bottom,
               left: 0,
               right: 0,
               child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: colors.headerBar.withValues(alpha: 0.75),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: colors.border.withValues(alpha: 0.5),
-                      width: 0.8,
-                    ),
-                  ),
-                  child: Text(
-                    _currentLocation != null &&
-                            _currentLocation!.currentLocation != null &&
-                            _currentLocation!.totalLocations != null &&
-                            _currentLocation!.totalLocations! > 0
-                        ? 'Page ${_currentLocation!.currentLocation} of ${_currentLocation!.totalLocations}'
-                        : '${(_currentLocation?.percentage ?? widget.book.percentage).round()}%',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textSecondary.withValues(alpha: 0.8),
-                      letterSpacing: -0.2,
-                    ),
+                child: Text(
+                  _currentLocation?.currentLocation != null
+                      ? '${_currentLocation!.currentLocation}'
+                      : '${(_currentLocation?.percentage ?? widget.book.percentage).round()}%',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: colors.textSecondary.withValues(alpha: 0.65),
+                    letterSpacing: 0.2,
                   ),
                 ),
               ),
             ),
 
-          // Chapter / Book Progress Metric in Top Center (when controls are visible)
+          // Chapter / Book Progress Metric in Top Center (when controls are visible - Reference Image 2)
           if (_showControls && !_isSearchActive)
             ReaderProgressIndicator(
               location: _currentLocation,
@@ -702,18 +759,43 @@ class _ReaderScreenState extends State<ReaderScreen> {
               child: _buildFloatingSearchBar(colors),
             ),
 
-          // Top Left Close Button (X mark)
+          // Top Right Close Button (X mark - Reference Image 2)
           if (_showControls && !_isSearchActive)
             ReaderCloseButton(
               onClose: () => Navigator.of(context).pop(),
               accentColor: themeAccent,
             ),
 
-          // Animated Silk Ribbon Bookmark (Top Right)
-          SilkRibbonBookmark(
-            isBookmarked: _isBookmarked,
-            onToggle: _toggleBookmark,
-          ),
+          // Animated Silk Ribbon Bookmark (Top Right when bookmarked & controls hidden)
+          if (!_showControls && _isBookmarked)
+            SilkRibbonBookmark(
+              isBookmarked: _isBookmarked,
+              onToggle: _toggleBookmark,
+            ),
+
+          // Bottom Center Page Metric (when controls are visible - Reference Image 2: "74 of 709")
+          if (_showControls && !_isSearchActive)
+            Positioned(
+              bottom: 16 + MediaQuery.of(context).padding.bottom,
+              left: 64,
+              right: 64,
+              child: Center(
+                child: Text(
+                  _currentLocation != null &&
+                          _currentLocation!.currentLocation != null &&
+                          _currentLocation!.totalLocations != null &&
+                          _currentLocation!.totalLocations! > 0
+                      ? '${_currentLocation!.currentLocation} of ${_currentLocation!.totalLocations}'
+                      : '${(_currentLocation?.percentage ?? widget.book.percentage).round()}%',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textSecondary.withValues(alpha: 0.8),
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ),
+            ),
 
           // Floating Bottom Page Scrubber Slider (when enabled in settings)
           if (_showControls && !_isSearchActive && _settings.showPageSlider)
@@ -735,10 +817,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
               },
             ),
 
-          // Three-Dot Floating Action Capsule (Bottom Right)
+          // Floating Action Capsule (Bottom Right)
           if (_showControls && !_isSearchActive && _selectedText == null)
             Positioned(
-              bottom: 16 + MediaQuery.of(context).padding.bottom,
+              bottom: 12 + MediaQuery.of(context).padding.bottom,
               right: 18,
               child: FloatingReaderCapsule(
                 accentColor: themeAccent,

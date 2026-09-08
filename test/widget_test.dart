@@ -94,7 +94,6 @@ void main() {
     // 1. Verify Font Tab (default)
     expect(find.text('Font'), findsOneWidget);
     expect(find.text('Layout'), findsOneWidget);
-    expect(find.text('Color'), findsOneWidget);
     expect(find.byType(DottedFontSizeStepper), findsOneWidget);
     expect(find.text('Serif (Noto)'), findsOneWidget);
     expect(find.text('Override Publisher Font'), findsOneWidget);
@@ -106,18 +105,6 @@ void main() {
     expect(find.text('Full Justification'), findsOneWidget);
     expect(find.text('Hyphenation'), findsOneWidget);
     expect(find.text('Continuous Scrolled Mode'), findsOneWidget);
-
-    // 3. Switch to Color Tab
-    await tester.tap(find.text('Color'));
-    await tester.pumpAndSettle();
-    expect(find.text('Dark Mode'), findsOneWidget);
-    expect(find.text('Light Mode'), findsOneWidget);
-    expect(find.text('Gruvbox'), findsOneWidget);
-    expect(find.text('Nord'), findsOneWidget);
-    expect(find.text('Sepia'), findsOneWidget);
-    expect(find.text('Grass'), findsOneWidget);
-    expect(find.text('Cherry'), findsOneWidget);
-    expect(find.text('Solarized'), findsOneWidget);
   });
 
   testWidgets('ReaderSearchSheet displays streaming results and responds to match taps',
@@ -408,7 +395,7 @@ void main() {
     expect(find.text('25%'), findsOneWidget);
   });
 
-  testWidgets('FloatingReaderCapsule renders three-dot icon and triggers tap',
+  testWidgets('FloatingReaderCapsule renders menu icon and triggers tap',
       (WidgetTester tester) async {
     bool tapped = false;
 
@@ -426,7 +413,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(FloatingReaderCapsule), findsOneWidget);
-    expect(find.byIcon(Icons.more_horiz_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.menu_rounded), findsOneWidget);
 
     await tester.tap(find.byType(FloatingReaderCapsule));
     await tester.pumpAndSettle();
@@ -479,7 +466,12 @@ void main() {
     expect(find.text('Theme Palette'), findsOneWidget);
     expect(find.text('Calm Sepia'), findsWidgets);
     expect(find.text('Quiet Black'), findsOneWidget);
+    expect(find.text('Warm Cream'), findsOneWidget);
+    expect(find.text('Layout'), findsOneWidget);
     expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Light'), findsOneWidget);
+    expect(find.text('Serif (Noto)'), findsOneWidget);
+    expect(find.text('Override Font'), findsOneWidget);
 
     // Verify container height is 60% of screen height (600 * 0.60 = 360)
     final renderBox = tester.renderObject<RenderBox>(find.byType(FloatingReaderMenu));

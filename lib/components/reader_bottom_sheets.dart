@@ -81,7 +81,6 @@ class _ReaderAppearanceSheetState extends State<ReaderAppearanceSheet> {
                         children: [
                           _buildTabPill(0, 'Font', Icons.format_size_rounded, colors),
                           _buildTabPill(1, 'Layout', Icons.auto_stories_rounded, colors),
-                          _buildTabPill(2, 'Color', Icons.palette_rounded, colors),
                         ],
                       ),
                     ),
@@ -154,10 +153,8 @@ class _ReaderAppearanceSheetState extends State<ReaderAppearanceSheet> {
       case 0:
         return _buildFontTab(colors);
       case 1:
-        return _buildLayoutTab(colors);
-      case 2:
       default:
-        return _buildColorTab(colors);
+        return _buildLayoutTab(colors);
     }
   }
 
@@ -350,191 +347,6 @@ class _ReaderAppearanceSheetState extends State<ReaderAppearanceSheet> {
           ],
         ),
       ],
-    );
-  }
-
-  // --- TAB 3: COLOR (9 THEMES) ---
-  Widget _buildColorTab(FoliateThemeColors colors) {
-    final themes = AdwaitaColors.foliateThemes;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader('Appearance Mode'),
-        _buildCard(
-          colors: colors,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(10.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildModeTogglePill(
-                      label: 'Light Mode',
-                      icon: Icons.light_mode_rounded,
-                      isDark: false,
-                      colors: colors,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildModeTogglePill(
-                      label: 'Dark Mode',
-                      icon: Icons.dark_mode_rounded,
-                      isDark: true,
-                      colors: colors,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-
-        _buildSectionHeader('Reading Themes (9 Desktop Palettes)'),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 1.6,
-          ),
-          itemCount: themes.length,
-          itemBuilder: (context, index) {
-            final themeInfo = themes[index];
-            final themeMode = ReaderThemeMode.fromString(themeInfo.id);
-            final isSelected = _current.theme == themeMode;
-            final bg = themeInfo.bg(_current.isDarkMode);
-            final fg = themeInfo.text(_current.isDarkMode);
-
-            return GestureDetector(
-              onTap: () => _update(_current.copyWith(theme: themeMode)),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                decoration: BoxDecoration(
-                  color: bg,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isSelected ? AdwaitaColors.foliateGreen : colors.border,
-                    width: isSelected ? 2.5 : 1,
-                  ),
-                  boxShadow: [
-                    if (isSelected)
-                      BoxShadow(
-                        color: AdwaitaColors.foliateGreen.withValues(alpha: 0.3),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: fg, width: 2),
-                            color: isSelected ? fg : Colors.transparent,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Aa',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: fg,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      themeInfo.label,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        color: fg,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 18),
-
-        _buildSectionHeader('Display Adjustments'),
-        _buildCard(
-          colors: colors,
-          children: [
-            SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              title: const Text('Invert Colors in Dark Mode', style: TextStyle(fontSize: 14)),
-              subtitle: Text(
-                'Inverts illustrations and document styling',
-                style: TextStyle(fontSize: 12, color: colors.textMuted),
-              ),
-              value: _current.invertColors,
-              activeThumbColor: AdwaitaColors.foliateGreen,
-              onChanged: (val) => _update(_current.copyWith(invertColors: val)),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildModeTogglePill({
-    required String label,
-    required IconData icon,
-    required bool isDark,
-    required FoliateThemeColors colors,
-  }) {
-    final isSelected = _current.isDarkMode == isDark;
-    return GestureDetector(
-      onTap: () => _update(_current.copyWith(isDarkMode: isDark)),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? colors.activePill : colors.inputBackground,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? AdwaitaColors.foliateGreen : colors.border,
-            width: isSelected ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: isSelected ? Colors.white : colors.textMuted,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? Colors.white : AdwaitaColors.darkTextPrimary,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

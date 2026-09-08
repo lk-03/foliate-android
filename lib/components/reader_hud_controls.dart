@@ -391,7 +391,7 @@ class ReaderCloseButton extends StatelessWidget {
 
     return Positioned(
       top: MediaQuery.of(context).padding.top + 8,
-      left: 16,
+      right: 18,
       child: RepaintBoundary(
         child: Material(
           color: Colors.transparent,
@@ -432,7 +432,7 @@ class ReaderCloseButton extends StatelessWidget {
   }
 }
 
-/// Floating three-dot circular button that summons the reader menu
+/// Floating circular button that summons the reader menu
 class FloatingReaderCapsule extends StatelessWidget {
   final VoidCallback onTap;
   final Color? accentColor;
@@ -477,7 +477,7 @@ class FloatingReaderCapsule extends StatelessWidget {
               ],
             ),
             child: Icon(
-              Icons.more_horiz_rounded,
+              Icons.menu_rounded,
               size: 22,
               color: activeColor,
             ),
@@ -866,11 +866,39 @@ const List<_ReaderThemeOption> _kReaderThemeOptions = [
     text: Color(0xFF4D3826),
   ),
   _ReaderThemeOption(
+    label: 'Warm Cream',
+    mode: ReaderThemeMode.solarized,
+    isDark: false,
+    bg: Color(0xFFFDF6E3),
+    text: Color(0xFF657B83),
+  ),
+  _ReaderThemeOption(
     label: 'Grey',
     mode: ReaderThemeMode.gray,
     isDark: true,
     bg: Color(0xFF2E2E2E),
     text: Color(0xFFD8D8D8),
+  ),
+  _ReaderThemeOption(
+    label: 'Nord',
+    mode: ReaderThemeMode.nord,
+    isDark: true,
+    bg: Color(0xFF2E3440),
+    text: Color(0xFFECEFF4),
+  ),
+  _ReaderThemeOption(
+    label: 'Gruvbox',
+    mode: ReaderThemeMode.gruvbox,
+    isDark: true,
+    bg: Color(0xFF282828),
+    text: Color(0xFFEBDBB2),
+  ),
+  _ReaderThemeOption(
+    label: 'Grass',
+    mode: ReaderThemeMode.grass,
+    isDark: false,
+    bg: Color(0xFFEBF2E8),
+    text: Color(0xFF1D381D),
   ),
   _ReaderThemeOption(
     label: 'Quiet Black',
@@ -889,7 +917,7 @@ const List<_ReaderThemeOption> _kReaderThemeOptions = [
 ];
 
 /// Floating Reader Menu bottom sheet.
-class FloatingReaderMenu extends StatelessWidget {
+class FloatingReaderMenu extends StatefulWidget {
   final double currentFontSize;
   final ValueChanged<double> onFontSizeChanged;
   final VoidCallback onClose;
@@ -902,6 +930,20 @@ class FloatingReaderMenu extends StatelessWidget {
   final ReaderThemeMode currentTheme;
   final bool isDarkMode;
   final void Function(ReaderThemeMode theme, bool isDarkMode)? onThemeChanged;
+  final String? currentFontFamily;
+  final ValueChanged<String>? onFontFamilyChanged;
+  final bool overridePublisherFont;
+  final ValueChanged<bool>? onOverridePublisherFontChanged;
+  final int? fontWeight;
+  final ValueChanged<int>? onFontWeightChanged;
+  final double lineHeight;
+  final ValueChanged<double>? onLineHeightChanged;
+  final bool fullJustification;
+  final ValueChanged<bool>? onFullJustificationChanged;
+  final bool hyphenation;
+  final ValueChanged<bool>? onHyphenationChanged;
+  final String pageFlipping;
+  final ValueChanged<String>? onPageFlippingChanged;
   final ProgressDisplayType? progressDisplayType;
   final ValueChanged<ProgressDisplayType>? onProgressDisplayTypeChanged;
   final ProgressDisplayLocation? progressDisplayLocation;
@@ -931,11 +973,25 @@ class FloatingReaderMenu extends StatelessWidget {
     this.currentTheme = ReaderThemeMode.defaultTheme,
     this.isDarkMode = true,
     this.onThemeChanged,
+    this.currentFontFamily = 'serif',
+    this.onFontFamilyChanged,
+    this.overridePublisherFont = true,
+    this.onOverridePublisherFontChanged,
+    this.fontWeight = 400,
+    this.onFontWeightChanged,
+    this.lineHeight = 1.5,
+    this.onLineHeightChanged,
+    this.fullJustification = true,
+    this.onFullJustificationChanged,
+    this.hyphenation = true,
+    this.onHyphenationChanged,
+    this.pageFlipping = 'horizontal',
+    this.onPageFlippingChanged,
     this.progressDisplayType,
     this.onProgressDisplayTypeChanged,
     this.progressDisplayLocation,
     this.onProgressDisplayLocationChanged,
-    this.showPageSlider = true,
+    this.showPageSlider = false,
     this.onShowPageSliderChanged,
     this.quickActionsBar,
     this.onQuickActionsBarChanged,
@@ -947,41 +1003,40 @@ class FloatingReaderMenu extends StatelessWidget {
     this.accentColor,
   });
 
+  @override
+  State<FloatingReaderMenu> createState() => _FloatingReaderMenuState();
+}
+
+class _FloatingReaderMenuState extends State<FloatingReaderMenu> {
+  bool _showLayoutRow = true;
+
   bool _isOptionSelected(_ReaderThemeOption opt) {
     if (opt.mode == ReaderThemeMode.defaultTheme) {
-      return (currentTheme == ReaderThemeMode.defaultTheme ||
-              currentTheme == ReaderThemeMode.day) &&
-          !isDarkMode;
-    }
-    if (opt.mode == ReaderThemeMode.sepia) {
-      return currentTheme == ReaderThemeMode.sepia;
-    }
-    if (opt.mode == ReaderThemeMode.gray) {
-      return currentTheme == ReaderThemeMode.gray;
+      return (widget.currentTheme == ReaderThemeMode.defaultTheme ||
+              widget.currentTheme == ReaderThemeMode.day) &&
+          !widget.isDarkMode;
     }
     if (opt.mode == ReaderThemeMode.night) {
-      return currentTheme == ReaderThemeMode.night;
+      return widget.currentTheme == ReaderThemeMode.night ||
+          (widget.currentTheme == ReaderThemeMode.defaultTheme && widget.isDarkMode);
     }
-    if (opt.mode == ReaderThemeMode.black) {
-      return currentTheme == ReaderThemeMode.black;
-    }
-    return currentTheme == opt.mode && isDarkMode == opt.isDark;
+    return widget.currentTheme == opt.mode;
   }
 
   String _getActiveThemeLabel() {
     for (final opt in _kReaderThemeOptions) {
       if (_isOptionSelected(opt)) return opt.label;
     }
-    return currentTheme.name;
+    return widget.currentTheme.name;
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
-    final activeColor = accentColor ?? AdwaitaColors.foliateGreen;
+    final activeColor = widget.accentColor ?? AdwaitaColors.foliateGreen;
     final screenHeight = MediaQuery.of(context).size.height;
-    final sheetHeight = (screenHeight * 0.60).clamp(320.0, 560.0);
+    final sheetHeight = (screenHeight * 0.60).clamp(340.0, 560.0);
 
     return RepaintBoundary(
       child: Container(
@@ -1021,7 +1076,7 @@ class FloatingReaderMenu extends StatelessWidget {
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -1032,141 +1087,457 @@ class FloatingReaderMenu extends StatelessWidget {
                             _buildActionButton(
                               icon: Icons.close_rounded,
                               label: 'Close',
-                              onTap: onClose,
+                              onTap: widget.onClose,
                               colors: colors,
                               activeColor: activeColor,
                             ),
                             _buildActionButton(
                               icon: Icons.list_rounded,
                               label: 'Contents',
-                              onTap: onOpenTOC,
+                              onTap: widget.onOpenTOC,
                               colors: colors,
                               activeColor: activeColor,
                             ),
                             _buildActionButton(
                               icon: Icons.search_rounded,
                               label: 'Search',
-                              onTap: onOpenSearch,
+                              onTap: widget.onOpenSearch,
+                              colors: colors,
+                              activeColor: activeColor,
+                            ),
+                            _buildActionButton(
+                              icon: Icons.auto_stories_rounded,
+                              label: 'Layout',
+                              isActive: _showLayoutRow,
+                              onTap: () {
+                                setState(() => _showLayoutRow = !_showLayoutRow);
+                              },
                               colors: colors,
                               activeColor: activeColor,
                             ),
                             _buildActionButton(
                               icon: Icons.tune_rounded,
                               label: 'Settings',
-                              onTap: onOpenAppearance,
+                              onTap: widget.onOpenAppearance,
                               colors: colors,
                               activeColor: activeColor,
                             ),
                             _buildActionButton(
-                              icon: isOrientationLocked
+                              icon: widget.isOrientationLocked
                                   ? Icons.screen_lock_portrait_rounded
                                   : Icons.screen_rotation_rounded,
-                              label: isOrientationLocked ? 'Locked' : 'Rotate',
-                              isActive: isOrientationLocked,
-                              onTap: onToggleOrientation,
+                              label: widget.isOrientationLocked ? 'Locked' : 'Rotate',
+                              isActive: widget.isOrientationLocked,
+                              onTap: widget.onToggleOrientation,
                               colors: colors,
                               activeColor: activeColor,
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
 
-                        // Row 2: Tactile Dotted Font Size Stepper
+                        // Row 2: Layout Quick Actions (Icon Row)
+                        if (_showLayoutRow) ...[
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: colors.surfaceCard.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: colors.border.withValues(alpha: 0.6)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Line Spacing Presets
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [1.2, 1.5, 1.8].map((lh) {
+                                    final isLh = (widget.lineHeight - lh).abs() < 0.15;
+                                    return GestureDetector(
+                                      onTap: () {
+                                        HapticFeedback.selectionClick();
+                                        widget.onLineHeightChanged?.call(lh);
+                                      },
+                                      child: Container(
+                                        margin: const EdgeInsets.only(right: 4),
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: isLh ? activeColor : Colors.transparent,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          '${lh}x',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: isLh ? FontWeight.bold : FontWeight.w500,
+                                            color: isLh ? Colors.white : colors.textMuted,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                                // Text Alignment Toggle (Left vs Justified)
+                                GestureDetector(
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    widget.onFullJustificationChanged?.call(!widget.fullJustification);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: widget.fullJustification
+                                          ? activeColor.withValues(alpha: 0.2)
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      widget.fullJustification
+                                          ? Icons.format_align_justify_rounded
+                                          : Icons.format_align_left_rounded,
+                                      size: 18,
+                                      color: widget.fullJustification ? activeColor : colors.textMuted,
+                                    ),
+                                  ),
+                                ),
+                                // Hyphenation Toggle
+                                GestureDetector(
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    widget.onHyphenationChanged?.call(!widget.hyphenation);
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: widget.hyphenation
+                                          ? activeColor.withValues(alpha: 0.2)
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      'abc-',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: widget.hyphenation ? FontWeight.bold : FontWeight.w500,
+                                        color: widget.hyphenation ? activeColor : colors.textMuted,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                // Flow Mode Toggle (Paged vs Vertical Scroll)
+                                GestureDetector(
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    widget.onPageFlippingChanged?.call(
+                                        widget.pageFlipping == 'vertical' ? 'horizontal' : 'vertical');
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: widget.pageFlipping == 'vertical'
+                                          ? activeColor.withValues(alpha: 0.2)
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      widget.pageFlipping == 'vertical'
+                                          ? Icons.swap_vert_rounded
+                                          : Icons.auto_stories_rounded,
+                                      size: 18,
+                                      color: widget.pageFlipping == 'vertical' ? activeColor : colors.textMuted,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 14),
+
+                        // Row 3: Tactile Dotted Font Size Stepper
                         DottedFontSizeStepper(
-                          currentFontSize: currentFontSize,
-                          onFontSizeChanged: onFontSizeChanged,
+                          currentFontSize: widget.currentFontSize,
+                          onFontSizeChanged: widget.onFontSizeChanged,
                           accentColor: activeColor,
                         ),
-                        const SizedBox(height: 16),
-                        Divider(color: colors.border, height: 16),
+                        const SizedBox(height: 10),
 
-                        // Row 3: Reading Theme Palettes
+                        // Font Settings Under Stepper: Font Family Chips
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          child: Row(
+                            children: [
+                              _buildFontChip(
+                                'serif',
+                                'Serif (Noto)',
+                                widget.currentFontFamily == 'serif' || widget.currentFontFamily == null,
+                                colors,
+                                activeColor,
+                              ),
+                              const SizedBox(width: 6),
+                              _buildFontChip(
+                                'sans',
+                                'Sans-Serif',
+                                widget.currentFontFamily == 'sans',
+                                colors,
+                                activeColor,
+                              ),
+                              const SizedBox(width: 6),
+                              _buildFontChip(
+                                'monospace',
+                                'Monospace',
+                                widget.currentFontFamily == 'monospace',
+                                colors,
+                                activeColor,
+                              ),
+                              const SizedBox(width: 6),
+                              _buildFontChip(
+                                'publisher',
+                                'Publisher',
+                                widget.currentFontFamily == 'publisher' || !widget.overridePublisherFont,
+                                colors,
+                                activeColor,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Font Toggles: Override Publisher & Bold
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              'Theme Palette',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: colors.textSecondary,
+                            Expanded(
+                              child: _buildTogglePill(
+                                label: 'Override Font',
+                                isActive: widget.overridePublisherFont,
+                                onTap: () => widget.onOverridePublisherFontChanged?.call(!widget.overridePublisherFont),
+                                colors: colors,
+                                activeColor: activeColor,
                               ),
                             ),
-                            Text(
-                              _getActiveThemeLabel(),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: colors.textMuted,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildTogglePill(
+                                label: 'Bold Text',
+                                isActive: (widget.fontWeight ?? 400) >= 600,
+                                onTap: () => widget.onFontWeightChanged
+                                    ?.call((widget.fontWeight ?? 400) >= 600 ? 400 : 700),
+                                colors: colors,
+                                activeColor: activeColor,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
+                        Divider(color: colors.border, height: 14),
+
+                        // Row 4: Reading Theme Palettes & Light/Dark Switch (Outside)
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: _kReaderThemeOptions.map((opt) {
-                            final isSelected = _isOptionSelected(opt);
-                            return GestureDetector(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Theme Palette',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: colors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _getActiveThemeLabel(),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: colors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // Light / Dark Switch Button
+                            GestureDetector(
                               behavior: HitTestBehavior.opaque,
                               onTap: () {
                                 HapticFeedback.selectionClick();
-                                onThemeChanged?.call(opt.mode, opt.isDark);
+                                widget.onThemeChanged?.call(widget.currentTheme, !widget.isDarkMode);
                               },
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 44,
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      color: opt.bg,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? activeColor
-                                            : colors.border.withValues(alpha: 0.8),
-                                        width: isSelected ? 2.5 : 1.2,
-                                      ),
-                                      boxShadow: [
-                                        if (isSelected)
-                                          BoxShadow(
-                                            color: activeColor.withValues(alpha: 0.4),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                      ],
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: colors.surfaceCard,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: colors.border),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      widget.isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                                      size: 14,
+                                      color: activeColor,
                                     ),
-                                    child: Center(
-                                      child: Text(
-                                        'Aa',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: opt.text,
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      widget.isDarkMode ? 'Dark' : 'Light',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: colors.textPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+
+                        // 9 Reading Theme Swatches (Horizontally Scrollable)
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          child: Row(
+                            children: _kReaderThemeOptions.map((opt) {
+                              final isSelected = _isOptionSelected(opt);
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 5),
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    widget.onThemeChanged?.call(opt.mode, opt.isDark);
+                                  },
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 42,
+                                        height: 42,
+                                        decoration: BoxDecoration(
+                                          color: opt.bg,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? activeColor
+                                                : colors.border.withValues(alpha: 0.8),
+                                            width: isSelected ? 2.5 : 1.2,
+                                          ),
+                                          boxShadow: [
+                                            if (isSelected)
+                                              BoxShadow(
+                                                color: activeColor.withValues(alpha: 0.4),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                          ],
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            'Aa',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                              color: opt.text,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                    ),
+                                      const SizedBox(height: 5),
+                                      Text(
+                                        opt.label,
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                          color: isSelected ? activeColor : colors.textMuted,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    opt.label,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                      color: isSelected ? activeColor : colors.textMuted,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
+                                ),
+                              );
+                            }).toList(),
+                          ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                       ],
                     ),
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFontChip(
+    String id,
+    String label,
+    bool isSelected,
+    FoliateThemeColors colors,
+    Color activeColor,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        widget.onFontFamilyChanged?.call(id);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor.withValues(alpha: 0.15) : colors.surfaceCard,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? activeColor : colors.border,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? activeColor : colors.textPrimary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTogglePill({
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+    required FoliateThemeColors colors,
+    required Color activeColor,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        decoration: BoxDecoration(
+          color: isActive ? activeColor.withValues(alpha: 0.15) : colors.surfaceCard,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isActive ? activeColor : colors.border,
+            width: isActive ? 1.5 : 1.0,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+              color: isActive ? activeColor : colors.textMuted,
             ),
           ),
         ),
