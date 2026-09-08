@@ -168,6 +168,9 @@ class ReaderSettings {
   final ProgressDisplayType progressDisplayType;
   final ProgressDisplayLocation progressDisplayLocation;
   final bool quickActionsBar;
+  final bool showPageSlider;
+  final double paddingTop;
+  final double paddingBottom;
 
   const ReaderSettings({
     this.theme = ReaderThemeMode.defaultTheme,
@@ -190,6 +193,9 @@ class ReaderSettings {
     this.progressDisplayType = ProgressDisplayType.pagesLeftInChapter,
     this.progressDisplayLocation = ProgressDisplayLocation.bottomCenter,
     this.quickActionsBar = false,
+    this.showPageSlider = true,
+    this.paddingTop = 56.0,
+    this.paddingBottom = 64.0,
   });
 
   ReaderSettings copyWith({
@@ -213,6 +219,9 @@ class ReaderSettings {
     ProgressDisplayType? progressDisplayType,
     ProgressDisplayLocation? progressDisplayLocation,
     bool? quickActionsBar,
+    bool? showPageSlider,
+    double? paddingTop,
+    double? paddingBottom,
   }) {
     return ReaderSettings(
       theme: theme ?? this.theme,
@@ -235,6 +244,9 @@ class ReaderSettings {
       progressDisplayType: progressDisplayType ?? this.progressDisplayType,
       progressDisplayLocation: progressDisplayLocation ?? this.progressDisplayLocation,
       quickActionsBar: quickActionsBar ?? this.quickActionsBar,
+      showPageSlider: showPageSlider ?? this.showPageSlider,
+      paddingTop: paddingTop ?? this.paddingTop,
+      paddingBottom: paddingBottom ?? this.paddingBottom,
     );
   }
 
@@ -260,6 +272,9 @@ class ReaderSettings {
       'progressDisplayType': progressDisplayType.id,
       'progressDisplayLocation': progressDisplayLocation.id,
       'quickActionsBar': quickActionsBar,
+      'showPageSlider': showPageSlider,
+      'paddingTop': paddingTop,
+      'paddingBottom': paddingBottom,
     };
   }
 
@@ -285,6 +300,9 @@ class ReaderSettings {
       progressDisplayType: ProgressDisplayType.fromString(map['progressDisplayType'] as String?),
       progressDisplayLocation: ProgressDisplayLocation.fromString(map['progressDisplayLocation'] as String?),
       quickActionsBar: map['quickActionsBar'] as bool? ?? false,
+      showPageSlider: map['showPageSlider'] as bool? ?? true,
+      paddingTop: (map['paddingTop'] as num?)?.toDouble() ?? 56.0,
+      paddingBottom: (map['paddingBottom'] as num?)?.toDouble() ?? 64.0,
     );
   }
 
@@ -316,7 +334,10 @@ class ReaderSettings {
         other.invertColors == invertColors &&
         other.progressDisplayType == progressDisplayType &&
         other.progressDisplayLocation == progressDisplayLocation &&
-        other.quickActionsBar == quickActionsBar;
+        other.quickActionsBar == quickActionsBar &&
+        other.showPageSlider == showPageSlider &&
+        other.paddingTop == paddingTop &&
+        other.paddingBottom == paddingBottom;
   }
 
   @override
@@ -341,5 +362,8 @@ class ReaderSettings {
         progressDisplayType,
         progressDisplayLocation,
         quickActionsBar,
+        showPageSlider,
+        paddingTop,
+        paddingBottom,
       ]);
 }

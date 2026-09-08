@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/models.dart';
 import '../theme/theme.dart';
-import 'apple_books_controls.dart';
+import 'reader_hud_controls.dart';
 
 /// Bottom sheet for Reader Appearance, Typography & Layout settings
 class ReaderAppearanceSheet extends StatefulWidget {

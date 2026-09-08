@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import '../models/models.dart';
 import '../theme/theme.dart';
 
-/// Discrete font sizes matching Apple Books typographic scale starting at 10pt
-const List<double> kAppleBooksFontSizes = [
+/// Discrete font sizes matching curated reader typographic scale starting at 10pt
+const List<double> kReaderFontSizes = [
   10.0,
   12.0,
   14.0,
@@ -15,7 +15,7 @@ const List<double> kAppleBooksFontSizes = [
   30.0,
 ];
 
-/// Apple Books-style Dotted Font Size Stepper.
+/// Tactile Dotted Font Size Stepper.
 ///
 /// Features a small 'A' on the left, a large 'A' on the right, and a tactile
 /// dotted track with discrete snap points. Never displays numeric pt/px labels.
@@ -34,8 +34,8 @@ class DottedFontSizeStepper extends StatelessWidget {
   int get _currentIndex {
     int closestIdx = 0;
     double minDiff = double.infinity;
-    for (int i = 0; i < kAppleBooksFontSizes.length; i++) {
-      final diff = (kAppleBooksFontSizes[i] - currentFontSize).abs();
+    for (int i = 0; i < kReaderFontSizes.length; i++) {
+      final diff = (kReaderFontSizes[i] - currentFontSize).abs();
       if (diff < minDiff) {
         minDiff = diff;
         closestIdx = i;
@@ -45,20 +45,20 @@ class DottedFontSizeStepper extends StatelessWidget {
   }
 
   void _step(int direction) {
-    final nextIdx = (_currentIndex + direction).clamp(0, kAppleBooksFontSizes.length - 1);
+    final nextIdx = (_currentIndex + direction).clamp(0, kReaderFontSizes.length - 1);
     if (nextIdx != _currentIndex) {
       HapticFeedback.selectionClick();
-      onFontSizeChanged(kAppleBooksFontSizes[nextIdx]);
+      onFontSizeChanged(kReaderFontSizes[nextIdx]);
     }
   }
 
   void _snapToPosition(double relativeFraction) {
-    final targetIdx = (relativeFraction * (kAppleBooksFontSizes.length - 1))
+    final targetIdx = (relativeFraction * (kReaderFontSizes.length - 1))
         .round()
-        .clamp(0, kAppleBooksFontSizes.length - 1);
+        .clamp(0, kReaderFontSizes.length - 1);
     if (targetIdx != _currentIndex) {
       HapticFeedback.selectionClick();
-      onFontSizeChanged(kAppleBooksFontSizes[targetIdx]);
+      onFontSizeChanged(kReaderFontSizes[targetIdx]);
     }
   }
 
@@ -66,7 +66,7 @@ class DottedFontSizeStepper extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
-    final totalSteps = kAppleBooksFontSizes.length;
+    final totalSteps = kReaderFontSizes.length;
     final activeIdx = _currentIndex;
     final activeColor = accentColor ?? AdwaitaColors.foliateGreen;
 
@@ -432,7 +432,7 @@ class ReaderCloseButton extends StatelessWidget {
   }
 }
 
-/// Floating three-dot circular button that summons the Apple Books menu
+/// Floating three-dot circular button that summons the reader menu
 class FloatingReaderCapsule extends StatelessWidget {
   final VoidCallback onTap;
   final Color? accentColor;
@@ -641,7 +641,104 @@ class ReaderProgressIndicator extends StatelessWidget {
   }
 }
 
-/// Floating Quick Action Toolbar with Scrubber (displayed when quickActionsBar is enabled)
+/// Floating bottom page scrubber slider bar that appears when tapping the reader screen.
+class ReaderPageSliderBar extends StatelessWidget {
+  final double progressPercentage;
+  final ValueChanged<double> onScrubPercentage;
+  final VoidCallback onPrevPage;
+  final VoidCallback onNextPage;
+  final Color? accentColor;
+
+  const ReaderPageSliderBar({
+    super.key,
+    required this.progressPercentage,
+    required this.onScrubPercentage,
+    required this.onPrevPage,
+    required this.onNextPage,
+    this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<FoliateThemeColors>() ??
+        FoliateThemeColors.dark;
+    final activeColor = accentColor ?? AdwaitaColors.foliateGreen;
+
+    return Positioned(
+      bottom: 16 + MediaQuery.of(context).padding.bottom,
+      left: 18,
+      right: 74,
+      child: RepaintBoundary(
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            color: colors.headerBar.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: colors.border.withValues(alpha: 0.8),
+              width: 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left_rounded, size: 22),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  onPrevPage();
+                },
+              ),
+              Expanded(
+                child: SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                    activeTrackColor: activeColor,
+                    inactiveTrackColor: colors.border,
+                    thumbColor: activeColor,
+                  ),
+                  child: Slider(
+                    value: progressPercentage.clamp(0.0, 100.0),
+                    min: 0.0,
+                    max: 100.0,
+                    onChanged: (val) {
+                      HapticFeedback.selectionClick();
+                      onScrubPercentage(val);
+                    },
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right_rounded, size: 22),
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  onNextPage();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Floating Quick Action Toolbar with Scrubber (backwards-compatibility wrapper)
 class QuickActionsToolbar extends StatelessWidget {
   final double progressPercentage;
   final ValueChanged<double> onScrubPercentage;
@@ -668,124 +765,20 @@ class QuickActionsToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<FoliateThemeColors>() ??
-        FoliateThemeColors.dark;
-    final activeColor = accentColor ?? AdwaitaColors.foliateGreen;
-
-    return Positioned(
-      bottom: 64 + MediaQuery.of(context).padding.bottom,
-      left: 16,
-      right: 16,
-      child: RepaintBoundary(
-        child: Center(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 420),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: colors.headerBar.withValues(alpha: 0.94),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: colors.border.withValues(alpha: 0.8),
-                width: 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Quick Icon Bar
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.list_rounded, size: 22),
-                      tooltip: 'Contents',
-                      onPressed: onOpenTOC,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.search_rounded, size: 20),
-                      tooltip: 'Search',
-                      onPressed: onOpenSearch,
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.text_fields_rounded, size: 20),
-                      tooltip: 'Themes & Settings',
-                      onPressed: onOpenAppearance,
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.more_horiz_rounded, size: 22, color: activeColor),
-                      tooltip: 'Menu',
-                      onPressed: onOpenMenu,
-                    ),
-                  ],
-                ),
-
-                // Scrubber Slider
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left_rounded, size: 22),
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () {
-                        HapticFeedback.selectionClick();
-                        onPrevPage();
-                      },
-                    ),
-                    Expanded(
-                      child: SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          trackHeight: 3,
-                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-                          activeTrackColor: activeColor,
-                          inactiveTrackColor: colors.border,
-                          thumbColor: activeColor,
-                        ),
-                        child: Slider(
-                          value: progressPercentage.clamp(0.0, 100.0),
-                          min: 0.0,
-                          max: 100.0,
-                          onChanged: (val) {
-                            HapticFeedback.selectionClick();
-                            onScrubPercentage(val);
-                          },
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.chevron_right_rounded, size: 22),
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () {
-                        HapticFeedback.selectionClick();
-                        onNextPage();
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return ReaderPageSliderBar(
+      progressPercentage: progressPercentage,
+      onScrubPercentage: onScrubPercentage,
+      onPrevPage: onPrevPage,
+      onNextPage: onNextPage,
+      accentColor: accentColor,
     );
   }
 }
 
-/// Apple Books-style Floating Reader Menu Card.
+/// Floating Reader Menu bottom sheet.
 class FloatingReaderMenu extends StatelessWidget {
   final double currentFontSize;
   final ValueChanged<double> onFontSizeChanged;
-  final double progressPercentage;
-  final String progressLabel;
-  final ValueChanged<double> onScrubPercentage;
-  final VoidCallback onPrevPage;
-  final VoidCallback onNextPage;
   final VoidCallback onClose;
   final VoidCallback? onBackToLibrary;
   final VoidCallback onOpenTOC;
@@ -797,19 +790,21 @@ class FloatingReaderMenu extends StatelessWidget {
   final ValueChanged<ProgressDisplayType> onProgressDisplayTypeChanged;
   final ProgressDisplayLocation progressDisplayLocation;
   final ValueChanged<ProgressDisplayLocation> onProgressDisplayLocationChanged;
-  final bool quickActionsBar;
-  final ValueChanged<bool> onQuickActionsBarChanged;
+  final bool showPageSlider;
+  final ValueChanged<bool> onShowPageSliderChanged;
+  final bool? quickActionsBar;
+  final ValueChanged<bool>? onQuickActionsBarChanged;
+  final double? progressPercentage;
+  final String? progressLabel;
+  final ValueChanged<double>? onScrubPercentage;
+  final VoidCallback? onPrevPage;
+  final VoidCallback? onNextPage;
   final Color? accentColor;
 
   const FloatingReaderMenu({
     super.key,
     required this.currentFontSize,
     required this.onFontSizeChanged,
-    required this.progressPercentage,
-    required this.progressLabel,
-    required this.onScrubPercentage,
-    required this.onPrevPage,
-    required this.onNextPage,
     required this.onClose,
     this.onBackToLibrary,
     required this.onOpenTOC,
@@ -821,8 +816,15 @@ class FloatingReaderMenu extends StatelessWidget {
     required this.onProgressDisplayTypeChanged,
     required this.progressDisplayLocation,
     required this.onProgressDisplayLocationChanged,
-    required this.quickActionsBar,
-    required this.onQuickActionsBarChanged,
+    this.showPageSlider = true,
+    required this.onShowPageSliderChanged,
+    this.quickActionsBar,
+    this.onQuickActionsBarChanged,
+    this.progressPercentage,
+    this.progressLabel,
+    this.onScrubPercentage,
+    this.onPrevPage,
+    this.onNextPage,
     this.accentColor,
   });
 
@@ -858,217 +860,193 @@ class FloatingReaderMenu extends StatelessWidget {
           child: SafeArea(
             top: false,
             child: Column(
-            children: [
-              // Top Drag Handle
-              Container(
-                width: 38,
-                height: 4,
-                margin: const EdgeInsets.only(top: 10, bottom: 6),
-                decoration: BoxDecoration(
-                  color: colors.border.withValues(alpha: 0.8),
-                  borderRadius: BorderRadius.circular(2),
+              children: [
+                // Top Drag Handle
+                Container(
+                  width: 38,
+                  height: 4,
+                  margin: const EdgeInsets.only(top: 10, bottom: 6),
+                  decoration: BoxDecoration(
+                    color: colors.border.withValues(alpha: 0.8),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Row 1: Action Shortcuts Bar (Close icon dismisses the popup)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildActionButton(
-                            icon: Icons.close_rounded,
-                            label: 'Close',
-                            onTap: onClose,
-                            colors: colors,
-                            activeColor: activeColor,
-                          ),
-                          _buildActionButton(
-                            icon: Icons.list_rounded,
-                      label: 'Contents',
-                      onTap: onOpenTOC,
-                      colors: colors,
-                      activeColor: activeColor,
-                    ),
-                    _buildActionButton(
-                      icon: Icons.search_rounded,
-                      label: 'Search',
-                      onTap: onOpenSearch,
-                      colors: colors,
-                      activeColor: activeColor,
-                    ),
-                    _buildActionButton(
-                      icon: Icons.text_fields_rounded,
-                      label: 'Themes',
-                      onTap: onOpenAppearance,
-                      colors: colors,
-                      activeColor: activeColor,
-                    ),
-                    _buildActionButton(
-                      icon: isOrientationLocked
-                          ? Icons.screen_lock_portrait_rounded
-                          : Icons.screen_rotation_rounded,
-                      label: isOrientationLocked ? 'Locked' : 'Rotate',
-                      isActive: isOrientationLocked,
-                      onTap: onToggleOrientation,
-                      colors: colors,
-                      activeColor: activeColor,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Row 2: Tactile Dotted Font Size Stepper
-                DottedFontSizeStepper(
-                  currentFontSize: currentFontSize,
-                  onFontSizeChanged: onFontSizeChanged,
-                  accentColor: activeColor,
-                ),
-                const SizedBox(height: 10),
-
-                // Row 3: Scrubber Slider with Chevrons
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left_rounded, size: 24),
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () {
-                        HapticFeedback.selectionClick();
-                        onPrevPage();
-                      },
-                    ),
-                    Expanded(
-                      child: SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          trackHeight: 3,
-                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-                          activeTrackColor: activeColor,
-                          inactiveTrackColor: colors.border,
-                          thumbColor: activeColor,
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Row 1: Action Shortcuts Bar (Close icon dismisses the popup)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildActionButton(
+                              icon: Icons.close_rounded,
+                              label: 'Close',
+                              onTap: onClose,
+                              colors: colors,
+                              activeColor: activeColor,
+                            ),
+                            _buildActionButton(
+                              icon: Icons.list_rounded,
+                              label: 'Contents',
+                              onTap: onOpenTOC,
+                              colors: colors,
+                              activeColor: activeColor,
+                            ),
+                            _buildActionButton(
+                              icon: Icons.search_rounded,
+                              label: 'Search',
+                              onTap: onOpenSearch,
+                              colors: colors,
+                              activeColor: activeColor,
+                            ),
+                            _buildActionButton(
+                              icon: Icons.text_fields_rounded,
+                              label: 'Themes',
+                              onTap: onOpenAppearance,
+                              colors: colors,
+                              activeColor: activeColor,
+                            ),
+                            _buildActionButton(
+                              icon: isOrientationLocked
+                                  ? Icons.screen_lock_portrait_rounded
+                                  : Icons.screen_rotation_rounded,
+                              label: isOrientationLocked ? 'Locked' : 'Rotate',
+                              isActive: isOrientationLocked,
+                              onTap: onToggleOrientation,
+                              colors: colors,
+                              activeColor: activeColor,
+                            ),
+                          ],
                         ),
-                        child: Slider(
-                          value: progressPercentage.clamp(0.0, 100.0),
-                          min: 0.0,
-                          max: 100.0,
+                        const SizedBox(height: 16),
+
+                        // Row 2: Tactile Dotted Font Size Stepper
+                        DottedFontSizeStepper(
+                          currentFontSize: currentFontSize,
+                          onFontSizeChanged: onFontSizeChanged,
+                          accentColor: activeColor,
+                        ),
+                        const SizedBox(height: 14),
+                        Divider(color: colors.border, height: 16),
+
+                        // Reading Display Preferences Section
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Reading Display',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                            Text(
+                              'Tap to cycle',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: colors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Display Type Picker Chips
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: ProgressDisplayType.values.map((type) {
+                              final isSelected = progressDisplayType == type;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: ChoiceChip(
+                                  label: Text(type.label),
+                                  labelStyle: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+                                    color: isSelected ? Colors.white : colors.textMuted,
+                                  ),
+                                  selected: isSelected,
+                                  selectedColor: activeColor,
+                                  backgroundColor: colors.inputBackground,
+                                  side: BorderSide(color: colors.border),
+                                  onSelected: (_) {
+                                    HapticFeedback.selectionClick();
+                                    onProgressDisplayTypeChanged(type);
+                                  },
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Display Location Picker Chips
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: ProgressDisplayLocation.values.map((loc) {
+                              final isSelected = progressDisplayLocation == loc;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: ChoiceChip(
+                                  label: Text(loc.label),
+                                  labelStyle: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+                                    color: isSelected ? Colors.white : colors.textMuted,
+                                  ),
+                                  selected: isSelected,
+                                  selectedColor: activeColor,
+                                  backgroundColor: colors.inputBackground,
+                                  side: BorderSide(color: colors.border),
+                                  onSelected: (_) {
+                                    HapticFeedback.selectionClick();
+                                    onProgressDisplayLocationChanged(loc);
+                                  },
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Divider(color: colors.border, height: 16),
+
+                        // Bottom Page Slider Toggle
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          visualDensity: VisualDensity.compact,
+                          title: const Text(
+                            'Bottom Page Slider',
+                            style: TextStyle(fontSize: 13),
+                          ),
+                          subtitle: Text(
+                            'Show scrubber slider at bottom when tapping screen',
+                            style: TextStyle(fontSize: 11, color: colors.textMuted),
+                          ),
+                          value: showPageSlider,
+                          activeThumbColor: activeColor,
                           onChanged: (val) {
                             HapticFeedback.selectionClick();
-                            onScrubPercentage(val);
+                            onShowPageSliderChanged(val);
+                            onQuickActionsBarChanged?.call(val);
                           },
                         ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.chevron_right_rounded, size: 24),
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () {
-                        HapticFeedback.selectionClick();
-                        onNextPage();
-                      },
-                    ),
-                  ],
-                ),
-
-                // Progress details label
-                Padding(
-                  padding: const EdgeInsets.only(top: 2, bottom: 8),
-                  child: Text(
-                    progressLabel,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: colors.textMuted,
+                      ],
                     ),
                   ),
-                ),
-                Divider(color: colors.border, height: 16),
-
-                // Reading Display Preferences Section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Reading Display',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                    Text(
-                      'Tap to cycle',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: colors.textMuted,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-
-                // Display Type Picker Chips
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: ProgressDisplayType.values.map((type) {
-                      final isSelected = progressDisplayType == type;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: ChoiceChip(
-                          label: Text(type.label),
-                          labelStyle: TextStyle(
-                            fontSize: 11,
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
-                            color: isSelected ? Colors.white : colors.textMuted,
-                          ),
-                          selected: isSelected,
-                          selectedColor: activeColor,
-                          backgroundColor: colors.inputBackground,
-                          side: BorderSide(color: colors.border),
-                          onSelected: (_) {
-                            HapticFeedback.selectionClick();
-                            onProgressDisplayTypeChanged(type);
-                          },
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-                const SizedBox(height: 8),
-
-                // Quick Action Toolbar Toggle
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                  title: const Text(
-                    'Quick Action Toolbar',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                  subtitle: Text(
-                    'Show quick bar & slider above progress indicator',
-                    style: TextStyle(fontSize: 11, color: colors.textMuted),
-                  ),
-                  value: quickActionsBar,
-                  activeThumbColor: activeColor,
-                  onChanged: (val) {
-                    HapticFeedback.selectionClick();
-                    onQuickActionsBarChanged(val);
-                  },
                 ),
               ],
             ),
           ),
         ),
-      ],
-    ),
-  ),
-),
-),
-);
+      ),
+    );
   }
 
   Widget _buildActionButton({

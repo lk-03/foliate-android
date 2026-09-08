@@ -466,6 +466,8 @@ void main() {
             onProgressDisplayTypeChanged: (_) {},
             progressDisplayLocation: ProgressDisplayLocation.bottomCenter,
             onProgressDisplayLocationChanged: (_) {},
+            showPageSlider: true,
+            onShowPageSliderChanged: (_) {},
             quickActionsBar: true,
             onQuickActionsBarChanged: (_) {},
           ),
@@ -487,6 +489,46 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(closed, isTrue);
+  });
+
+  testWidgets('ReaderPageSliderBar renders correctly and invokes navigation callbacks',
+      (WidgetTester tester) async {
+    bool prevPressed = false;
+    bool nextPressed = false;
+    double? scrubbed;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: Stack(
+            children: [
+              ReaderPageSliderBar(
+                progressPercentage: 50.0,
+                onScrubPercentage: (val) => scrubbed = val,
+                onPrevPage: () => prevPressed = true,
+                onNextPage: () => nextPressed = true,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ReaderPageSliderBar), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+    expect(find.byType(Slider), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.chevron_left_rounded));
+    expect(prevPressed, isTrue);
+
+    await tester.tap(find.byIcon(Icons.chevron_right_rounded));
+    expect(nextPressed, isTrue);
+
+    await tester.drag(find.byType(Slider), const Offset(40, 0));
+    expect(scrubbed, isNotNull);
   });
 }
 

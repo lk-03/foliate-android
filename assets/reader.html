@@ -5765,14 +5765,16 @@ ${doc.querySelector("parsererror").innerText}`);
       const lineCss = lineHeight ? `line-height: ${lineHeight} !important;` : 'line-height: 1.5 !important;';
       const weightCss = fontWeight ? `font-weight: ${fontWeight} !important;` : '';
 
-      // Margins
+      // Margins & Safe Area Padding
       let padH = '16px';
       if (margin !== undefined) {
         padH = `${Math.round(margin * 100)}%`;
       } else if (pageMargins === false) {
         padH = '8px';
       }
-      const paddingCss = `padding: 12px ${padH} !important;`;
+      const padTop = (settings.paddingTop !== undefined ? settings.paddingTop : 56) + 'px';
+      const padBottom = (settings.paddingBottom !== undefined ? settings.paddingBottom : 64) + 'px';
+      const paddingCss = `padding: ${padTop} ${padH} ${padBottom} !important; box-sizing: border-box !important;`;
 
       // Text Alignment & Hyphenation
       const isJustify = fullJustification !== false;
@@ -5811,6 +5813,7 @@ ${doc.querySelector("parsererror").innerText}`);
           background-color: ${bg} !important;
           color: ${fg} !important;
           ${paddingCss}
+          box-sizing: border-box !important;
           ${fontCss}
           ${sizeCss}
           ${minSizeCss}

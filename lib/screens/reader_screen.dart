@@ -46,7 +46,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   String _currentSearchQuery = '';
   bool _matchCase = false;
   bool _isSearchActive = false;
-  // Bookmark & Orientation State (Apple Books controls)
+  // Bookmark & Orientation State (Reader HUD controls)
   bool _isBookmarked = false;
   bool _isOrientationLocked = false;
 
@@ -409,6 +409,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 setState(() => _settings = _settings.copyWith(progressDisplayLocation: loc));
                 StorageService.instance.saveBookSettings(widget.book.hash, _settings);
               },
+              showPageSlider: _settings.showPageSlider,
+              onShowPageSliderChanged: (val) {
+                setSheetState(() {});
+                setState(() => _settings = _settings.copyWith(showPageSlider: val));
+                StorageService.instance.saveBookSettings(widget.book.hash, _settings);
+              },
               quickActionsBar: _settings.quickActionsBar,
               onQuickActionsBarChanged: (val) {
                 setSheetState(() {});
@@ -661,9 +667,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
             onToggle: _toggleBookmark,
           ),
 
-          // Floating Quick Actions Toolbar with Scrubber (when enabled in settings)
-          if (_showControls && !_isSearchActive && _settings.quickActionsBar)
-            QuickActionsToolbar(
+          // Floating Bottom Page Scrubber Slider (when enabled in settings)
+          if (_showControls && !_isSearchActive && _settings.showPageSlider)
+            ReaderPageSliderBar(
               progressPercentage: (_currentLocation?.percentage ?? widget.book.percentage),
               accentColor: themeAccent,
               onScrubPercentage: (val) {
@@ -678,16 +684,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 _resetInactivityTimer();
                 _bridge.goNext();
               },
-              onOpenTOC: _showTOCSheet,
-              onOpenSearch: _showSearchSheet,
-              onOpenAppearance: _showAppearanceSheet,
-              onOpenMenu: _showReaderMenuSheet,
             ),
 
           // Three-Dot Floating Action Capsule (Bottom Right)
-          if (_showControls && !_isSearchActive && _selectedText == null && !_settings.quickActionsBar)
+          if (_showControls && !_isSearchActive && _selectedText == null)
             Positioned(
-              bottom: 20 + MediaQuery.of(context).padding.bottom,
+              bottom: 16 + MediaQuery.of(context).padding.bottom,
               right: 18,
               child: FloatingReaderCapsule(
                 accentColor: themeAccent,
