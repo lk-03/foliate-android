@@ -439,6 +439,55 @@ void main() {
 
     expect(tapped, isTrue);
   });
+
+  testWidgets('FloatingReaderMenu renders at 60% height and fires onClose on close button tap',
+      (WidgetTester tester) async {
+    bool closed = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: FloatingReaderMenu(
+            currentFontSize: 16.0,
+            onFontSizeChanged: (_) {},
+            progressPercentage: 42.0,
+            progressLabel: 'Page 12 of 240',
+            onScrubPercentage: (_) {},
+            onPrevPage: () {},
+            onNextPage: () {},
+            onClose: () => closed = true,
+            onOpenTOC: () {},
+            onOpenSearch: () {},
+            onOpenAppearance: () {},
+            isOrientationLocked: false,
+            onToggleOrientation: () {},
+            progressDisplayType: ProgressDisplayType.pagesLeftInChapter,
+            onProgressDisplayTypeChanged: (_) {},
+            progressDisplayLocation: ProgressDisplayLocation.bottomCenter,
+            onProgressDisplayLocationChanged: (_) {},
+            quickActionsBar: true,
+            onQuickActionsBarChanged: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FloatingReaderMenu), findsOneWidget);
+    expect(find.text('Close'), findsOneWidget);
+    expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+
+    // Verify container height is 60% of screen height (600 * 0.60 = 360)
+    final renderBox = tester.renderObject<RenderBox>(find.byType(FloatingReaderMenu));
+    expect(renderBox.size.height, closeTo(600 * 0.60, 1.0));
+
+    // Tap Close button
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
+    expect(closed, isTrue);
+  });
 }
 
 

@@ -348,7 +348,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
       isScrollControlled: true,
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
         ),
         child: StatefulBuilder(
           builder: (context, setSheetState) {
@@ -377,9 +377,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
               onNextPage: () {
                 _bridge.goNext();
               },
-              onBackToLibrary: () {
+              onClose: () {
                 Navigator.of(ctx).pop();
-                Navigator.of(context).pop();
               },
               onOpenTOC: () {
                 Navigator.of(ctx).pop();

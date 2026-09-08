@@ -786,7 +786,8 @@ class FloatingReaderMenu extends StatelessWidget {
   final ValueChanged<double> onScrubPercentage;
   final VoidCallback onPrevPage;
   final VoidCallback onNextPage;
-  final VoidCallback onBackToLibrary;
+  final VoidCallback onClose;
+  final VoidCallback? onBackToLibrary;
   final VoidCallback onOpenTOC;
   final VoidCallback onOpenSearch;
   final VoidCallback onOpenAppearance;
@@ -809,7 +810,8 @@ class FloatingReaderMenu extends StatelessWidget {
     required this.onScrubPercentage,
     required this.onPrevPage,
     required this.onNextPage,
-    required this.onBackToLibrary,
+    required this.onClose,
+    this.onBackToLibrary,
     required this.onOpenTOC,
     required this.onOpenSearch,
     required this.onOpenAppearance,
@@ -829,45 +831,64 @@ class FloatingReaderMenu extends StatelessWidget {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
     final activeColor = accentColor ?? AdwaitaColors.foliateGreen;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final sheetHeight = screenHeight * 0.60;
 
     return RepaintBoundary(
-      child: Center(
-        child: Container(
-          width: MediaQuery.of(context).size.width * 0.92,
-          constraints: const BoxConstraints(maxWidth: 420),
-          decoration: BoxDecoration(
-            color: colors.headerBar.withValues(alpha: 0.96),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: colors.border.withValues(alpha: 0.8),
-              width: 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.45),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
+      child: Container(
+        height: sheetHeight,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: colors.headerBar.withValues(alpha: 0.98),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border.all(
+            color: colors.border.withValues(alpha: 0.8),
+            width: 1.0,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: SingleChildScrollView(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 24,
+              offset: const Offset(0, -6),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: SafeArea(
+            top: false,
             child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Row 1: Action Shortcuts Bar (Close icon instead of 'Library' text)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildActionButton(
-                      icon: Icons.close_rounded,
-                      label: 'Close',
-                      onTap: onBackToLibrary,
-                      colors: colors,
-                      activeColor: activeColor,
-                    ),
-                    _buildActionButton(
-                      icon: Icons.list_rounded,
+            children: [
+              // Top Drag Handle
+              Container(
+                width: 38,
+                height: 4,
+                margin: const EdgeInsets.only(top: 10, bottom: 6),
+                decoration: BoxDecoration(
+                  color: colors.border.withValues(alpha: 0.8),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Row 1: Action Shortcuts Bar (Close icon dismisses the popup)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildActionButton(
+                            icon: Icons.close_rounded,
+                            label: 'Close',
+                            onTap: onClose,
+                            colors: colors,
+                            activeColor: activeColor,
+                          ),
+                          _buildActionButton(
+                            icon: Icons.list_rounded,
                       label: 'Contents',
                       onTap: onOpenTOC,
                       colors: colors,
@@ -1042,8 +1063,12 @@ class FloatingReaderMenu extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
+      ],
+    ),
+  ),
+),
+),
+);
   }
 
   Widget _buildActionButton({
