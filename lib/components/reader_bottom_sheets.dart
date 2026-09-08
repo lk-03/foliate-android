@@ -880,87 +880,97 @@ class _ReaderTOCSheetState extends State<ReaderTOCSheet> {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surfaceCard,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        border: Border.all(color: colors.border),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: colors.border,
-                  borderRadius: BorderRadius.circular(2),
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.35,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: colors.surfaceCard,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            border: Border.all(color: colors.border),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Material(
+            color: Colors.transparent,
+            child: SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: colors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                 ),
-              ),
-            ),
 
-            // Segmented Header Bar
-            Row(
-              children: [
-                _buildTabButton('Contents', 0, colors),
-                const SizedBox(width: 8),
-                _buildTabButton('Bookmarks (${widget.bookmarks.length})', 1, colors),
-              ],
-            ),
-            const SizedBox(height: 12),
+                // Segmented Header Bar
+                Row(
+                  children: [
+                    _buildTabButton('Contents', 0, colors),
+                    const SizedBox(width: 8),
+                    _buildTabButton('Bookmarks (${widget.bookmarks.length})', 1, colors),
+                  ],
+                ),
+                const SizedBox(height: 12),
 
-            Expanded(
-              child: _selectedTab == 0
-                  ? (widget.toc.isEmpty
-                      ? Center(
-                          child: Text(
-                            'No chapters found',
-                            style: TextStyle(color: colors.textMuted),
-                          ),
-                        )
-                      : ListView(
-                          children: _buildTOCList(widget.toc, colors, context),
-                        ))
-                  : (widget.bookmarks.isEmpty
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24.0),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.bookmark_border_rounded,
-                                  size: 40,
-                                  color: colors.textMuted,
+                Expanded(
+                  child: _selectedTab == 0
+                      ? (widget.toc.isEmpty
+                          ? Center(
+                              child: Text(
+                                'No chapters found',
+                                style: TextStyle(color: colors.textMuted),
+                              ),
+                            )
+                          : ListView(
+                              controller: scrollController,
+                              children: _buildTOCList(widget.toc, colors, context),
+                            ))
+                      : (widget.bookmarks.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.bookmark_border_rounded,
+                                      size: 40,
+                                      color: colors.textMuted,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Text(
+                                      'No Bookmarks Yet',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Tap the top-right ribbon while reading to bookmark any page.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: colors.textMuted,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 12),
-                                const Text(
-                                  'No Bookmarks Yet',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Tap the top-right ribbon while reading to bookmark any page.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: colors.textMuted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                      : ListView.separated(
-                          itemCount: widget.bookmarks.length,
-                          separatorBuilder: (_, _) => Divider(color: colors.border, height: 1),
+                              ),
+                            )
+                          : ListView.separated(
+                              controller: scrollController,
+                              itemCount: widget.bookmarks.length,
+                              separatorBuilder: (_, _) => Divider(color: colors.border, height: 1),
                           itemBuilder: (context, index) {
                             final b = widget.bookmarks[index];
                             return ListTile(
@@ -1004,7 +1014,10 @@ class _ReaderTOCSheetState extends State<ReaderTOCSheet> {
           ],
         ),
       ),
-    );
+    ),
+  );
+},
+);
   }
 
   Widget _buildTabButton(String title, int tabIndex, FoliateThemeColors colors) {

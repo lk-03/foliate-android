@@ -960,6 +960,8 @@ class FloatingReaderMenu extends StatefulWidget {
   final VoidCallback? onPrevPage;
   final VoidCallback? onNextPage;
   final Color? accentColor;
+  final double brightness;
+  final ValueChanged<double>? onBrightnessChanged;
 
   const FloatingReaderMenu({
     super.key,
@@ -1005,6 +1007,8 @@ class FloatingReaderMenu extends StatefulWidget {
     this.onPrevPage,
     this.onNextPage,
     this.accentColor,
+    this.brightness = 1.0,
+    this.onBrightnessChanged,
   });
 
   @override
@@ -1012,7 +1016,21 @@ class FloatingReaderMenu extends StatefulWidget {
 }
 
 class _FloatingReaderMenuState extends State<FloatingReaderMenu> {
-  double _brightness = 0.85;
+  late double _brightness;
+
+  @override
+  void initState() {
+    super.initState();
+    _brightness = widget.brightness;
+  }
+
+  @override
+  void didUpdateWidget(covariant FloatingReaderMenu oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.brightness != widget.brightness) {
+      _brightness = widget.brightness;
+    }
+  }
 
   bool _isOptionSelected(ReaderThemeOption opt) {
     if (opt.mode == ReaderThemeMode.defaultTheme) {
@@ -1114,7 +1132,6 @@ class _FloatingReaderMenuState extends State<FloatingReaderMenu> {
                                   icon: Icons.auto_stories_rounded,
                                   label: 'Layout',
                                   onTap: () {
-                                    widget.onClose();
                                     if (widget.onOpenLayout != null) {
                                       widget.onOpenLayout!();
                                     } else if (widget.onOpenAppearance != null) {
@@ -1215,6 +1232,7 @@ class _FloatingReaderMenuState extends State<FloatingReaderMenu> {
                                         max: 1.0,
                                         onChanged: (val) {
                                           setState(() => _brightness = val);
+                                          widget.onBrightnessChanged?.call(val);
                                         },
                                       ),
                                     ),
@@ -1346,7 +1364,6 @@ class _FloatingReaderMenuState extends State<FloatingReaderMenu> {
                         child: InkWell(
                           onTap: () {
                             HapticFeedback.selectionClick();
-                            widget.onClose();
                             if (widget.onOpenThemeCustomize != null) {
                               widget.onOpenThemeCustomize!();
                             } else if (widget.onOpenAppearance != null) {

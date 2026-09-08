@@ -11,6 +11,7 @@ class ReadingLocation {
   final int? currentSection;
   final int? totalSections;
   final String? sectionTitle;
+  final String? excerpt;
   final int? timeLeftSectionSeconds;
   final int? timeLeftBookSeconds;
 
@@ -23,6 +24,7 @@ class ReadingLocation {
     this.currentSection,
     this.totalSections,
     this.sectionTitle,
+    this.excerpt,
     this.timeLeftSectionSeconds,
     this.timeLeftBookSeconds,
   });
@@ -58,6 +60,7 @@ class ReadingLocation {
     int? currentSection,
     int? totalSections,
     String? sectionTitle,
+    String? excerpt,
     int? timeLeftSectionSeconds,
     int? timeLeftBookSeconds,
   }) {
@@ -70,6 +73,7 @@ class ReadingLocation {
       currentSection: currentSection ?? this.currentSection,
       totalSections: totalSections ?? this.totalSections,
       sectionTitle: sectionTitle ?? this.sectionTitle,
+      excerpt: excerpt ?? this.excerpt,
       timeLeftSectionSeconds: timeLeftSectionSeconds ?? this.timeLeftSectionSeconds,
       timeLeftBookSeconds: timeLeftBookSeconds ?? this.timeLeftBookSeconds,
     );
@@ -85,6 +89,7 @@ class ReadingLocation {
       'currentSection': currentSection,
       'totalSections': totalSections,
       'sectionTitle': sectionTitle,
+      'excerpt': excerpt,
       'timeLeftSectionSeconds': timeLeftSectionSeconds,
       'timeLeftBookSeconds': timeLeftBookSeconds,
     };
@@ -100,6 +105,7 @@ class ReadingLocation {
       currentSection: (map['currentSection'] as num?)?.toInt(),
       totalSections: (map['totalSections'] as num?)?.toInt(),
       sectionTitle: map['sectionTitle'] as String?,
+      excerpt: map['excerpt'] as String?,
       timeLeftSectionSeconds: (map['timeLeftSectionSeconds'] as num?)?.toInt(),
       timeLeftBookSeconds: (map['timeLeftBookSeconds'] as num?)?.toInt(),
     );

@@ -137,6 +137,7 @@ void main() {
         totalSections: 57,
         timeLeftSectionSeconds: 1260, // 21 mins
         timeLeftBookSeconds: 67320, // 18.7 hrs
+        excerpt: 'By 6:45, dinner is almost ready.',
       );
 
       expect(loc.formattedTimeLeftSection, equals('21 mins'));
@@ -144,6 +145,11 @@ void main() {
       expect(loc.percentage, equals(5.0));
       expect(loc.currentLocation, equals(11));
       expect(loc.totalLocations, equals(1206));
+      expect(loc.excerpt, equals('By 6:45, dinner is almost ready.'));
+
+      final map = loc.toMap();
+      final roundTrip = ReadingLocation.fromMap(map);
+      expect(roundTrip.excerpt, equals('By 6:45, dinner is almost ready.'));
     });
 
     test('TOCItem hierarchy serialization round-trip', () {

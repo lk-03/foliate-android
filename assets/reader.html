@@ -3402,7 +3402,9 @@ ${doc.querySelector("parsererror").innerText}`);
             height: 100%;
         }
         #top {
-            --_gap: 7%;
+            --_gap: var(--reader-gap, 18%);
+            --_margin-top: var(--reader-margin-top, 108px);
+            --_margin-bottom: var(--reader-margin-bottom, 96px);
             --_margin: 48px;
             --_max-inline-size: 720px;
             --_max-block-size: 1440px;
@@ -3420,9 +3422,9 @@ ${doc.querySelector("parsererror").innerText}`);
                 var(--_half-gap)
                 minmax(var(--_half-gap), 1fr);
             grid-template-rows:
-                minmax(var(--_margin), 1fr)
+                minmax(var(--_margin-top), 1fr)
                 minmax(0, var(--_max-height))
-                minmax(var(--_margin), 1fr);
+                minmax(var(--_margin-bottom), 1fr);
             &.vertical {
                 --_max-column-count-spread: var(--_max-column-count-portrait);
                 --_max-width: var(--_max-block-size);
@@ -5451,11 +5453,33 @@ ${doc.querySelector("parsererror").innerText}`);
 
       const locationData = { current: currentDisplayPage, total: totalDisplayPages };
 
+      let excerptText = '';
+      try {
+        if (d.range) {
+          excerptText = d.range.toString();
+        }
+        if (!excerptText && view?.renderer?.getContents) {
+          const contents = view.renderer.getContents() || [];
+          for (const item of contents) {
+            const doc = item?.doc;
+            if (doc?.body) {
+              const text = doc.body.innerText || doc.body.textContent || '';
+              if (text.trim().length > 0) {
+                const clean = text.trim().replace(/\s+/g, ' ');
+                excerptText = clean.length > 350 ? clean.slice(0, 350) + '...' : clean;
+                break;
+              }
+            }
+          }
+        }
+      } catch (err) {}
+
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'RELOCATE',
         payload: {
           ...d,
           location: locationData,
+          excerpt: excerptText,
         },
       }));
       window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -5680,6 +5704,23 @@ ${doc.querySelector("parsererror").innerText}`);
       );
     };
 
+    window.getCurrentPageText = () => {
+      try {
+        const contents = view?.renderer?.getContents?.() || [];
+        for (const item of contents) {
+          const doc = item?.doc;
+          if (doc?.body) {
+            const text = doc.body.innerText || doc.body.textContent || '';
+            if (text.trim().length > 0) {
+              const clean = text.trim().replace(/\s+/g, ' ');
+              return clean.length > 350 ? clean.slice(0, 350) + '...' : clean;
+            }
+          }
+        }
+      } catch (e) {}
+      return '';
+    };
+
     window.applyReaderSettings = (settings) => {
       if (settings) currentReaderSettings = settings;
       if (!settings) return;
@@ -5720,12 +5761,39 @@ ${doc.querySelector("parsererror").innerText}`);
         'black':        { light: { bg: '#000000', fg: '#D1D1D6' }, dark: { bg: '#000000', fg: '#D1D1D6' } }
       };
 
-      const themeKey = (theme || 'default').toLowerCase();
-      const themeConfig = THEMES[themeKey] || THEMES['default'];
-      const isDark = isDarkMode !== undefined ? isDarkMode : true;
-      let { bg, fg } = isDark ? themeConfig.dark : themeConfig.light;
+      let bg = '#FFFFFF';
+      let fg = '#1A1A1A';
 
-      if (invertColors) {
+      if (theme === 'sepia') {
+        bg = isDarkMode ? '#24201C' : '#FBF0D9';
+        fg = isDarkMode ? '#D4C5B0' : '#473621';
+      } else if (theme === 'warm') {
+        bg = isDarkMode ? '#24211E' : '#F6EFE6';
+        fg = isDarkMode ? '#D9CEC2' : '#332B24';
+      } else if (theme === 'gray') {
+        bg = isDarkMode ? '#232425' : '#E8E8E8';
+        fg = isDarkMode ? '#CFD1D3' : '#2A2C2E';
+      } else if (theme === 'nord') {
+        bg = isDarkMode ? '#2E3440' : '#ECEFF4';
+        fg = isDarkMode ? '#D8DEE9' : '#2E3440';
+      } else if (theme === 'gruvbox') {
+        bg = isDarkMode ? '#282828' : '#FBF1C7';
+        fg = isDarkMode ? '#EBDBB2' : '#3C3836';
+      } else if (theme === 'grass') {
+        bg = isDarkMode ? '#1E261E' : '#EAF0E8';
+        fg = isDarkMode ? '#C8D4C8' : '#253525';
+      } else if (theme === 'black') {
+        bg = '#1E1D1B';
+        fg = '#D6D6D6';
+      } else if (theme === 'contrast') {
+        bg = '#000000';
+        fg = '#FFFFFF';
+      } else {
+        bg = isDarkMode ? '#1C1C1E' : '#FFFFFF';
+        fg = isDarkMode ? '#EDEDED' : '#1A1A1A';
+      }
+
+      if (theme !== 'black' && theme !== 'contrast' && isDarkMode && theme === 'default') {
         const tmp = bg;
         bg = fg;
         fg = tmp;
@@ -5778,15 +5846,21 @@ ${doc.querySelector("parsererror").innerText}`);
       const weightCss = fontWeight ? `font-weight: ${fontWeight} !important;` : '';
 
       // Margins & Safe Area Padding
-      let padH = '28px';
-      if (margin !== undefined) {
-        padH = `${Math.round(margin * 100)}%`;
-      } else if (pageMargins === false) {
-        padH = '16px';
-      }
-      const padTop = (settings.paddingTop !== undefined ? settings.paddingTop : 84) + 'px';
-      const padBottom = (settings.paddingBottom !== undefined ? settings.paddingBottom : 88) + 'px';
+      const padTopNum = Math.max(104, (settings.paddingTop !== undefined ? settings.paddingTop : 108));
+      const padBottomNum = Math.max(96, (settings.paddingBottom !== undefined ? settings.paddingBottom : 96));
+      const marginVal = (margin !== undefined ? margin : 0.10);
+      const gapVal = Math.round(marginVal * 200); // 0.10 -> 20% gap
+      const padH = `${Math.round(marginVal * 100)}%`;
+      const padTop = `${padTopNum}px`;
+      const padBottom = `${padBottomNum}px`;
       const paddingCss = `padding: ${padTop} ${padH} ${padBottom} !important; box-sizing: border-box !important;`;
+
+      const viewEl = document.getElementById('view');
+      if (viewEl) {
+        viewEl.style.setProperty('--reader-margin-top', `${padTopNum}px`);
+        viewEl.style.setProperty('--reader-margin-bottom', `${padBottomNum}px`);
+        viewEl.style.setProperty('--reader-gap', `${gapVal}%`);
+      }
 
       // Text Alignment & Hyphenation
       const isJustify = fullJustification !== false;

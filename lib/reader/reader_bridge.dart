@@ -167,6 +167,7 @@ class ReaderBridge {
       currentSection: (data['section'] as num?)?.toInt(),
       totalSections: (data['totalSections'] as num?)?.toInt(),
       sectionTitle: data['sectionTitle'] as String?,
+      excerpt: data['excerpt'] as String?,
     );
   }
 
@@ -254,5 +255,21 @@ class ReaderBridge {
   /// Probes the WebView to check if it's already booted
   Future<void> checkReady() async {
     await _controller?.runJavaScript('if (window.checkReady) window.checkReady();');
+  }
+
+  /// Returns text of the current visible page or section
+  Future<String?> getCurrentPageText() async {
+    try {
+      final res = await _controller?.runJavaScriptReturningResult(
+        'window.getCurrentPageText ? window.getCurrentPageText() : ""',
+      );
+      if (res is String && res.isNotEmpty && res != '""') {
+        final clean = res.startsWith('"') && res.endsWith('"')
+            ? jsonDecode(res) as String
+            : res;
+        return clean.trim();
+      }
+    } catch (_) {}
+    return null;
   }
 }

@@ -182,7 +182,7 @@ class ReaderSettings {
     this.lineHeight = 1.50,
     this.fullJustification = true,
     this.hyphenation = true,
-    this.margin = 0.08,
+    this.margin = 0.10,
     this.fontWeight = 400,
     this.pageFlipping = 'horizontal',
     this.textAlign = 'justify',
@@ -194,8 +194,8 @@ class ReaderSettings {
     this.progressDisplayLocation = ProgressDisplayLocation.bottomCenter,
     this.quickActionsBar = false,
     this.showPageSlider = false,
-    this.paddingTop = 84.0,
-    this.paddingBottom = 88.0,
+    this.paddingTop = 108.0,
+    this.paddingBottom = 96.0,
   });
 
   ReaderSettings copyWith({
@@ -289,7 +289,7 @@ class ReaderSettings {
       lineHeight: (map['lineHeight'] as num?)?.toDouble() ?? 1.50,
       fullJustification: map['fullJustification'] as bool? ?? true,
       hyphenation: map['hyphenation'] as bool? ?? true,
-      margin: (map['margin'] as num?)?.toDouble() ?? 0.08,
+      margin: (map['margin'] as num?)?.toDouble() ?? 0.10,
       fontWeight: (map['fontWeight'] as num?)?.toInt() ?? 400,
       pageFlipping: map['pageFlipping'] as String? ?? 'horizontal',
       textAlign: map['textAlign'] as String? ?? 'justify',
@@ -301,8 +301,8 @@ class ReaderSettings {
       progressDisplayLocation: ProgressDisplayLocation.fromString(map['progressDisplayLocation'] as String?),
       quickActionsBar: map['quickActionsBar'] as bool? ?? false,
       showPageSlider: map['showPageSlider'] as bool? ?? false,
-      paddingTop: (map['paddingTop'] as num?)?.toDouble() ?? 84.0,
-      paddingBottom: (map['paddingBottom'] as num?)?.toDouble() ?? 88.0,
+      paddingTop: (map['paddingTop'] as num?)?.toDouble() ?? 108.0,
+      paddingBottom: (map['paddingBottom'] as num?)?.toDouble() ?? 96.0,
     );
   }
 

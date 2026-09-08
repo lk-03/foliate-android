@@ -442,6 +442,8 @@ void main() {
   testWidgets('FloatingReaderMenu renders at 60% height and fires onClose on close button tap',
       (WidgetTester tester) async {
     bool closed = false;
+    bool layoutOpened = false;
+    double? newBrightness;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -458,7 +460,10 @@ void main() {
             onClose: () => closed = true,
             onOpenTOC: () {},
             onOpenSearch: () {},
+            onOpenLayout: () => layoutOpened = true,
             onOpenAppearance: () {},
+            brightness: 0.9,
+            onBrightnessChanged: (b) => newBrightness = b,
             isOrientationLocked: false,
             onToggleOrientation: () {},
             progressDisplayType: ProgressDisplayType.pagesLeftInChapter,
@@ -487,6 +492,17 @@ void main() {
     expect(find.text('Layout'), findsOneWidget);
     expect(find.text('Light'), findsOneWidget);
     expect(find.text('Customize Font & Typography'), findsOneWidget);
+
+    // Tap Layout button -> fires onOpenLayout without firing closed
+    await tester.tap(find.text('Layout'));
+    await tester.pumpAndSettle();
+    expect(layoutOpened, isTrue);
+    expect(closed, isFalse);
+
+    // Drag brightness slider
+    await tester.drag(find.byType(Slider), const Offset(-50, 0));
+    await tester.pumpAndSettle();
+    expect(newBrightness, isNotNull);
 
     // Verify vertical scrolling reveals lower themes like Quiet Black
     await tester.scrollUntilVisible(
@@ -547,6 +563,43 @@ void main() {
 
     await tester.drag(find.byType(Slider), const Offset(40, 0));
     expect(scrubbed, isNotNull);
+  });
+
+  testWidgets('ReaderTOCSheet renders inside DraggableScrollableSheet and responds to drags',
+      (WidgetTester tester) async {
+    String? selectedHref;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: ReaderTOCSheet(
+            toc: const [
+              TOCItem(label: 'Chapter 1: The Arrival', href: 'ch1.html'),
+              TOCItem(label: 'Chapter 2: The Secret', href: 'ch2.html'),
+            ],
+            bookmarks: const [],
+            onChapterSelected: (href) => selectedHref = href,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ReaderTOCSheet), findsOneWidget);
+    expect(find.byType(DraggableScrollableSheet), findsOneWidget);
+    expect(find.text('Contents'), findsOneWidget);
+    expect(find.text('Bookmarks (0)'), findsOneWidget);
+    expect(find.text('Chapter 1: The Arrival'), findsOneWidget);
+
+    // Verify draggable downwards drag gesture
+    await tester.drag(find.byType(DraggableScrollableSheet), const Offset(0, 100));
+    await tester.pumpAndSettle();
+
+    // Tap a chapter
+    await tester.tap(find.text('Chapter 1: The Arrival'));
+    await tester.pumpAndSettle();
+    expect(selectedHref, equals('ch1.html'));
   });
 }
 

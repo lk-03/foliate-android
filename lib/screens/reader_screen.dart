@@ -49,6 +49,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
   // Bookmark & Orientation State (Reader HUD controls)
   bool _isBookmarked = false;
   bool _isOrientationLocked = false;
+  double _brightness = 1.0;
+  String? _currentPageExcerpt;
 
   @override
   void initState() {
@@ -105,7 +107,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
     _bridge.onRelocate = (location) {
       if (mounted) {
-        setState(() => _currentLocation = location);
+        setState(() {
+          _currentLocation = location;
+          if (location.excerpt != null && location.excerpt!.isNotEmpty) {
+            _currentPageExcerpt = location.excerpt;
+          }
+        });
         _checkBookmarkStatus();
         // Persist reading progress to local storage
         StorageService.instance.updateBookProgress(
@@ -251,6 +258,47 @@ class _ReaderScreenState extends State<ReaderScreen> {
     return null;
   }
 
+  String _formatHeaderTitle() {
+    // 1. Try chapter or section title first
+    final ch = _getCurrentChapterTitle() ?? _currentLocation?.sectionTitle;
+    if (ch != null && ch.trim().isNotEmpty) {
+      final clean = ch.trim();
+      final chapterMatch = RegExp(
+        r'^(chapter|ch\.|act|part|section|book|scene)\s*([0-9ivxlcdm]+|\w+)',
+        caseSensitive: false,
+      ).firstMatch(clean);
+      if (chapterMatch != null) {
+        final word = chapterMatch.group(1)!;
+        final num = chapterMatch.group(2)!;
+        return '${word[0].toUpperCase()}${word.substring(1).toLowerCase()} $num';
+      }
+      if (clean.length <= 20) {
+        return clean;
+      }
+      final stripped = clean.split(RegExp(r'[:\-—|]')).first.trim();
+      if (stripped.isNotEmpty && stripped.length <= 20) {
+        return stripped;
+      }
+      if (_currentLocation?.currentSection != null) {
+        return 'Chapter ${_currentLocation!.currentSection! + 1}';
+      }
+      final words = clean.split(RegExp(r'\s+'));
+      return words.take(2).join(' ');
+    }
+
+    // 2. Fallback to book title: strip subtitles and shorten to main part
+    final rawTitle = widget.book.title.trim();
+    final stripped = rawTitle.split(RegExp(r'[:\-—|(\[]')).first.trim();
+    if (stripped.isNotEmpty && stripped.length <= 22) {
+      return stripped;
+    }
+    if (_currentLocation?.currentSection != null) {
+      return 'Chapter ${_currentLocation!.currentSection! + 1}';
+    }
+    final words = (stripped.isNotEmpty ? stripped : rawTitle).split(RegExp(r'\s+'));
+    return words.take(2).join(' ');
+  }
+
   void _toggleOrientationLock() {
     setState(() => _isOrientationLocked = !_isOrientationLocked);
     if (_isOrientationLocked) {
@@ -317,17 +365,26 @@ class _ReaderScreenState extends State<ReaderScreen> {
     ).then((_) => _resetInactivityTimer());
   }
 
-  void _showThemeCustomizeSheet() {
+  Future<void> _showThemeCustomizeSheet() async {
     _hideControlsTimer?.cancel();
+    if (_currentPageExcerpt == null || _currentPageExcerpt!.isEmpty) {
+      final liveText = await _bridge.getCurrentPageText();
+      if (liveText != null && liveText.isNotEmpty) {
+        _currentPageExcerpt = liveText;
+      }
+    }
+    if (!mounted) return;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => ReaderThemeCustomizeSheet(
         settings: _settings,
-        sampleExcerpt: _currentLocation?.sectionTitle != null
-            ? 'Section: ${_currentLocation!.sectionTitle}\n\nHe sighed. \u201cBel, you have known your whole life that you cannot remain in Tyre.\u201d \u201cI am not a child,\u201d I hissed, heat rising in my cheeks...'
-            : null,
+        sampleExcerpt: _currentPageExcerpt ??
+            (_currentLocation?.sectionTitle != null
+                ? 'Section: ${_currentLocation!.sectionTitle}\n\nHe sighed. \u201cBel, you have known your whole life that you cannot remain in Tyre.\u201d \u201cI am not a child,\u201d I hissed, heat rising in my cheeks...'
+                : null),
         accentColor: AdwaitaColors.getThemeAccent(
           _settings.theme.id,
           _settings.isDarkMode,
@@ -381,6 +438,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
         child: StatefulBuilder(
           builder: (context, setSheetState) {
             return FloatingReaderMenu(
+              brightness: _brightness,
+              onBrightnessChanged: (val) {
+                setSheetState(() {});
+                setState(() => _brightness = val);
+              },
               currentFontSize: _settings.fontSize,
               accentColor: themeAccent,
               onFontSizeChanged: (newSize) {
@@ -686,6 +748,18 @@ class _ReaderScreenState extends State<ReaderScreen> {
             child: ReaderWebView(bridge: _bridge),
           ),
 
+          // In-App Software Brightness Dimming Overlay
+          if (_brightness < 1.0)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(
+                  color: Colors.black.withValues(
+                    alpha: ((1.0 - _brightness) * 0.85).clamp(0.0, 0.9),
+                  ),
+                ),
+              ),
+            ),
+
           // Tap Zones for Navigation and HUD (Left 28% Prev, Right 28% Next, Center 44% Toggle HUD)
           Positioned.fill(
             child: Row(
@@ -734,7 +808,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
               right: 28,
               child: Center(
                 child: Text(
-                  _getCurrentChapterTitle() ?? widget.book.title,
+                  _formatHeaderTitle(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
