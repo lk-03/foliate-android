@@ -42,6 +42,7 @@ class _MainShellState extends State<MainShell> {
     await StorageService.instance.preseedSampleBookIfNeeded();
     await _reloadBooks();
     await _reloadAnnotations();
+    await _reloadHabits();
     _autoScanLinkedFolders();
   }
 
@@ -59,6 +60,15 @@ class _MainShellState extends State<MainShell> {
     if (mounted) {
       setState(() {
         _annotations = loaded;
+      });
+    }
+  }
+
+  Future<void> _reloadHabits() async {
+    final habits = await StorageService.instance.getReadingHabits();
+    if (mounted) {
+      setState(() {
+        _readingHabits = habits;
       });
     }
   }
@@ -82,6 +92,9 @@ class _MainShellState extends State<MainShell> {
     if (_currentIndex == index) return;
     HapticFeedback.selectionClick();
     setState(() => _currentIndex = index);
+    if (index == 0) {
+      _reloadHabits();
+    }
     if (index == 3) {
       _reloadAnnotations();
     }
@@ -92,6 +105,7 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
+  ReadingHabits _readingHabits = const ReadingHabits();
   List<Annotation> _annotations = [];
 
   String get _currentTitle {
@@ -177,12 +191,27 @@ class _MainShellState extends State<MainShell> {
           setState(() {
             _currentIndex = index;
           });
+          if (index == 0) {
+            _reloadHabits();
+          }
         },
         children: [
           HomeScreen(
             books: _books,
+            readingHabits: _readingHabits,
             onNavigateToLibrary: () => _navigateToPage(1),
-            onBooksChanged: _reloadBooks,
+            onBooksChanged: () async {
+              await _reloadBooks();
+              await _reloadHabits();
+            },
+            onDailyGoalChanged: (newMins) async {
+              final updated = await StorageService.instance.updateDailyReadingGoal(newMins);
+              setState(() => _readingHabits = updated);
+            },
+            onYearlyGoalChanged: (newTarget) async {
+              final updated = await StorageService.instance.updateYearlyReadingGoal(newTarget);
+              setState(() => _readingHabits = updated);
+            },
           ),
           LibraryScreen(
             books: _books,

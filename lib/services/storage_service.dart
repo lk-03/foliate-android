@@ -12,6 +12,7 @@ class StorageService {
   static const String _booksPrefKey = 'foliate_library_books';
   static const String _linkedFoldersPrefKey = 'foliate_linked_folders';
   static const String _firstLaunchPrefKey = 'foliate_first_launch_done';
+  static const String _readingHabitsPrefKey = 'foliate_reading_habits';
 
   static StorageService? _instance;
   static StorageService get instance => _instance ??= StorageService._();
@@ -423,6 +424,76 @@ class StorageService {
   Future<bool> isBookmarked(String bookHash, String cfi) async {
     final bookmarks = await getBookmarks(bookHash);
     return bookmarks.any((b) => b.cfi == cfi);
+  }
+
+  /// Retrieves user reading habits, streaks, and challenge progress.
+  Future<ReadingHabits> getReadingHabits() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_readingHabitsPrefKey);
+    if (raw == null || raw.isEmpty) {
+      // Return fresh default habits
+      return const ReadingHabits();
+    }
+    try {
+      return ReadingHabits.fromJson(raw);
+    } catch (_) {
+      return const ReadingHabits();
+    }
+  }
+
+  /// Saves updated reading habits.
+  Future<void> saveReadingHabits(ReadingHabits habits) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_readingHabitsPrefKey, habits.toJson());
+  }
+
+  /// Records an active reading session in seconds, updating daily history, streaks, and total time.
+  Future<ReadingHabits> recordReadingTime(int durationSeconds, {String? bookHash}) async {
+    if (durationSeconds <= 0) return await getReadingHabits();
+    final current = await getReadingHabits();
+    final updated = current.recordSession(durationSeconds);
+    await saveReadingHabits(updated);
+
+    // If bookHash is provided, update book's totalReadingTimeMs and lastReadAt
+    if (bookHash != null) {
+      final books = await getBooks();
+      final idx = books.indexWhere((b) => b.hash == bookHash);
+      if (idx >= 0) {
+        final b = books[idx];
+        final newBook = b.copyWith(
+          lastReadAt: DateTime.now().millisecondsSinceEpoch,
+          totalReadingTimeMs: b.totalReadingTimeMs + (durationSeconds * 1000),
+        );
+        books[idx] = newBook;
+        await saveBooks(books);
+      }
+    }
+
+    return updated;
+  }
+
+  /// Marks a book as finished in the annual challenge.
+  Future<ReadingHabits> markBookFinished(String bookHash) async {
+    final current = await getReadingHabits();
+    final updated = current.markBookFinished(bookHash);
+    await saveReadingHabits(updated);
+    return updated;
+  }
+
+  /// Updates daily reading goal target in minutes.
+  Future<ReadingHabits> updateDailyReadingGoal(int minutes) async {
+    final current = await getReadingHabits();
+    final updated = current.copyWith(dailyGoalMinutes: minutes);
+    await saveReadingHabits(updated);
+    return updated;
+  }
+
+  /// Updates annual reading challenge goal in target books count.
+  Future<ReadingHabits> updateYearlyReadingGoal(int targetBooks) async {
+    final current = await getReadingHabits();
+    final updated = current.copyWith(yearlyGoalBooks: targetBooks);
+    await saveReadingHabits(updated);
+    return updated;
   }
 }
 

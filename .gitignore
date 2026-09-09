@@ -53,3 +53,7 @@ app.*.map.json
 # Android build cache & Gradle artifacts
 /android/build/
 .gradle/
+
+# Stitch reference artifacts
+stitch_android_book_reader_ui*/
+stitch_android_book_reader_ui*.zip

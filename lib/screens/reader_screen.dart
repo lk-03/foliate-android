@@ -53,6 +53,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
   bool _isOrientationLocked = false;
   double _brightness = 1.0;
   String? _currentPageExcerpt;
+  DateTime? _lastReadingFlushTime;
+  Timer? _readingHeartbeatTimer;
+  bool _hasShownCompletionCeremony = false;
 
   @override
   void initState() {
@@ -60,6 +63,48 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _setupBridgeListeners();
     _resetInactivityTimer();
     _loadInitialSettings();
+    _startReadingTrackerTimer();
+  }
+
+  void _startReadingTrackerTimer() {
+    _lastReadingFlushTime = DateTime.now();
+    _readingHeartbeatTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _flushReadingTime();
+    });
+  }
+
+  void _flushReadingTime() {
+    if (_lastReadingFlushTime == null) return;
+    final now = DateTime.now();
+    final elapsedSeconds = now.difference(_lastReadingFlushTime!).inSeconds;
+    _lastReadingFlushTime = now;
+    if (elapsedSeconds > 2) {
+      StorageService.instance.recordReadingTime(
+        elapsedSeconds,
+        bookHash: widget.book.hash,
+      );
+    }
+  }
+
+  void _checkAndShowCompletionCeremony(double percentage) {
+    if (percentage >= 0.995 && !_hasShownCompletionCeremony) {
+      _hasShownCompletionCeremony = true;
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (ctx) => BookCompletionSheet(
+          book: widget.book,
+          onMarkFinished: () {
+            StorageService.instance.markBookFinished(widget.book.hash);
+          },
+          onClose: () {},
+        ),
+      );
+    }
   }
 
   Future<void> _loadInitialSettings() async {
@@ -71,6 +116,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   @override
   void dispose() {
+    _readingHeartbeatTimer?.cancel();
+    _flushReadingTime();
     _hideControlsTimer?.cancel();
     _searchSectionsNotifier.dispose();
     _isSearchingNotifier.dispose();
@@ -122,6 +169,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
           percentage: location.percentage,
           cfi: location.cfi,
         );
+        _checkAndShowCompletionCeremony(location.percentage);
       }
     };
 

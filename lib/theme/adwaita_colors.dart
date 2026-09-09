@@ -63,6 +63,12 @@ class AdwaitaColors {
   /// Libadwaita warning orange
   static const Color libadwaitaOrange = Color(0xFFFF7800);
 
+  /// Warm Terracotta primary editorial accent from Apple Books reference
+  static const Color terracottaAccent = Color(0xFFC2410C);
+
+  /// Burnished Amber for streak flame and habit progress ring
+  static const Color amberStreak = Color(0xFFD97706);
+
   // --- Reader Background Themes ---
   /// Day Theme (Light)
   static const Color readerDayBg = Color(0xFFFFFFFF);
