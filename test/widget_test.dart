@@ -95,13 +95,28 @@ void main() {
     expect(find.text('Side Margins'), findsOneWidget);
     expect(find.text('Hyphenation'), findsOneWidget);
     expect(find.text('Page Animation & Transitions'), findsOneWidget);
-    expect(find.text('3D Curl'), findsOneWidget);
+    expect(find.text('3D Flip'), findsOneWidget);
+    expect(find.text('3D Realism (GLSL)'), findsOneWidget);
     expect(find.text('Slide'), findsOneWidget);
     expect(find.text('Scroll'), findsOneWidget);
     expect(find.text('Fast'), findsOneWidget);
     expect(find.text('Continuous Scrolled Mode'), findsOneWidget);
     expect(find.text('Two Columns (Landscape)'), findsOneWidget);
     expect(find.text('Pages Left'), findsOneWidget);
+
+    // Tap 3D Realism (GLSL) animation chip -> opens warning dialog
+    await tester.tap(find.text('3D Realism (GLSL)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Experimental 3D Rendering'), findsOneWidget);
+    expect(
+      find.text('Experimental: True 3D rendering. May cause heavy battery drain, lag, or visual glitches.'),
+      findsOneWidget,
+    );
+
+    // Tap Enable in dialog
+    await tester.tap(find.text('Enable'));
+    await tester.pumpAndSettle();
+    expect(currentSettings.pageAnimationMode, equals(PageAnimationMode.curlShader));
 
     // Tap Slide animation chip
     await tester.tap(find.text('Slide'));

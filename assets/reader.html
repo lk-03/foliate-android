@@ -3672,7 +3672,7 @@ ${doc.querySelector("parsererror").innerText}`);
           const state = this.#touchState;
           if (state.pinched) return;
           state.pinched = globalThis.visualViewport.scale > 1;
-          if (this.scrolled || state.pinched) return;
+          if (this.scrolled || state.pinched || globalThis.__foliateDisableHorizontalTouchPanning) return;
           if (e3.touches.length > 1) {
             if (this.#touchScrolled) e3.preventDefault();
             return;
@@ -3692,7 +3692,7 @@ ${doc.querySelector("parsererror").innerText}`);
         }
         #onTouchEnd() {
           this.#touchScrolled = false;
-          if (this.scrolled) return;
+          if (this.scrolled || globalThis.__foliateDisableHorizontalTouchPanning) return;
           requestAnimationFrame(() => {
             if (globalThis.visualViewport.scale === 1)
               this.snap(this.#touchState.vx, this.#touchState.vy);
@@ -5773,9 +5773,11 @@ ${doc.querySelector("parsererror").innerText}`);
       const pageAnim = settings.pageAnimationMode || (pageFlipping === 'vertical' ? 'scroll' : 'curl');
 
       if (pageAnim === 'scroll' || pageFlipping === 'vertical') {
+        globalThis.__foliateDisableHorizontalTouchPanning = false;
         view.renderer.setAttribute('flow', 'scrolled');
         view.renderer.setAttribute('animated', '');
       } else {
+        globalThis.__foliateDisableHorizontalTouchPanning = true;
         view.renderer.setAttribute('flow', 'paginated');
         if (pageAnim === 'none' || reduceAnimation) {
           view.renderer.removeAttribute('animated');
