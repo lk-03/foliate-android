@@ -148,21 +148,19 @@ enum ProgressDisplayLocation {
 
 /// Page-turn animation style
 enum PageAnimationMode {
-  curl,
-  curlShader,
   slide,
   scroll,
-  none;
+  none,
+  curl,
+  curlShader;
 
   String get id => name;
 
   String get label {
     switch (this) {
-      case PageAnimationMode.curl:
-        return '3D Flip';
-      case PageAnimationMode.curlShader:
-        return '3D Realism (GLSL)';
       case PageAnimationMode.slide:
+      case PageAnimationMode.curl:
+      case PageAnimationMode.curlShader:
         return 'Slide';
       case PageAnimationMode.scroll:
         return 'Scroll';
@@ -172,21 +170,12 @@ enum PageAnimationMode {
   }
 
   static PageAnimationMode fromString(String? value) {
-    if (value == null) return PageAnimationMode.curl;
+    if (value == null) return PageAnimationMode.slide;
     final normalized = value.toLowerCase().replaceAll('-', '').replaceAll('_', '');
     for (final v in PageAnimationMode.values) {
       if (v.name.toLowerCase() == normalized) return v;
     }
-    if (normalized == '3dflip' || normalized == 'pageflip') {
-      return PageAnimationMode.curl;
-    }
-    if (normalized == '3drealism' ||
-        normalized == 'shader3d' ||
-        normalized == 'shader' ||
-        normalized == 'glsl') {
-      return PageAnimationMode.curlShader;
-    }
-    return PageAnimationMode.curl;
+    return PageAnimationMode.slide;
   }
 }
 
@@ -243,7 +232,7 @@ class ReaderSettings {
     this.paddingTop = 108.0,
     this.paddingBottom = 96.0,
     this.marginSide,
-    this.pageAnimationMode = PageAnimationMode.curl,
+    this.pageAnimationMode = PageAnimationMode.slide,
   });
 
   ReaderSettings copyWith({

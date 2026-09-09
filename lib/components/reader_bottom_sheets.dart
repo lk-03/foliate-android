@@ -247,74 +247,9 @@ class _ReaderLayoutSheetState extends State<ReaderLayoutSheet> {
                                 runSpacing: 8,
                                 children: [
                                   _buildChoiceChip(
-                                    label: '3D Flip',
-                                    isSelected: _current.pageAnimationMode == PageAnimationMode.curl,
-                                    onSelected: () => _update(_current.copyWith(
-                                      pageAnimationMode: PageAnimationMode.curl,
-                                      pageFlipping: 'horizontal',
-                                    )),
-                                    colors: colors,
-                                    activeColor: activeColor,
-                                  ),
-                                  _buildChoiceChip(
-                                    label: '3D Realism (GLSL)',
-                                    isSelected: _current.pageAnimationMode == PageAnimationMode.curlShader,
-                                    onSelected: () {
-                                      if (_current.pageAnimationMode == PageAnimationMode.curlShader) return;
-                                      showDialog<bool>(
-                                        context: context,
-                                        builder: (dialogCtx) => AlertDialog(
-                                          backgroundColor: colors.surfaceCard,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(16),
-                                          ),
-                                          title: const Text(
-                                            'Experimental 3D Rendering',
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          content: Text(
-                                            'Experimental: True 3D rendering. May cause heavy battery drain, lag, or visual glitches.',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: colors.textPrimary,
-                                            ),
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.of(dialogCtx).pop(false),
-                                              child: Text(
-                                                'Cancel',
-                                                style: TextStyle(color: colors.textMuted),
-                                              ),
-                                            ),
-                                            FilledButton(
-                                              style: FilledButton.styleFrom(
-                                                backgroundColor: activeColor,
-                                                foregroundColor: Colors.white,
-                                              ),
-                                              onPressed: () => Navigator.of(dialogCtx).pop(true),
-                                              child: const Text('Enable'),
-                                            ),
-                                          ],
-                                        ),
-                                      ).then((confirmed) {
-                                        if (confirmed == true && mounted) {
-                                          _update(_current.copyWith(
-                                            pageAnimationMode: PageAnimationMode.curlShader,
-                                            pageFlipping: 'horizontal',
-                                          ));
-                                        }
-                                      });
-                                    },
-                                    colors: colors,
-                                    activeColor: activeColor,
-                                  ),
-                                  _buildChoiceChip(
                                     label: 'Slide',
-                                    isSelected: _current.pageAnimationMode == PageAnimationMode.slide,
+                                    isSelected: _current.pageAnimationMode == PageAnimationMode.slide ||
+                                        _current.pageAnimationMode == PageAnimationMode.curl,
                                     onSelected: () => _update(_current.copyWith(
                                       pageAnimationMode: PageAnimationMode.slide,
                                       pageFlipping: 'horizontal',

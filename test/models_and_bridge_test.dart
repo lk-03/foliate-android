@@ -127,12 +127,12 @@ void main() {
       expect(restored.pageAnimationMode, equals(PageAnimationMode.slide));
 
       // Verify all page animation modes can be deserialized
-      for (final anim in ['curl', 'curlShader', '3dflip', 'shader3d', 'slide', 'scroll', 'none']) {
+      for (final anim in ['slide', 'scroll', 'none', 'curl', 'curlShader']) {
         expect(PageAnimationMode.fromString(anim).name, isNotEmpty);
       }
-      expect(PageAnimationMode.fromString('curlShader'), equals(PageAnimationMode.curlShader));
-      expect(PageAnimationMode.fromString('shader3d'), equals(PageAnimationMode.curlShader));
-      expect(PageAnimationMode.fromString('3dflip'), equals(PageAnimationMode.curl));
+      expect(PageAnimationMode.fromString('slide'), equals(PageAnimationMode.slide));
+      expect(PageAnimationMode.fromString('scroll'), equals(PageAnimationMode.scroll));
+      expect(PageAnimationMode.fromString('none'), equals(PageAnimationMode.none));
 
       // Verify all 9 themes can be deserialized
       for (final mode in [

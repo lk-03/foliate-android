@@ -98,6 +98,3 @@ flutter:
     - family: Bitter
       fonts:
         - asset: assets/fonts/Bitter.ttf
-
-  shaders:
-    - shaders/page_curl.frag
