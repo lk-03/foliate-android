@@ -169,11 +169,11 @@ enum PageAnimationMode {
   }
 
   static PageAnimationMode fromString(String? value) {
-    if (value == null) return PageAnimationMode.curl;
+    if (value == null) return PageAnimationMode.slide;
     for (final v in PageAnimationMode.values) {
       if (v.name.toLowerCase() == value.toLowerCase()) return v;
     }
-    return PageAnimationMode.curl;
+    return PageAnimationMode.slide;
   }
 }
 
@@ -230,7 +230,7 @@ class ReaderSettings {
     this.paddingTop = 108.0,
     this.paddingBottom = 96.0,
     this.marginSide,
-    this.pageAnimationMode = PageAnimationMode.curl,
+    this.pageAnimationMode = PageAnimationMode.slide,
   });
 
   ReaderSettings copyWith({
