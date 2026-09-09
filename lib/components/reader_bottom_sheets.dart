@@ -1093,7 +1093,7 @@ class _ReaderTOCSheetState extends State<ReaderTOCSheet> {
           color: isSelected ? colors.activePill : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? AdwaitaColors.foliateGreen : colors.border,
+            color: isSelected ? Theme.of(context).colorScheme.primary : colors.border,
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -1230,6 +1230,7 @@ class _ReaderSearchSheetState extends State<ReaderSearchSheet> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+    final primaryAccent = Theme.of(context).colorScheme.primary;
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.80,
@@ -1290,12 +1291,12 @@ class _ReaderSearchSheetState extends State<ReaderSearchSheet> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: _matchCase
-                                      ? AdwaitaColors.foliateGreen.withValues(alpha: 0.2)
+                                      ? primaryAccent.withValues(alpha: 0.2)
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
                                     color: _matchCase
-                                        ? AdwaitaColors.foliateGreen
+                                        ? primaryAccent
                                         : colors.border,
                                     width: 1.2,
                                   ),
@@ -1306,7 +1307,7 @@ class _ReaderSearchSheetState extends State<ReaderSearchSheet> {
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                     color: _matchCase
-                                        ? AdwaitaColors.foliateGreen
+                                        ? primaryAccent
                                         : colors.textMuted,
                                   ),
                                 ),
@@ -1374,7 +1375,7 @@ class _ReaderSearchSheetState extends State<ReaderSearchSheet> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: isSearching ? AdwaitaColors.foliateGreen : colors.textMuted,
+                          color: isSearching ? primaryAccent : colors.textMuted,
                         ),
                       ),
                     );
@@ -1490,7 +1491,7 @@ class _ReaderSearchSheetState extends State<ReaderSearchSheet> {
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
-                                          color: AdwaitaColors.foliateGreen,
+                                          color: primaryAccent,
                                         ),
                                       ),
                                     ),
@@ -1560,19 +1561,19 @@ class _ReaderSearchSheetState extends State<ReaderSearchSheet> {
               margin: const EdgeInsets.symmetric(horizontal: 1),
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
-                color: AdwaitaColors.foliateGreen.withValues(alpha: 0.25),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(
-                  color: AdwaitaColors.foliateGreen.withValues(alpha: 0.6),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6),
                   width: 1,
                 ),
               ),
               child: Text(
                 excerpt.match,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
-                  color: AdwaitaColors.foliateGreen,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             ),
@@ -1709,7 +1710,7 @@ class _ReaderAnnotationBarState extends State<ReaderAnnotationBar> {
               ),
               FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: AdwaitaColors.foliateGreen,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 ),
                 onPressed: () {

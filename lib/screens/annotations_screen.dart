@@ -171,6 +171,8 @@ class _AnnotationsScreenState extends State<AnnotationsScreen> {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
 
+    final primaryAccent = Theme.of(context).colorScheme.primary;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -183,7 +185,7 @@ class _AnnotationsScreenState extends State<AnnotationsScreen> {
                   ? Icons.text_snippet_outlined
                   : Icons.code_rounded,
               size: 20,
-              color: AdwaitaColors.foliateGreen,
+              color: primaryAccent,
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -223,7 +225,7 @@ class _AnnotationsScreenState extends State<AnnotationsScreen> {
           ),
           FilledButton.icon(
             style: FilledButton.styleFrom(
-              backgroundColor: AdwaitaColors.foliateGreen,
+              backgroundColor: primaryAccent,
               foregroundColor: Colors.white,
             ),
             icon: const Icon(Icons.copy_rounded, size: 16),
@@ -324,10 +326,11 @@ class _AnnotationsScreenState extends State<AnnotationsScreen> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+    final primaryAccent = Theme.of(context).colorScheme.primary;
 
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AdwaitaColors.foliateGreen),
+      return Center(
+        child: CircularProgressIndicator(color: primaryAccent),
       );
     }
 
@@ -533,19 +536,20 @@ class _AnnotationsScreenState extends State<AnnotationsScreen> {
     required VoidCallback onSelected,
     required FoliateThemeColors colors,
   }) {
+    final primaryAccent = Theme.of(context).colorScheme.primary;
     return FilterChip(
       label: Text(label, style: const TextStyle(fontSize: 12)),
       selected: isSelected,
       onSelected: (_) => onSelected(),
       backgroundColor: colors.surfaceCard,
-      selectedColor: AdwaitaColors.foliateGreen.withValues(alpha: 0.22),
-      checkmarkColor: AdwaitaColors.foliateGreen,
+      selectedColor: primaryAccent.withValues(alpha: 0.22),
+      checkmarkColor: primaryAccent,
       labelStyle: TextStyle(
-        color: isSelected ? AdwaitaColors.foliateGreen : colors.textPrimary,
+        color: isSelected ? primaryAccent : colors.textPrimary,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
       ),
       side: BorderSide(
-        color: isSelected ? AdwaitaColors.foliateGreen : colors.border,
+        color: isSelected ? primaryAccent : colors.border,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -648,10 +652,10 @@ class _AnnotationsScreenState extends State<AnnotationsScreen> {
                             File(book.coverUri!),
                             fit: BoxFit.cover,
                           )
-                        : const Icon(
+                        : Icon(
                             Icons.auto_stories_rounded,
                             size: 20,
-                            color: AdwaitaColors.foliateGreen,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                   ),
                   const SizedBox(width: 12),
@@ -795,7 +799,7 @@ class _AnnotationsScreenState extends State<AnnotationsScreen> {
                     ? Icons.search_off_rounded
                     : Icons.bookmarks_outlined,
                 size: 40,
-                color: AdwaitaColors.foliateGreen,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(height: 18),

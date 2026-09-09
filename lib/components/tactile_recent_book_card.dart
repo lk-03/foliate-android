@@ -33,6 +33,7 @@ class TactileRecentBookCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+    final primaryAccent = Theme.of(context).colorScheme.primary;
     final percent = (book.percentage * 100).round();
 
     return SizedBox(
@@ -97,7 +98,7 @@ class TactileRecentBookCard extends StatelessWidget {
                               Icon(
                                 Icons.auto_stories_rounded,
                                 size: 30,
-                                color: AdwaitaColors.foliateGreen.withValues(alpha: 0.8),
+                                color: primaryAccent.withValues(alpha: 0.8),
                               ),
                               const SizedBox(height: 8),
                               Text(
@@ -108,19 +109,32 @@ class TactileRecentBookCard extends StatelessWidget {
                                 style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  height: 1.2,
+                                  letterSpacing: -0.2,
                                 ),
                               ),
+                              if (book.author.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  book.author,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: colors.textMuted,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
 
-                      // Realistic Vertical Spine Crease & Shadow Overlay (left edge)
+                      // Left Spine Crease Edge Effect
                       Positioned(
                         left: 0,
                         top: 0,
                         bottom: 0,
-                        width: 8,
+                        width: 7,
                         child: DecoratedBox(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -128,40 +142,39 @@ class TactileRecentBookCard extends StatelessWidget {
                               end: Alignment.centerRight,
                               colors: [
                                 Colors.black.withValues(alpha: 0.45),
-                                Colors.white.withValues(alpha: 0.15),
                                 Colors.transparent,
                               ],
-                              stops: const [0.0, 0.4, 1.0],
                             ),
                           ),
                         ),
                       ),
 
-                      // Top-Right Frosted Percentage Badge
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.65),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              width: 0.5,
+                      // Frosted Glass Progress Percentage Badge (Top Right)
+                      if (percent > 0)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                width: 0.8,
+                              ),
                             ),
-                          ),
-                          child: Text(
-                            '$percent%',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: -0.2,
+                            child: Text(
+                              '$percent%',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: -0.2,
+                              ),
                             ),
                           ),
                         ),
-                      ),
 
                       // Flush Bottom Progress Bar
                       Positioned(
@@ -175,7 +188,7 @@ class TactileRecentBookCard extends StatelessWidget {
                           child: FractionallySizedBox(
                             widthFactor: book.percentage.clamp(0.0, 1.0),
                             child: Container(
-                              color: AdwaitaColors.terracottaAccent,
+                              color: primaryAccent,
                             ),
                           ),
                         ),

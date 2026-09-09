@@ -28,6 +28,7 @@ class BookCompletionSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+    final primaryAccent = Theme.of(context).colorScheme.primary;
 
     return SafeArea(
       child: Padding(
@@ -41,17 +42,17 @@ class BookCompletionSheet extends StatelessWidget {
               height: 72,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
                     AdwaitaColors.amberStreak,
-                    AdwaitaColors.terracottaAccent,
+                    primaryAccent,
                   ],
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: AdwaitaColors.terracottaAccent.withValues(alpha: 0.35),
+                    color: primaryAccent.withValues(alpha: 0.35),
                     blurRadius: 16,
                     offset: const Offset(0, 6),
                   ),
@@ -111,10 +112,10 @@ class BookCompletionSheet extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.schedule_rounded,
                     size: 18,
-                    color: AdwaitaColors.foliateGreen,
+                    color: primaryAccent,
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -136,7 +137,7 @@ class BookCompletionSheet extends StatelessWidget {
               height: 48,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AdwaitaColors.terracottaAccent,
+                  backgroundColor: primaryAccent,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),

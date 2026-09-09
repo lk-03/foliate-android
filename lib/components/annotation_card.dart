@@ -133,10 +133,10 @@ class AnnotationCard extends StatelessWidget {
               // Footer: Book Title, Date, and Actions Menu
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.bookmark_rounded,
                     size: 14,
-                    color: AdwaitaColors.foliateGreen,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(width: 6),
                   Expanded(

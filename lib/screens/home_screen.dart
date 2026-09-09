@@ -71,6 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+    final primaryAccent = Theme.of(context).colorScheme.primary;
 
     final habits = widget.readingHabits ?? const ReadingHabits();
 
@@ -107,11 +108,11 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   _getFormattedDate().toUpperCase(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.0,
-                    color: AdwaitaColors.terracottaAccent,
+                    color: primaryAccent,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -248,16 +249,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   selected: isSelected,
                   showCheckmark: false,
                   backgroundColor: colors.surfaceCard,
-                  selectedColor: AdwaitaColors.terracottaAccent,
+                  selectedColor: primaryAccent.withValues(alpha: 0.18),
                   side: BorderSide(
                     color: isSelected
-                        ? AdwaitaColors.terracottaAccent
+                        ? primaryAccent
                         : colors.border,
+                    width: isSelected ? 1.4 : 1.0,
                   ),
                   labelStyle: TextStyle(
                     fontSize: 12,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected ? Colors.white : colors.textPrimary,
+                    color: isSelected ? primaryAccent : colors.textPrimary,
                   ),
                   onSelected: (selected) {
                     setState(() {
@@ -312,6 +314,8 @@ class _HomeScreenState extends State<HomeScreen> {
     VoidCallback? onAction,
     required FoliateThemeColors colors,
   }) {
+    final primaryAccent = Theme.of(context).colorScheme.primary;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -322,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, size: 16, color: AdwaitaColors.terracottaAccent),
+                    Icon(icon, size: 16, color: primaryAccent),
                     const SizedBox(width: 6),
                   ],
                   Text(
@@ -355,17 +359,17 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   actionText,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: AdwaitaColors.terracottaAccent,
+                    color: primaryAccent,
                   ),
                 ),
                 const SizedBox(width: 2),
-                const Icon(
+                Icon(
                   Icons.chevron_right_rounded,
                   size: 16,
-                  color: AdwaitaColors.terracottaAccent,
+                  color: primaryAccent,
                 ),
               ],
             ),
@@ -375,6 +379,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCurrentlyReadingHero(Book book, FoliateThemeColors colors) {
+    final primaryAccent = Theme.of(context).colorScheme.primary;
     final percent = (book.percentage * 100).round();
 
     return Container(
@@ -414,11 +419,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 if (book.coverUri != null && File(book.coverUri!).existsSync())
                   Image.file(File(book.coverUri!), fit: BoxFit.cover)
                 else
-                  const Center(
+                  Center(
                     child: Icon(
                       Icons.auto_stories_rounded,
                       size: 24,
-                      color: AdwaitaColors.foliateGreen,
+                      color: primaryAccent,
                     ),
                   ),
                 Positioned(
@@ -454,8 +459,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     Container(
                       width: 7,
                       height: 7,
-                      decoration: const BoxDecoration(
-                        color: AdwaitaColors.foliateGreen,
+                      decoration: BoxDecoration(
+                        color: primaryAccent,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -497,10 +502,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(width: 10),
 
-          // Terracotta Resume Button
+          // Primary Accent Resume Button
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AdwaitaColors.terracottaAccent,
+              backgroundColor: primaryAccent,
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -521,6 +526,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildWelcomeBanner(FoliateThemeColors colors) {
+    final primaryAccent = Theme.of(context).colorScheme.primary;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -533,13 +540,13 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AdwaitaColors.foliateGreen.withValues(alpha: 0.15),
+              color: primaryAccent.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.menu_book_rounded,
               size: 26,
-              color: AdwaitaColors.foliateGreen,
+              color: primaryAccent,
             ),
           ),
           const SizedBox(width: 14),

@@ -1023,17 +1023,17 @@ class _ReaderScreenState extends State<ReaderScreen> {
           if (!_isReady)
             Container(
               color: AdwaitaColors.darkWindowBg,
-              child: const Center(
+              child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        AdwaitaColors.foliateGreen,
+                        themeAccent,
                       ),
                     ),
-                    SizedBox(height: 16),
-                    Text(
+                    const SizedBox(height: 16),
+                    const Text(
                       'Opening book...',
                       style: TextStyle(fontSize: 13, color: Colors.white70),
                     ),

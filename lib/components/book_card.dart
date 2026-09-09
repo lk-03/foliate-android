@@ -99,10 +99,10 @@ class BookCard extends StatelessWidget {
                                 color: Colors.black.withValues(alpha: 0.6),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.push_pin_rounded,
                                 size: 12,
-                                color: AdwaitaColors.foliateGreen,
+                                color: Theme.of(context).colorScheme.primary,
                               ),
                             ),
                           if (book.isFavorite)

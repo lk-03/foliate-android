@@ -25,6 +25,7 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
   void _showBookDetails(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+    final primaryAccent = Theme.of(context).colorScheme.primary;
 
     showModalBottomSheet(
       context: context,
@@ -69,16 +70,16 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
                                   vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: colors.inputBackground,
+                                  color: primaryAccent.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: colors.border),
+                                  border: Border.all(color: primaryAccent.withValues(alpha: 0.3)),
                                 ),
                                 child: Text(
                                   widget.book.tag.toUpperCase(),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
-                                    color: AdwaitaColors.terracottaAccent,
+                                    color: primaryAccent,
                                     letterSpacing: 0.5,
                                   ),
                                 ),
@@ -201,9 +202,7 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
                       height: 46,
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isSaved
-                              ? AdwaitaColors.foliateGreen
-                              : AdwaitaColors.terracottaAccent,
+                          backgroundColor: primaryAccent,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(24),
@@ -273,6 +272,7 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+    final primaryAccent = Theme.of(context).colorScheme.primary;
 
     if (widget.isCompact) {
       return _buildCompactCard(context, colors);
@@ -317,11 +317,11 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
                           ],
                         ),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Icon(
                           Icons.menu_book_rounded,
                           size: 36,
-                          color: AdwaitaColors.terracottaAccent,
+                          color: primaryAccent,
                         ),
                       ),
                     ),
@@ -444,10 +444,10 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   side: BorderSide(
-                    color: _isSaved ? AdwaitaColors.foliateGreen : colors.border,
+                    color: _isSaved ? primaryAccent : colors.border,
                   ),
                   backgroundColor: _isSaved
-                      ? AdwaitaColors.foliateGreen.withValues(alpha: 0.1)
+                      ? primaryAccent.withValues(alpha: 0.1)
                       : colors.inputBackground,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -459,7 +459,7 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
                       : Icons.bookmark_add_outlined,
                   size: 13,
                   color: _isSaved
-                      ? AdwaitaColors.foliateGreen
+                      ? primaryAccent
                       : colors.textPrimary,
                 ),
                 label: Text(
@@ -468,7 +468,7 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                     color: _isSaved
-                        ? AdwaitaColors.foliateGreen
+                        ? primaryAccent
                         : colors.textPrimary,
                   ),
                 ),
@@ -487,6 +487,8 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
   }
 
   Widget _buildCompactCard(BuildContext context, FoliateThemeColors colors) {
+    final primaryAccent = Theme.of(context).colorScheme.primary;
+
     return Container(
       decoration: BoxDecoration(
         color: colors.surfaceCard,
@@ -523,11 +525,11 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
                           ],
                         ),
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Icon(
                           Icons.menu_book_rounded,
                           size: 32,
-                          color: AdwaitaColors.terracottaAccent,
+                          color: primaryAccent,
                         ),
                       ),
                     ),
@@ -582,24 +584,45 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 1),
+            const SizedBox(height: 2),
             Text(
               widget.book.author,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 10,
                 color: colors.textMuted,
               ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                for (int i = 0; i < 5; i++)
+                  Icon(
+                    i < widget.book.rating.floor()
+                        ? Icons.star_rounded
+                        : Icons.star_half_rounded,
+                    size: 12,
+                    color: AdwaitaColors.amberStreak,
+                  ),
+                const SizedBox(width: 4),
+                Text(
+                  '${widget.book.rating}',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 3),
             Text(
               '${widget.book.pageCount} pages • ${widget.book.readTimeEstimate}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
-                color: AdwaitaColors.terracottaAccent,
+                color: primaryAccent,
                 fontWeight: FontWeight.w600,
               ),
             ),

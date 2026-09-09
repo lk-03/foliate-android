@@ -20,6 +20,7 @@ class ReadingInsightsCard extends StatelessWidget {
   void _showDailyGoalDialog(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+    final primaryAccent = Theme.of(context).colorScheme.primary;
 
     const options = [5, 10, 15, 20, 30, 45, 60];
 
@@ -46,7 +47,7 @@ class ReadingInsightsCard extends StatelessWidget {
                   return ChoiceChip(
                     label: Text('$mins mins'),
                     selected: isSelected,
-                    selectedColor: AdwaitaColors.terracottaAccent,
+                    selectedColor: primaryAccent,
                     labelStyle: TextStyle(
                       color: isSelected ? Colors.white : colors.textPrimary,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -70,6 +71,7 @@ class ReadingInsightsCard extends StatelessWidget {
   void _showYearlyGoalDialog(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+    final primaryAccent = Theme.of(context).colorScheme.primary;
 
     const options = [5, 10, 12, 15, 20, 25, 30, 50];
 
@@ -96,7 +98,7 @@ class ReadingInsightsCard extends StatelessWidget {
                   return ChoiceChip(
                     label: Text('$target books'),
                     selected: isSelected,
-                    selectedColor: AdwaitaColors.terracottaAccent,
+                    selectedColor: primaryAccent,
                     labelStyle: TextStyle(
                       color: isSelected ? Colors.white : colors.textPrimary,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -121,6 +123,7 @@ class ReadingInsightsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+    final primaryAccent = Theme.of(context).colorScheme.primary;
 
     final weekActivity = habits.getWeekActivityMap();
     final weekLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -136,65 +139,85 @@ class ReadingInsightsCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: colors.border.withValues(alpha: 0.8)),
       ),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Section Title Header
+          // Section Header: Reading Insights Title & Flame Pill
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Text(
-                    'YOUR PROGRESS',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.0,
-                      color: AdwaitaColors.amberStreak,
-                    ),
+                  Icon(
+                    Icons.insights_rounded,
+                    size: 18,
+                    color: primaryAccent,
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(width: 8),
                   const Text(
                     'Reading Insights',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                       letterSpacing: -0.3,
                     ),
                   ),
                 ],
               ),
-              IconButton(
-                icon: const Icon(Icons.tune_rounded, size: 20),
-                tooltip: 'Configure Reading Goals',
-                onPressed: () => _showDailyGoalDialog(context),
+              // Day Streak Flame Counter
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AdwaitaColors.amberStreak.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AdwaitaColors.amberStreak.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.local_fire_department_rounded,
+                      size: 16,
+                      color: AdwaitaColors.amberStreak,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${habits.currentStreak} Day Streak',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AdwaitaColors.amberStreak,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
 
-          // 2-Column Progress Grid (Daily Goal + Day Streak)
+          // Daily Goal & Streak Summary Cards (2-Columns)
           Row(
             children: [
-              // Left: Daily Goal Ring Card
+              // 1. Daily Reading Goal Card
               Expanded(
                 child: InkWell(
                   onTap: () => _showDailyGoalDialog(context),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: colors.inputBackground,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colors.border.withValues(alpha: 0.5)),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: colors.border),
                     ),
                     child: Row(
                       children: [
-                        // Circular Ring
+                        // Circular Progress Ring
                         SizedBox(
                           width: 44,
                           height: 44,
@@ -206,9 +229,7 @@ class ReadingInsightsCard extends StatelessWidget {
                                 painter: _GoalRingPainter(
                                   fraction: habits.dailyGoalFraction,
                                   trackColor: colors.border,
-                                  progressColor: habits.isDailyGoalAchieved
-                                      ? AdwaitaColors.foliateGreen
-                                      : AdwaitaColors.terracottaAccent,
+                                  progressColor: primaryAccent,
                                 ),
                               ),
                               Icon(
@@ -216,9 +237,7 @@ class ReadingInsightsCard extends StatelessWidget {
                                     ? Icons.check_rounded
                                     : Icons.timer_outlined,
                                 size: 18,
-                                color: habits.isDailyGoalAchieved
-                                    ? AdwaitaColors.foliateGreen
-                                    : AdwaitaColors.terracottaAccent,
+                                color: primaryAccent,
                               ),
                             ],
                           ),
@@ -343,6 +362,7 @@ class ReadingInsightsCard extends StatelessWidget {
                     colors: colors,
                     letter: weekLetters[i],
                     isActive: weekActivity[i + 1] ?? false,
+                    accentColor: primaryAccent,
                   ),
                 ],
               ],
@@ -373,7 +393,7 @@ class ReadingInsightsCard extends StatelessWidget {
                           Icon(
                             Icons.auto_stories_rounded,
                             size: 16,
-                            color: AdwaitaColors.terracottaAccent,
+                            color: primaryAccent,
                           ),
                           const SizedBox(width: 6),
                           Text(
@@ -390,7 +410,7 @@ class ReadingInsightsCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: AdwaitaColors.terracottaAccent,
+                          color: primaryAccent,
                         ),
                       ),
                     ],
@@ -407,11 +427,11 @@ class ReadingInsightsCard extends StatelessWidget {
                       child: FractionallySizedBox(
                         widthFactor: habits.yearlyProgressFraction,
                         child: Container(
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                AdwaitaColors.amberStreak,
-                                AdwaitaColors.terracottaAccent,
+                                primaryAccent.withValues(alpha: 0.65),
+                                primaryAccent,
                               ],
                             ),
                           ),
@@ -438,7 +458,7 @@ class ReadingInsightsCard extends StatelessWidget {
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
                           color: booksDone >= targetBooks
-                              ? AdwaitaColors.foliateGreen
+                              ? primaryAccent
                               : colors.textMuted,
                         ),
                       ),
@@ -457,7 +477,10 @@ class ReadingInsightsCard extends StatelessWidget {
     required FoliateThemeColors colors,
     required String letter,
     required bool isActive,
+    required Color accentColor,
   }) {
+    final activeColor = accentColor;
+
     return Column(
       children: [
         Text(
@@ -474,7 +497,7 @@ class ReadingInsightsCard extends StatelessWidget {
           height: 22,
           decoration: BoxDecoration(
             color: isActive
-                ? AdwaitaColors.terracottaAccent
+                ? activeColor
                 : colors.border.withValues(alpha: 0.5),
             shape: BoxShape.circle,
           ),
