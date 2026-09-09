@@ -12,10 +12,12 @@ import '../theme/theme.dart';
 /// Full-screen immersive mobile reader interface
 class ReaderScreen extends StatefulWidget {
   final Book book;
+  final String? initialCfi;
 
   const ReaderScreen({
     super.key,
     required this.book,
+    this.initialCfi,
   });
 
   @override
@@ -235,11 +237,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
       await _bridge.applyReaderSettings(effective);
     }
     final bytes = await StorageService.instance.getBookBytes(widget.book);
+    final targetCfi = widget.initialCfi ?? widget.book.cfi;
     if (bytes != null && bytes.isNotEmpty) {
       final base64String = base64Encode(bytes);
-      await _bridge.openBook(base64String, initialCfi: widget.book.cfi);
-    } else if (widget.book.cfi != null) {
-      await _bridge.goToHref(widget.book.cfi!);
+      await _bridge.openBook(base64String, initialCfi: targetCfi);
+    } else if (targetCfi != null) {
+      await _bridge.goToHref(targetCfi);
     }
     final annotations =
         await StorageService.instance.getAnnotations(widget.book.hash);

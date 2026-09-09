@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:foliate/main.dart';
 import 'package:foliate/models/models.dart';
 import 'package:foliate/components/components.dart';
+import 'package:foliate/screens/annotations_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -659,6 +660,134 @@ void main() {
     await tester.tap(find.text('Chapter 1: The Arrival'));
     await tester.pumpAndSettle();
     expect(selectedHref, equals('ch1.html'));
+  });
+
+  testWidgets('AnnotationsScreen renders empty state when no highlights exist',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: AnnotationsScreen(
+          annotations: [],
+          booksMap: {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('No Annotations Yet'), findsOneWidget);
+    expect(find.text('Select any text while reading to highlight passages, save personal notes, and export your quotes.'), findsOneWidget);
+  });
+
+  testWidgets('AnnotationsScreen renders book groups, filters, and triggers export',
+      (WidgetTester tester) async {
+    const book1 = Book(
+      hash: 'hash-1',
+      title: 'A Little Life',
+      author: 'Hanya Yanagihara',
+      addedAt: 1725458000000,
+    );
+    const book2 = Book(
+      hash: 'hash-2',
+      title: 'Dune',
+      author: 'Frank Herbert',
+      addedAt: 1725458000000,
+    );
+
+    final annotations = [
+      const Annotation(
+        id: 'ann-1',
+        bookHash: 'hash-1',
+        cfi: 'cfi-1',
+        text: 'Things get broken, and sometimes repaired.',
+        color: '#FFE066',
+        createdAt: 1725458000000,
+      ),
+      const Annotation(
+        id: 'ann-2',
+        bookHash: 'hash-1',
+        cfi: 'cfi-2',
+        text: 'You will not always feel this way.',
+        note: 'Comforting note',
+        color: '#B8E986',
+        createdAt: 1725459000000,
+      ),
+      const Annotation(
+        id: 'ann-3',
+        bookHash: 'hash-2',
+        cfi: 'cfi-3',
+        text: 'Fear is the mind-killer.',
+        color: '#80D8FF',
+        createdAt: 1725460000000,
+      ),
+    ];
+
+    Annotation? tappedAnnotation;
+    Book? tappedBook;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AnnotationsScreen(
+          annotations: annotations,
+          booksMap: {
+            'hash-1': book1,
+            'hash-2': book2,
+          },
+          onAnnotationTap: (ann, book) {
+            tappedAnnotation = ann;
+            tappedBook = book;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify screen title & book accordion headers
+    expect(find.text('Annotations'), findsOneWidget);
+    expect(find.text('A Little Life'), findsNWidgets(3));
+    expect(find.text('Dune'), findsNWidgets(2));
+    expect(find.text('Hanya Yanagihara'), findsOneWidget);
+    expect(find.text('Frank Herbert'), findsOneWidget);
+
+    // Verify quotes
+    expect(find.text('“Things get broken, and sometimes repaired.”'), findsOneWidget);
+    expect(find.text('“Fear is the mind-killer.”'), findsOneWidget);
+    expect(find.text('Comforting note'), findsOneWidget);
+
+    // Tap on an annotation card -> triggers onAnnotationTap
+    await tester.tap(find.text('“Things get broken, and sometimes repaired.”'));
+    await tester.pumpAndSettle();
+    expect(tappedAnnotation?.id, equals('ann-1'));
+    expect(tappedBook?.title, equals('A Little Life'));
+
+    // Filter by Green color
+    await tester.tap(find.text('Green'));
+    await tester.pumpAndSettle();
+
+    // Now only the green annotation should be visible
+    expect(find.text('“You will not always feel this way.”'), findsOneWidget);
+    expect(find.text('“Fear is the mind-killer.”'), findsNothing);
+
+    // Reset filter
+    await tester.tap(find.text('All (3)'));
+    await tester.pumpAndSettle();
+    expect(find.text('“Fear is the mind-killer.”'), findsOneWidget);
+
+    // Tap Export button in AppBar
+    await tester.tap(find.byIcon(Icons.ios_share_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Export as Markdown (.md)'), findsOneWidget);
+    await tester.tap(find.text('Export as Markdown (.md)'));
+    await tester.pumpAndSettle();
+
+    // Verify Export preview dialog
+    expect(find.text('Export Highlights (Markdown)'), findsOneWidget);
+    expect(find.text('Copy to Clipboard'), findsOneWidget);
+
+    // Close preview dialog
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+    expect(find.text('Export Highlights (Markdown)'), findsNothing);
   });
 }
 

@@ -8,6 +8,7 @@ import 'annotations_screen.dart';
 import 'favorites_screen.dart';
 import 'home_screen.dart';
 import 'library_screen.dart';
+import 'reader_screen.dart';
 
 /// Top-level mobile navigation shell hosting the Swipeable PageView,
 /// Bottom Navigation Bar, and HeaderBar.
@@ -40,6 +41,7 @@ class _MainShellState extends State<MainShell> {
   Future<void> _initStorageAndBooks() async {
     await StorageService.instance.preseedSampleBookIfNeeded();
     await _reloadBooks();
+    await _reloadAnnotations();
     _autoScanLinkedFolders();
   }
 
@@ -48,6 +50,15 @@ class _MainShellState extends State<MainShell> {
     if (mounted) {
       setState(() {
         _books = loaded;
+      });
+    }
+  }
+
+  Future<void> _reloadAnnotations() async {
+    final loaded = await StorageService.instance.getAllAnnotations();
+    if (mounted) {
+      setState(() {
+        _annotations = loaded;
       });
     }
   }
@@ -71,6 +82,9 @@ class _MainShellState extends State<MainShell> {
     if (_currentIndex == index) return;
     HapticFeedback.selectionClick();
     setState(() => _currentIndex = index);
+    if (index == 3) {
+      _reloadAnnotations();
+    }
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 280),
@@ -78,17 +92,7 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  final List<Annotation> _annotations = [
-    const Annotation(
-      id: 'ann-1',
-      bookHash: 'a1b2c3d4e5f601',
-      cfi: 'epubcfi(/6/10!/4/2/2)',
-      text: 'JB was going through, as he put it, his hair phase.',
-      note: 'Key introductory line',
-      color: Annotation.colorYellow,
-      createdAt: 1725458000000,
-    ),
-  ];
+  List<Annotation> _annotations = [];
 
   String get _currentTitle {
     switch (_currentIndex) {
@@ -192,6 +196,19 @@ class _MainShellState extends State<MainShell> {
           AnnotationsScreen(
             annotations: _annotations,
             booksMap: booksMap,
+            onAnnotationsChanged: _reloadAnnotations,
+            onAnnotationTap: (annotation, book) {
+              if (book != null) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ReaderScreen(
+                      book: book,
+                      initialCfi: annotation.cfi,
+                    ),
+                  ),
+                ).then((_) => _reloadAnnotations());
+              }
+            },
           ),
         ],
       ),
