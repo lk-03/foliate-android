@@ -146,6 +146,37 @@ enum ProgressDisplayLocation {
   }
 }
 
+/// Page-turn animation style
+enum PageAnimationMode {
+  curl,
+  slide,
+  scroll,
+  none;
+
+  String get id => name;
+
+  String get label {
+    switch (this) {
+      case PageAnimationMode.curl:
+        return '3D Curl';
+      case PageAnimationMode.slide:
+        return 'Slide';
+      case PageAnimationMode.scroll:
+        return 'Scroll';
+      case PageAnimationMode.none:
+        return 'Fast';
+    }
+  }
+
+  static PageAnimationMode fromString(String? value) {
+    if (value == null) return PageAnimationMode.curl;
+    for (final v in PageAnimationMode.values) {
+      if (v.name.toLowerCase() == value.toLowerCase()) return v;
+    }
+    return PageAnimationMode.curl;
+  }
+}
+
 /// Comprehensive reader settings for typography, appearance, and layout.
 class ReaderSettings {
   final ReaderThemeMode theme;
@@ -172,6 +203,7 @@ class ReaderSettings {
   final double paddingTop;
   final double paddingBottom;
   final double? marginSide;
+  final PageAnimationMode pageAnimationMode;
 
   const ReaderSettings({
     this.theme = ReaderThemeMode.defaultTheme,
@@ -198,6 +230,7 @@ class ReaderSettings {
     this.paddingTop = 108.0,
     this.paddingBottom = 96.0,
     this.marginSide,
+    this.pageAnimationMode = PageAnimationMode.curl,
   });
 
   ReaderSettings copyWith({
@@ -225,6 +258,7 @@ class ReaderSettings {
     double? paddingTop,
     double? paddingBottom,
     double? marginSide,
+    PageAnimationMode? pageAnimationMode,
   }) {
     return ReaderSettings(
       theme: theme ?? this.theme,
@@ -251,6 +285,7 @@ class ReaderSettings {
       paddingTop: paddingTop ?? this.paddingTop,
       paddingBottom: paddingBottom ?? this.paddingBottom,
       marginSide: marginSide ?? this.marginSide,
+      pageAnimationMode: pageAnimationMode ?? this.pageAnimationMode,
     );
   }
 
@@ -280,6 +315,7 @@ class ReaderSettings {
       'paddingTop': paddingTop,
       'paddingBottom': paddingBottom,
       'marginSide': marginSide,
+      'pageAnimationMode': pageAnimationMode.id,
     };
   }
 
@@ -309,6 +345,7 @@ class ReaderSettings {
       paddingTop: (map['paddingTop'] as num?)?.toDouble() ?? 108.0,
       paddingBottom: (map['paddingBottom'] as num?)?.toDouble() ?? 96.0,
       marginSide: (map['marginSide'] as num?)?.toDouble(),
+      pageAnimationMode: PageAnimationMode.fromString(map['pageAnimationMode'] as String?),
     );
   }
 
@@ -344,7 +381,8 @@ class ReaderSettings {
         other.showPageSlider == showPageSlider &&
         other.paddingTop == paddingTop &&
         other.paddingBottom == paddingBottom &&
-        other.marginSide == marginSide;
+        other.marginSide == marginSide &&
+        other.pageAnimationMode == pageAnimationMode;
   }
 
   @override
@@ -373,5 +411,6 @@ class ReaderSettings {
         paddingTop,
         paddingBottom,
         marginSide,
+        pageAnimationMode,
       ]);
 }

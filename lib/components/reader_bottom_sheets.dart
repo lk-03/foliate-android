@@ -225,6 +225,75 @@ class _ReaderLayoutSheetState extends State<ReaderLayoutSheet> {
                         ),
                       ],
                     ),
+                    _buildSectionHeader('Page Animation & Transitions'),
+                    _buildCard(
+                      colors: colors,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Page Turn Style',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: colors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _buildChoiceChip(
+                                    label: '3D Curl',
+                                    isSelected: _current.pageAnimationMode == PageAnimationMode.curl,
+                                    onSelected: () => _update(_current.copyWith(
+                                      pageAnimationMode: PageAnimationMode.curl,
+                                      pageFlipping: 'horizontal',
+                                    )),
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
+                                  _buildChoiceChip(
+                                    label: 'Slide',
+                                    isSelected: _current.pageAnimationMode == PageAnimationMode.slide,
+                                    onSelected: () => _update(_current.copyWith(
+                                      pageAnimationMode: PageAnimationMode.slide,
+                                      pageFlipping: 'horizontal',
+                                    )),
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
+                                  _buildChoiceChip(
+                                    label: 'Scroll',
+                                    isSelected: _current.pageAnimationMode == PageAnimationMode.scroll ||
+                                        _current.pageFlipping == 'vertical',
+                                    onSelected: () => _update(_current.copyWith(
+                                      pageAnimationMode: PageAnimationMode.scroll,
+                                      pageFlipping: 'vertical',
+                                    )),
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
+                                  _buildChoiceChip(
+                                    label: 'Fast',
+                                    isSelected: _current.pageAnimationMode == PageAnimationMode.none,
+                                    onSelected: () => _update(_current.copyWith(
+                                      pageAnimationMode: PageAnimationMode.none,
+                                      pageFlipping: 'horizontal',
+                                    )),
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 18),
 
                     _buildSectionHeader('Flow & Columns'),

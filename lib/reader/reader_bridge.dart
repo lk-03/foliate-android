@@ -280,4 +280,11 @@ class ReaderBridge {
     } catch (_) {}
     return null;
   }
+
+  /// Sets page animation mode (curl, slide, scroll, none)
+  Future<void> setPageAnimationMode(PageAnimationMode mode) async {
+    await _controller?.runJavaScript(
+      'if (window.setPageAnimationMode) window.setPageAnimationMode(${jsonEncode(mode.id)});',
+    );
+  }
 }

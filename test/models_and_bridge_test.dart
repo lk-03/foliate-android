@@ -100,6 +100,7 @@ void main() {
         paddingTop: 112.0,
         paddingBottom: 98.0,
         marginSide: 28.0,
+        pageAnimationMode: PageAnimationMode.slide,
       );
 
       final jsonString = settings.toJson();
@@ -123,6 +124,12 @@ void main() {
       expect(restored.paddingTop, equals(112.0));
       expect(restored.paddingBottom, equals(98.0));
       expect(restored.marginSide, equals(28.0));
+      expect(restored.pageAnimationMode, equals(PageAnimationMode.slide));
+
+      // Verify all page animation modes can be deserialized
+      for (final anim in ['curl', 'slide', 'scroll', 'none']) {
+        expect(PageAnimationMode.fromString(anim).name, isNotEmpty);
+      }
 
       // Verify all 9 themes can be deserialized
       for (final mode in [

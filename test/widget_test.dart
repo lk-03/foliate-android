@@ -94,9 +94,60 @@ void main() {
     expect(find.text('Layout'), findsOneWidget);
     expect(find.text('Side Margins'), findsOneWidget);
     expect(find.text('Hyphenation'), findsOneWidget);
+    expect(find.text('Page Animation & Transitions'), findsOneWidget);
+    expect(find.text('3D Curl'), findsOneWidget);
+    expect(find.text('Slide'), findsOneWidget);
+    expect(find.text('Scroll'), findsOneWidget);
+    expect(find.text('Fast'), findsOneWidget);
     expect(find.text('Continuous Scrolled Mode'), findsOneWidget);
     expect(find.text('Two Columns (Landscape)'), findsOneWidget);
     expect(find.text('Pages Left'), findsOneWidget);
+
+    // Tap Slide animation chip
+    await tester.tap(find.text('Slide'));
+    await tester.pumpAndSettle();
+    expect(currentSettings.pageAnimationMode, equals(PageAnimationMode.slide));
+  });
+
+  testWidgets('PageCurlOverlay renders child and triggers tap navigation', (WidgetTester tester) async {
+    bool nextCalled = false;
+    bool prevCalled = false;
+    bool toggleHUDCalled = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: PageCurlOverlay(
+            settings: const ReaderSettings(pageAnimationMode: PageAnimationMode.slide),
+            backgroundColor: Colors.black,
+            textColor: Colors.white,
+            onNextPage: () => nextCalled = true,
+            onPrevPage: () => prevCalled = true,
+            onToggleHUD: () => toggleHUDCalled = true,
+            child: const Center(child: Text('Book Content Page')),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Book Content Page'), findsOneWidget);
+
+    // Tap right 28% -> Next Page
+    await tester.tapAt(const Offset(700, 300));
+    await tester.pumpAndSettle();
+    expect(nextCalled, isTrue);
+
+    // Tap left 28% -> Prev Page
+    await tester.tapAt(const Offset(50, 300));
+    await tester.pumpAndSettle();
+    expect(prevCalled, isTrue);
+
+    // Tap center 44% -> Toggle HUD
+    await tester.tapAt(const Offset(400, 300));
+    await tester.pumpAndSettle();
+    expect(toggleHUDCalled, isTrue);
   });
 
   testWidgets('ReaderThemeCustomizeSheet live preview and font controls test', (WidgetTester tester) async {

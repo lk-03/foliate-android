@@ -191,6 +191,26 @@ class AdwaitaColors {
         return const Color(0xFF3DB88F); // Foliate leaf green
     }
   }
+
+  /// Returns the background color for a given theme preset
+  static Color getReaderBgColor(String themeId, bool isDarkMode) {
+    for (final theme in foliateThemes) {
+      if (theme.id.toLowerCase() == themeId.toLowerCase()) {
+        return theme.bg(isDarkMode);
+      }
+    }
+    return isDarkMode ? darkWindowBg : lightWindowBg;
+  }
+
+  /// Returns the foreground text color for a given theme preset
+  static Color getReaderFgColor(String themeId, bool isDarkMode) {
+    for (final theme in foliateThemes) {
+      if (theme.id.toLowerCase() == themeId.toLowerCase()) {
+        return theme.text(isDarkMode);
+      }
+    }
+    return isDarkMode ? darkTextPrimary : lightTextPrimary;
+  }
 }
 
 /// Representation of a Foliate theme with light and dark mode color pairs

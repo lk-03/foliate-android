@@ -5770,10 +5770,18 @@ ${doc.querySelector("parsererror").innerText}`);
 
       if (!view || !view.renderer) return;
 
-      if (pageFlipping === 'vertical') {
+      const pageAnim = settings.pageAnimationMode || (pageFlipping === 'vertical' ? 'scroll' : 'curl');
+
+      if (pageAnim === 'scroll' || pageFlipping === 'vertical') {
         view.renderer.setAttribute('flow', 'scrolled');
+        view.renderer.setAttribute('animated', '');
       } else {
         view.renderer.setAttribute('flow', 'paginated');
+        if (pageAnim === 'none' || reduceAnimation) {
+          view.renderer.removeAttribute('animated');
+        } else {
+          view.renderer.setAttribute('animated', '');
+        }
       }
 
       if (twoPagesLandscape) {
@@ -5932,6 +5940,12 @@ ${doc.querySelector("parsererror").innerText}`);
       if (fontSize) {
         buildBookPageMap(fontSize / 16);
       }
+    };
+
+    window.setPageAnimationMode = (mode) => {
+      if (!currentReaderSettings) currentReaderSettings = {};
+      currentReaderSettings.pageAnimationMode = mode;
+      window.applyReaderSettings(currentReaderSettings);
     };
 
     let currentSearchId = 0;

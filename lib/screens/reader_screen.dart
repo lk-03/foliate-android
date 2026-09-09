@@ -756,9 +756,31 @@ class _ReaderScreenState extends State<ReaderScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Underlying Foliate WebView
+          // Underlying Foliate WebView with Page-Turn Animation & Gesture Overlay
           Positioned.fill(
-            child: ReaderWebView(bridge: _bridge),
+            child: PageCurlOverlay(
+              settings: _settings,
+              backgroundColor: AdwaitaColors.getReaderBgColor(
+                _settings.theme.id,
+                _settings.isDarkMode,
+              ),
+              textColor: AdwaitaColors.getReaderFgColor(
+                _settings.theme.id,
+                _settings.isDarkMode,
+              ),
+              onNextPage: () {
+                _resetInactivityTimer();
+                _bridge.goNext();
+              },
+              onPrevPage: () {
+                _resetInactivityTimer();
+                _bridge.goPrev();
+              },
+              onToggleHUD: () {
+                _toggleControls();
+              },
+              child: ReaderWebView(bridge: _bridge),
+            ),
           ),
 
           // In-App Software Brightness Dimming Overlay
@@ -772,46 +794,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 ),
               ),
             ),
-
-          // Tap Zones for Navigation and HUD (Left 28% Prev, Right 28% Next, Center 44% Toggle HUD)
-          Positioned.fill(
-            child: Row(
-              children: [
-                // Left 28% -> Previous Page
-                Expanded(
-                  flex: 28,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: () {
-                      _resetInactivityTimer();
-                      _bridge.goPrev();
-                    },
-                  ),
-                ),
-                // Center 44% -> Toggle HUD
-                Expanded(
-                  flex: 44,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: () {
-                      _toggleControls();
-                    },
-                  ),
-                ),
-                // Right 28% -> Next Page
-                Expanded(
-                  flex: 28,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: () {
-                      _resetInactivityTimer();
-                      _bridge.goNext();
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
 
           // Top Center Chapter Title (when controls are hidden - Reference Image 1)
           if (!_showControls && !_isSearchActive)
