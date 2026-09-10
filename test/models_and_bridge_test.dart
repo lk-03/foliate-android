@@ -101,6 +101,7 @@ void main() {
         marginSide: 28.0,
         pageAnimationMode: PageAnimationMode.slide,
         stayAwake: true,
+        pageNumberSource: PageNumberSource.printEdition,
       );
 
       final jsonString = settings.toJson();
@@ -109,6 +110,7 @@ void main() {
       expect(restored.theme, equals(ReaderThemeMode.gruvbox));
       expect(restored.isDarkMode, isTrue);
       expect(restored.stayAwake, isTrue);
+      expect(restored.pageNumberSource, equals(PageNumberSource.printEdition));
       expect(restored.fontSize, equals(18.0));
       expect(restored.minFontSize, equals(12.0));
       expect(restored.fontFamily, equals('serif'));
@@ -135,12 +137,44 @@ void main() {
       expect(PageAnimationMode.fromString('scroll'), equals(PageAnimationMode.scroll));
       expect(PageAnimationMode.fromString('none'), equals(PageAnimationMode.none));
 
+      // Verify all page number sources can be deserialized
+      expect(PageNumberSource.fromString('digital_book'), equals(PageNumberSource.digitalBook));
+      expect(PageNumberSource.fromString('print_edition'), equals(PageNumberSource.printEdition));
+      expect(PageNumberSource.fromString('invalid'), equals(PageNumberSource.digitalBook));
+      expect(PageNumberSource.digitalBook.label, equals('Digital Book'));
+      expect(PageNumberSource.printEdition.label, equals('Print Edition'));
+
       // Verify all 9 themes can be deserialized
       for (final mode in [
         'default', 'gray', 'sepia', 'grass', 'cherry', 'sky', 'solarized', 'gruvbox', 'nord'
       ]) {
         expect(ReaderThemeMode.fromString(mode).name, isNotEmpty);
       }
+    });
+
+    test('TOCItem model digital and print page numbers', () {
+      const item = TOCItem(
+        label: 'Chapter 2: The Secret',
+        href: 'ch2.html',
+        depth: 0,
+        pageNumber: 57,
+        digitalPageNumber: 57,
+        printPageNumber: 42,
+      );
+
+      expect(item.getPageNumber(PageNumberSource.digitalBook), equals(57));
+      expect(item.getPageNumber(PageNumberSource.printEdition), equals(42));
+
+      final jsonString = item.toJson();
+      final restored = TOCItem.fromJson(jsonString);
+
+      expect(restored.label, equals('Chapter 2: The Secret'));
+      expect(restored.href, equals('ch2.html'));
+      expect(restored.pageNumber, equals(57));
+      expect(restored.digitalPageNumber, equals(57));
+      expect(restored.printPageNumber, equals(42));
+      expect(restored.getPageNumber(PageNumberSource.digitalBook), equals(57));
+      expect(restored.getPageNumber(PageNumberSource.printEdition), equals(42));
     });
 
     test('ReadingLocation formatting and calculations', () {

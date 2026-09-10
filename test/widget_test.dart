@@ -724,6 +724,69 @@ void main() {
     expect(selectedHref, equals('ch1.html'));
   });
 
+  testWidgets('ReaderTOCSheet switches between Digital Book and Print Edition page numbers via popup menu',
+      (WidgetTester tester) async {
+    PageNumberSource? changedSource;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: ReaderTOCSheet(
+            book: const Book(
+              hash: 'jezebel-hash',
+              title: 'Jezebel',
+              author: 'Irene Nemirovsky',
+              addedAt: 123456789,
+            ),
+            toc: const [
+              TOCItem(
+                label: 'Chapter 1: The Arrival',
+                href: 'ch1.html',
+                digitalPageNumber: 15,
+                printPageNumber: 9,
+              ),
+              TOCItem(
+                label: 'Chapter 2: The Secret',
+                href: 'ch2.html',
+                digitalPageNumber: 57,
+                printPageNumber: 42,
+              ),
+            ],
+            bookmarks: const [],
+            pageNumberSource: PageNumberSource.digitalBook,
+            onPageNumberSourceChanged: (s) => changedSource = s,
+            onChapterSelected: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Initially displays digital pages
+    expect(find.text('Digital Book'), findsOneWidget);
+    expect(find.text('15'), findsOneWidget);
+    expect(find.text('57'), findsOneWidget);
+
+    // Open popup menu
+    await tester.tap(find.text('Digital Book'));
+    await tester.pumpAndSettle();
+
+    // Verify popup menu items
+    expect(find.text('Page Numbers'), findsOneWidget);
+    expect(find.text('Print Edition'), findsOneWidget);
+
+    // Select Print Edition
+    await tester.tap(find.text('Print Edition'));
+    await tester.pumpAndSettle();
+
+    expect(changedSource, equals(PageNumberSource.printEdition));
+    // Now displays print pages
+    expect(find.text('Print Edition'), findsOneWidget);
+    expect(find.text('9'), findsOneWidget);
+    expect(find.text('42'), findsOneWidget);
+  });
+
   testWidgets('AnnotationsScreen renders empty state when no highlights exist',
       (WidgetTester tester) async {
     await tester.pumpWidget(

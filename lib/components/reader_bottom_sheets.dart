@@ -947,6 +947,8 @@ class ReaderTOCSheet extends StatefulWidget {
   final Book? book;
   final ReadingLocation? currentLocation;
   final Color? accentColor;
+  final PageNumberSource pageNumberSource;
+  final ValueChanged<PageNumberSource>? onPageNumberSourceChanged;
 
   const ReaderTOCSheet({
     super.key,
@@ -957,6 +959,8 @@ class ReaderTOCSheet extends StatefulWidget {
     this.book,
     this.currentLocation,
     this.accentColor,
+    this.pageNumberSource = PageNumberSource.digitalBook,
+    this.onPageNumberSourceChanged,
   });
 
   @override
@@ -965,6 +969,21 @@ class ReaderTOCSheet extends StatefulWidget {
 
 class _ReaderTOCSheetState extends State<ReaderTOCSheet> {
   int _selectedTab = 0; // 0: Contents, 1: Bookmarks
+  late PageNumberSource _pageNumberSource;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageNumberSource = widget.pageNumberSource;
+  }
+
+  @override
+  void didUpdateWidget(covariant ReaderTOCSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pageNumberSource != widget.pageNumberSource) {
+      _pageNumberSource = widget.pageNumberSource;
+    }
+  }
 
   int _countAllItems(List<TOCItem> items) {
     var count = 0;
@@ -976,8 +995,9 @@ class _ReaderTOCSheetState extends State<ReaderTOCSheet> {
   }
 
   int? _resolvePageNumber(TOCItem item, int index, int totalItems) {
-    if (item.pageNumber != null && item.pageNumber! > 0) {
-      return item.pageNumber;
+    final explicitPage = item.getPageNumber(_pageNumberSource);
+    if (explicitPage != null && explicitPage > 0) {
+      return explicitPage;
     }
     final totalPages = widget.currentLocation?.totalLocations ?? 0;
     if (totalPages > 0 && totalItems > 0) {
@@ -987,17 +1007,19 @@ class _ReaderTOCSheetState extends State<ReaderTOCSheet> {
     return null;
   }
 
-  bool _isItemActive(TOCItem item, int? pageNum, int? nextItemPageNum) {
+  bool _isItemActive(TOCItem item, int? pageNum, TOCItem? nextItem, int? nextItemPageNum) {
     final curChap = widget.currentLocation?.sectionTitle?.trim().toLowerCase();
     if (curChap != null && curChap.isNotEmpty && curChap == item.label.trim().toLowerCase()) {
       return true;
     }
     final curPage = widget.currentLocation?.currentLocation;
-    if (curPage != null && pageNum != null) {
-      if (nextItemPageNum != null) {
-        return curPage >= pageNum && curPage < nextItemPageNum;
+    final itemDigital = item.digitalPageNumber ?? pageNum;
+    final nextDigital = nextItem?.digitalPageNumber ?? nextItemPageNum;
+    if (curPage != null && itemDigital != null) {
+      if (nextDigital != null && nextDigital > itemDigital) {
+        return curPage >= itemDigital && curPage < nextDigital;
       } else {
-        return curPage >= pageNum;
+        return curPage >= itemDigital;
       }
     }
     return false;
@@ -1137,6 +1159,9 @@ class _ReaderTOCSheetState extends State<ReaderTOCSheet> {
                         colors,
                         activeColor,
                       ),
+                      const Spacer(),
+                      if (_selectedTab == 0)
+                        _buildPageNumberMenu(colors, activeColor),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -1250,6 +1275,128 @@ class _ReaderTOCSheetState extends State<ReaderTOCSheet> {
     );
   }
 
+  Widget _buildPageNumberMenu(FoliateThemeColors colors, Color activeColor) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        popupMenuTheme: PopupMenuThemeData(
+          color: colors.surfaceCard,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: colors.border.withValues(alpha: 0.8)),
+          ),
+          elevation: 8,
+        ),
+      ),
+      child: PopupMenuButton<PageNumberSource>(
+        tooltip: 'Page numbers',
+        offset: const Offset(0, 36),
+        padding: EdgeInsets.zero,
+        onSelected: (source) {
+          HapticFeedback.selectionClick();
+          setState(() => _pageNumberSource = source);
+          widget.onPageNumberSourceChanged?.call(source);
+        },
+        itemBuilder: (context) => [
+          PopupMenuItem<PageNumberSource>(
+            enabled: false,
+            height: 32,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Page Numbers',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: colors.textMuted,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ),
+          const PopupMenuDivider(height: 1),
+          PopupMenuItem<PageNumberSource>(
+            value: PageNumberSource.digitalBook,
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  child: _pageNumberSource == PageNumberSource.digitalBook
+                      ? Icon(Icons.check_rounded, size: 18, color: activeColor)
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Digital Book',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: _pageNumberSource == PageNumberSource.digitalBook
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                    color: colors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          PopupMenuItem<PageNumberSource>(
+            value: PageNumberSource.printEdition,
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 20,
+                  child: _pageNumberSource == PageNumberSource.printEdition
+                      ? Icon(Icons.check_rounded, size: 18, color: activeColor)
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Print Edition',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: _pageNumberSource == PageNumberSource.printEdition
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                    color: colors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: colors.inputBackground,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: colors.border),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _pageNumberSource.label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 3),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 16,
+                color: colors.textMuted,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTabButton(
     String title,
     int tabIndex,
@@ -1297,11 +1444,13 @@ class _ReaderTOCSheetState extends State<ReaderTOCSheet> {
       final item = items[i];
       final currentIndex = itemCounter[0]++;
       final pageNum = _resolvePageNumber(item, currentIndex, totalItems);
+      TOCItem? nextItem;
       int? nextItemPageNum;
       if (i + 1 < items.length) {
-        nextItemPageNum = _resolvePageNumber(items[i + 1], currentIndex + 1, totalItems);
+        nextItem = items[i + 1];
+        nextItemPageNum = _resolvePageNumber(nextItem, currentIndex + 1, totalItems);
       }
-      final isActive = _isItemActive(item, pageNum, nextItemPageNum);
+      final isActive = _isItemActive(item, pageNum, nextItem, nextItemPageNum);
 
       list.add(
         Padding(

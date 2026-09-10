@@ -5614,6 +5614,84 @@ ${doc.querySelector("parsererror").innerText}`);
     // book).
     let currentReaderSettings = null;
 
+    const sendEnrichedTOC = (viewInstance) => {
+      const v = viewInstance || view;
+      if (!v || !v.book) return;
+      try {
+        const rawToc = v.book?.toc ?? [];
+        const rawPageList = v.book?.pageList ?? [];
+        const sections = v.book?.sections || [];
+
+        // Fixed canonical print page mapping (2000 raw bytes per print page, invariant to digital font size/margins)
+        const printBytesPerPage = 2000;
+        let runningPrint = 0;
+        const printSectionPages = sections.map((s) => {
+          const rawSize = s.size || (s.linear !== 'no' ? 3000 : 0);
+          if (s.linear === 'no' || rawSize <= 0) {
+            return { startPage: runningPrint, pageCount: 0 };
+          }
+          const count = Math.max(1, Math.round(rawSize / printBytesPerPage));
+          const start = runningPrint;
+          runningPrint += count;
+          return { startPage: start, pageCount: count };
+        });
+
+        const enrichToc = (items) => {
+          if (!Array.isArray(items)) return [];
+          return items.map((item) => {
+            let digitalPage = null;
+            let printPage = null;
+            if (item.href) {
+              try {
+                const resolved = v.resolveNavigation
+                  ? v.resolveNavigation(item.href)
+                  : v.book?.resolveHref?.(item.href);
+                const sIndex = resolved?.index;
+                if (typeof sIndex === 'number') {
+                  if (bookSectionPages && bookSectionPages[sIndex]) {
+                    digitalPage = bookSectionPages[sIndex].startPage + 1;
+                  }
+                  if (printSectionPages && printSectionPages[sIndex]) {
+                    printPage = printSectionPages[sIndex].startPage + 1;
+                  }
+
+                  // If EPUB contains publisher pageList, check for exact match
+                  if (Array.isArray(rawPageList) && rawPageList.length > 0) {
+                    const cleanHref = item.href.split('#')[0];
+                    for (let p = 0; p < rawPageList.length; p++) {
+                      const pHref = (rawPageList[p].href || '').split('#')[0];
+                      if (pHref === cleanHref) {
+                        const parsed = parseInt(rawPageList[p].label, 10);
+                        if (!isNaN(parsed) && parsed > 0) {
+                          printPage = parsed;
+                          break;
+                        }
+                      }
+                    }
+                  }
+                }
+              } catch (e) {}
+            }
+            const subitems = item.subitems ? enrichToc(item.subitems) : [];
+            return {
+              ...item,
+              pageNumber: digitalPage || printPage,
+              digitalPageNumber: digitalPage,
+              printPageNumber: printPage,
+              subitems,
+            };
+          });
+        };
+
+        const toc = enrichToc(rawToc);
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'TOC_READY', payload: toc }));
+      } catch (tocErr) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'TOC_READY', payload: [] }));
+      }
+    };
+
+    window.refreshTOC = () => sendEnrichedTOC(view);
+
     window.openBook = async (base64, initialCfi) => {
       try {
         const activeView = mountFreshView();
@@ -5631,36 +5709,7 @@ ${doc.querySelector("parsererror").innerText}`);
           window.applyReaderSettings(currentReaderSettings);
         }
 
-        try {
-          const rawToc = activeView.book?.toc ?? [];
-          const enrichToc = (items) => {
-            if (!Array.isArray(items)) return [];
-            return items.map((item) => {
-              let pageNum = null;
-              if (item.href) {
-                try {
-                  const resolved = activeView.resolveNavigation
-                    ? activeView.resolveNavigation(item.href)
-                    : activeView.book?.resolveHref?.(item.href);
-                  const sIndex = resolved?.index;
-                  if (typeof sIndex === 'number' && bookSectionPages && bookSectionPages[sIndex]) {
-                    pageNum = bookSectionPages[sIndex].startPage + 1;
-                  }
-                } catch (e) {}
-              }
-              const subitems = item.subitems ? enrichToc(item.subitems) : [];
-              return {
-                ...item,
-                pageNumber: pageNum,
-                subitems,
-              };
-            });
-          };
-          const toc = enrichToc(rawToc);
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'TOC_READY', payload: toc }));
-        } catch (tocErr) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'TOC_READY', payload: [] }));
-        }
+        sendEnrichedTOC(activeView);
 
         if (initialCfi) {
           await activeView.init({ lastLocation: initialCfi });
@@ -5936,6 +5985,7 @@ ${doc.querySelector("parsererror").innerText}`);
       
       if (fontSize) {
         buildBookPageMap(fontSize / 16);
+        sendEnrichedTOC(view);
       }
     };
 

@@ -523,6 +523,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
         bookmarks: bookmarks,
         currentLocation: _currentLocation,
         accentColor: themeAccent,
+        pageNumberSource: _settings.pageNumberSource,
+        onPageNumberSourceChanged: (source) {
+          _applySettings(_settings.copyWith(pageNumberSource: source));
+        },
         onChapterSelected: (href) => _bridge.goToHref(href),
         onDeleteBookmark: (b) async {
           await StorageService.instance.deleteBookmark(widget.book.hash, b.cfi);

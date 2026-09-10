@@ -106,6 +106,34 @@ enum ProgressDisplayType {
   }
 }
 
+/// Source of page numbers displayed in the reader Table of Contents
+enum PageNumberSource {
+  digitalBook,
+  printEdition;
+
+  String get id => name;
+
+  String get label {
+    switch (this) {
+      case PageNumberSource.digitalBook:
+        return 'Digital Book';
+      case PageNumberSource.printEdition:
+        return 'Print Edition';
+    }
+  }
+
+  static PageNumberSource fromString(String? value) {
+    if (value == null) return PageNumberSource.digitalBook;
+    final normalized = value.toLowerCase().replaceAll('-', '').replaceAll('_', '');
+    for (final v in PageNumberSource.values) {
+      if (v.name.toLowerCase() == normalized) return v;
+    }
+    if (normalized == 'print') return PageNumberSource.printEdition;
+    if (normalized == 'digital') return PageNumberSource.digitalBook;
+    return PageNumberSource.digitalBook;
+  }
+}
+
 /// Screen position for the reading progress indicator
 enum ProgressDisplayLocation {
   bottomCenter,
@@ -207,6 +235,7 @@ class ReaderSettings {
   final double? marginSide;
   final PageAnimationMode pageAnimationMode;
   final bool stayAwake;
+  final PageNumberSource pageNumberSource;
 
   const ReaderSettings({
     this.theme = ReaderThemeMode.defaultTheme,
@@ -235,6 +264,7 @@ class ReaderSettings {
     this.marginSide,
     this.pageAnimationMode = PageAnimationMode.slide,
     this.stayAwake = false,
+    this.pageNumberSource = PageNumberSource.digitalBook,
   });
 
   ReaderSettings copyWith({
@@ -264,6 +294,7 @@ class ReaderSettings {
     double? marginSide,
     PageAnimationMode? pageAnimationMode,
     bool? stayAwake,
+    PageNumberSource? pageNumberSource,
   }) {
     return ReaderSettings(
       theme: theme ?? this.theme,
@@ -292,6 +323,7 @@ class ReaderSettings {
       marginSide: marginSide ?? this.marginSide,
       pageAnimationMode: pageAnimationMode ?? this.pageAnimationMode,
       stayAwake: stayAwake ?? this.stayAwake,
+      pageNumberSource: pageNumberSource ?? this.pageNumberSource,
     );
   }
 
@@ -323,6 +355,7 @@ class ReaderSettings {
       'marginSide': marginSide,
       'pageAnimationMode': pageAnimationMode.id,
       'stayAwake': stayAwake,
+      'pageNumberSource': pageNumberSource.id,
     };
   }
 
@@ -358,6 +391,7 @@ class ReaderSettings {
       marginSide: (map['marginSide'] as num?)?.toDouble(),
       pageAnimationMode: PageAnimationMode.fromString(map['pageAnimationMode'] as String?),
       stayAwake: map['stayAwake'] as bool? ?? false,
+      pageNumberSource: PageNumberSource.fromString(map['pageNumberSource'] as String?),
     );
   }
 
@@ -395,7 +429,8 @@ class ReaderSettings {
         other.paddingBottom == paddingBottom &&
         other.marginSide == marginSide &&
         other.pageAnimationMode == pageAnimationMode &&
-        other.stayAwake == stayAwake;
+        other.stayAwake == stayAwake &&
+        other.pageNumberSource == pageNumberSource;
   }
 
   @override
@@ -426,5 +461,6 @@ class ReaderSettings {
         marginSide,
         pageAnimationMode,
         stayAwake,
+        pageNumberSource,
       ]);
 }
