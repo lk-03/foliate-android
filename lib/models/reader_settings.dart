@@ -190,7 +190,7 @@ class ReaderSettings {
   final double lineHeight;
   final bool fullJustification;
   final bool hyphenation;
-  final double margin; // 0.0 to 0.20 (e.g. 0.06)
+  final double margin; // 0.0 to 0.20 (e.g. 0.08)
   final int fontWeight;
   final String pageFlipping; // 'horizontal' | 'vertical' (scrolled)
   final String textAlign; // 'justify' | 'left' | 'center' | 'right'
@@ -218,7 +218,7 @@ class ReaderSettings {
     this.lineHeight = 1.50,
     this.fullJustification = true,
     this.hyphenation = true,
-    this.margin = 0.06,
+    this.margin = 0.08,
     this.fontWeight = 400,
     this.pageFlipping = 'horizontal',
     this.textAlign = 'justify',
@@ -337,7 +337,11 @@ class ReaderSettings {
       lineHeight: (map['lineHeight'] as num?)?.toDouble() ?? 1.50,
       fullJustification: map['fullJustification'] as bool? ?? true,
       hyphenation: map['hyphenation'] as bool? ?? true,
-      margin: (map['margin'] as num?)?.toDouble() ?? 0.06,
+      margin: () {
+        final m = (map['margin'] as num?)?.toDouble();
+        if (m == null || (m - 0.06).abs() < 0.001) return 0.08;
+        return m;
+      }(),
       fontWeight: (map['fontWeight'] as num?)?.toInt() ?? 400,
       pageFlipping: map['pageFlipping'] as String? ?? 'horizontal',
       textAlign: map['textAlign'] as String? ?? 'justify',

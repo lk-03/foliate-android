@@ -649,6 +649,23 @@ void main() {
       expect(AdwaitaColors.getThemeAccent('default', true), equals(AdwaitaColors.terracottaDark));
       expect(AdwaitaColors.getThemeAccent('default', false), equals(AdwaitaColors.terracottaLight));
     });
+
+    test('ReaderSettings default margin is spacious 0.08 and migrates from 0.06', () {
+      const sDefault = ReaderSettings();
+      expect(sDefault.margin, equals(0.08));
+
+      // fromMap without margin specified defaults to 0.08
+      final fromEmpty = ReaderSettings.fromMap({});
+      expect(fromEmpty.margin, equals(0.08));
+
+      // fromMap with legacy 0.06 default migrates to 0.08
+      final fromLegacy = ReaderSettings.fromMap({'margin': 0.06});
+      expect(fromLegacy.margin, equals(0.08));
+
+      // fromMap with custom margin preserves value
+      final fromCustom = ReaderSettings.fromMap({'margin': 0.12});
+      expect(fromCustom.margin, equals(0.12));
+    });
   });
 }
 

@@ -269,7 +269,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
     final effectiveTop = (topSafe + 60.0).clamp(96.0, 160.0);
     final effectiveBottom = (bottomSafe + 64.0).clamp(80.0, 140.0);
-    final effectiveSide = (screenWidth * base.margin).clamp(16.0, 60.0);
+    final effectiveSide = (screenWidth * base.margin).clamp(28.0, 72.0);
 
     return base.copyWith(
       paddingTop: effectiveTop,

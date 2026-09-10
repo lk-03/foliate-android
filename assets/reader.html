@@ -3428,8 +3428,8 @@ ${doc.querySelector("parsererror").innerText}`);
             position: absolute;
             top: var(--reader-margin-top, 108px);
             bottom: var(--reader-margin-bottom, 96px);
-            left: var(--reader-margin-side, 24px);
-            right: var(--reader-margin-side, 24px);
+            left: var(--reader-margin-side, 28px);
+            right: var(--reader-margin-side, 28px);
             overflow: hidden;
             box-sizing: border-box;
         }
@@ -5819,10 +5819,10 @@ ${doc.querySelector("parsererror").innerText}`);
       // Margins & Safe Area Padding
       const padTopNum = settings.paddingTop !== undefined ? settings.paddingTop : 108;
       const padBottomNum = settings.paddingBottom !== undefined ? settings.paddingBottom : 96;
-      const marginVal = (margin !== undefined ? margin : 0.06);
+      const marginVal = (margin !== undefined ? margin : 0.08);
       const marginSideNum = settings.marginSide !== undefined
-          ? settings.marginSide
-          : Math.round(marginVal * (window.innerWidth || 390));
+          ? Math.max(28, settings.marginSide)
+          : Math.max(28, Math.round(marginVal * (window.innerWidth || 390)));
 
       const viewEl = document.getElementById('view');
       if (viewEl) {
