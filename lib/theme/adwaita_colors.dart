@@ -5,36 +5,36 @@ import 'package:flutter/material.dart';
 class AdwaitaColors {
   AdwaitaColors._();
 
-  // --- Dark Mode (Desktop Default) ---
-  /// Main application background (warm dark tone)
-  static const Color darkWindowBg = Color(0xFF1E1D1B);
+  // --- Dark Mode (Pure Black & Stitch Midnight Replicated) ---
+  /// Main application background (pure black)
+  static const Color darkWindowBg = Color(0xFF000000);
 
   /// Header bar / Title bar surface
-  static const Color darkHeaderBar = Color(0xFF1B1918);
+  static const Color darkHeaderBar = Color(0xFF000000);
 
   /// Sidebar / Navigation list background
-  static const Color darkSidebarBg = Color(0xFF211F1D);
+  static const Color darkSidebarBg = Color(0xFF000000);
 
-  /// Elevated card / popover surface
-  static const Color darkSurfaceCard = Color(0xFF262422);
+  /// Elevated card / popover surface (Stitch midnight #181B25)
+  static const Color darkSurfaceCard = Color(0xFF181B25);
 
-  /// Inner input background (e.g. location/identifier boxes in popover)
-  static const Color darkInputBg = Color(0xFF1B1918);
+  /// Inner input background (recessed ultra-dark #0A0E17)
+  static const Color darkInputBg = Color(0xFF0A0E17);
 
-  /// Selected / Active pill background (e.g. "All Books", active chapter)
-  static const Color darkActivePill = Color(0xFF3B3632);
+  /// Selected / Active pill background (e.g. "All Books", active filter)
+  static const Color darkActivePill = Color(0xFF222938);
 
   /// Hover pill background
-  static const Color darkHoverPill = Color(0xFF2E2A28);
+  static const Color darkHoverPill = Color(0xFF1E2433);
 
-  /// Subtle borders and dividers
-  static const Color darkBorder = Color(0xFF33302D);
-  static const Color darkDivider = Color(0xFF2C2927);
+  /// Subtle borders and dividers (Stitch border-slate-800)
+  static const Color darkBorder = Color(0xFF1E293B);
+  static const Color darkDivider = Color(0xFF151C28);
 
-  /// Typography
-  static const Color darkTextPrimary = Color(0xFFEDEDED);
-  static const Color darkTextSecondary = Color(0xFF9E9A95);
-  static const Color darkTextMuted = Color(0xFF736F6B);
+  /// Typography (crisp high-contrast off-white and cool slate)
+  static const Color darkTextPrimary = Color(0xFFF8FAFC);
+  static const Color darkTextSecondary = Color(0xFF94A3B8);
+  static const Color darkTextMuted = Color(0xFF64748B);
 
   // --- Light Mode ---
   static const Color lightWindowBg = Color(0xFFFAFAFA);
@@ -66,8 +66,8 @@ class AdwaitaColors {
   /// Warm Terracotta primary editorial accent from Apple Books reference
   static const Color terracottaAccent = Color(0xFFC2410C);
 
-  /// Warm Terracotta for Dark mode
-  static const Color terracottaDark = Color(0xFFD97736);
+  /// Warm Terracotta for Dark mode (Stitch #f97316)
+  static const Color terracottaDark = Color(0xFFF97316);
 
   /// Warm Terracotta for Light mode
   static const Color terracottaLight = Color(0xFFC2410C);

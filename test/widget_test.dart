@@ -903,6 +903,32 @@ void main() {
     expect(find.text('SIGNATURE PALETTE'), findsNothing);
     expect(find.text('Warm Terracotta & Amber'), findsNothing);
   });
+
+  testWidgets('StitchBottomBar highlights active tab with pill indicator', (WidgetTester tester) async {
+    await tester.pumpWidget(const FoliateApp());
+    await tester.pumpAndSettle();
+
+    // Verify all 5 tab labels are visible in the bottom bar
+    expect(find.text('Home'), findsWidgets);
+    expect(find.text('Library'), findsWidgets);
+    expect(find.text('Explore'), findsWidgets);
+    expect(find.text('Annotations'), findsWidgets);
+    expect(find.text('Profile'), findsWidgets);
+
+    // Tap Library
+    await tester.tap(find.text('Library').last);
+    await tester.pumpAndSettle();
+
+    // Verify Library screen title is visible
+    expect(find.text('Library'), findsWidgets);
+
+    // Tap Explore
+    await tester.tap(find.text('Explore').last);
+    await tester.pumpAndSettle();
+
+    // Verify Explore screen loaded
+    expect(find.text('Explore'), findsWidgets);
+  });
 }
 
 

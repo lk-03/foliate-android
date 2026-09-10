@@ -183,6 +183,7 @@ class AdwaitaTheme {
       appBarTheme: const AppBarTheme(
         backgroundColor: AdwaitaColors.darkHeaderBar,
         foregroundColor: AdwaitaColors.darkTextPrimary,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         titleTextStyle: TextStyle(
@@ -193,11 +194,16 @@ class AdwaitaTheme {
       ),
       cardTheme: CardThemeData(
         color: AdwaitaColors.darkSurfaceCard,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: const BorderSide(color: AdwaitaColors.darkBorder, width: 1),
         ),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
       ),
       dividerTheme: const DividerThemeData(
         color: AdwaitaColors.darkDivider,

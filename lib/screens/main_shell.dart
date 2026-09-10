@@ -265,47 +265,110 @@ class _MainShellState extends State<MainShell> {
         ],
       ),
 
-      // Material 3 Expressive Bottom Navigation Bar
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: colors.headerBar,
-          border: Border(top: BorderSide(color: colors.border.withValues(alpha: 0.5), width: 0.8)),
+      // Stitch Signature Bottom Navigation Bar with Pure Black Background and Vibrant Pill Highlight
+      bottomNavigationBar: _buildStitchBottomBar(colors, primaryAccent),
+    );
+  }
+
+  Widget _buildStitchBottomBar(FoliateThemeColors colors, Color primaryAccent) {
+    final items = [
+      (
+        index: 0,
+        label: 'Home',
+        icon: Icons.home_outlined,
+        selectedIcon: Icons.home_rounded,
+      ),
+      (
+        index: 1,
+        label: 'Library',
+        icon: Icons.auto_stories_outlined,
+        selectedIcon: Icons.auto_stories_rounded,
+      ),
+      (
+        index: 2,
+        label: 'Explore',
+        icon: Icons.explore_outlined,
+        selectedIcon: Icons.explore_rounded,
+      ),
+      (
+        index: 3,
+        label: 'Annotations',
+        icon: Icons.bookmarks_outlined,
+        selectedIcon: Icons.bookmarks_rounded,
+      ),
+      (
+        index: 4,
+        label: 'Profile',
+        icon: Icons.person_outline_rounded,
+        selectedIcon: Icons.person_rounded,
+      ),
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.headerBar,
+        border: Border(
+          top: BorderSide(
+            color: colors.border.withValues(alpha: 0.8),
+            width: 0.8,
+          ),
         ),
-        child: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: _navigateToPage,
-          backgroundColor: colors.headerBar,
-          indicatorColor: primaryAccent.withValues(alpha: 0.2),
-          elevation: 0,
-          height: 64,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          destinations: [
-            NavigationDestination(
-              icon: const Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home_rounded, color: primaryAccent),
-              label: 'Home',
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.auto_stories_outlined),
-              selectedIcon: Icon(Icons.auto_stories_rounded, color: primaryAccent),
-              label: 'Library',
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.explore_outlined),
-              selectedIcon: Icon(Icons.explore_rounded, color: primaryAccent),
-              label: 'Explore',
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.bookmarks_outlined),
-              selectedIcon: Icon(Icons.bookmarks_rounded, color: primaryAccent),
-              label: 'Annotations',
-            ),
-            NavigationDestination(
-              icon: const Icon(Icons.person_outline_rounded),
-              selectedIcon: Icon(Icons.person_rounded, color: primaryAccent),
-              label: 'Profile',
-            ),
-          ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 62,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: items.map((item) {
+              final isSelected = _currentIndex == item.index;
+              return Expanded(
+                child: InkWell(
+                  onTap: () => _navigateToPage(item.index),
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Stitch signature pill highlight:
+                      // When active, vibrant pill container with crisp white icon inside
+                      // When inactive, transparent container with muted slate icon
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
+                        width: isSelected ? 56 : 36,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: isSelected ? primaryAccent : Colors.transparent,
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            isSelected ? item.selectedIcon : item.icon,
+                            size: 20,
+                            color: isSelected ? Colors.white : colors.textMuted,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        item.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          color: isSelected ? primaryAccent : colors.textMuted,
+                          letterSpacing: -0.1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ),
       ),
     );
