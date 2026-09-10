@@ -1067,6 +1067,99 @@ void main() {
     expect(find.text(testBook.title), findsOneWidget);
     expect(find.text('42% completed'), findsOneWidget);
   });
+
+  testWidgets('YearlyBooksReadSection renders navigation, finished books, and empty states', (WidgetTester tester) async {
+    final currentYear = DateTime.now().year;
+    final finishedBook2025 = Book(
+      hash: 'hash-finished-2025',
+      title: 'Moby Dick',
+      author: 'Herman Melville',
+      percentage: 100.0,
+      addedAt: DateTime(2025, 6, 1).millisecondsSinceEpoch,
+      lastReadAt: DateTime(2025, 6, 15).millisecondsSinceEpoch,
+    );
+    final finishedBookCurrent = Book(
+      hash: 'hash-finished-current',
+      title: 'Pride and Prejudice',
+      author: 'Jane Austen',
+      percentage: 100.0,
+      addedAt: DateTime(currentYear, 1, 1).millisecondsSinceEpoch,
+      lastReadAt: DateTime(currentYear, 2, 1).millisecondsSinceEpoch,
+    );
+
+    final habits = ReadingHabits(
+      yearlyFinishedBooks: {
+        '2025': ['hash-finished-2025'],
+        '$currentYear': ['hash-finished-current'],
+      },
+      booksFinishedThisYear: ['hash-finished-current'],
+    );
+
+    Book? tappedBook;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: YearlyBooksReadSection(
+              books: [finishedBook2025, finishedBookCurrent],
+              habits: habits,
+              accountCreationYear: 2024,
+              onBookTap: (b) => tappedBook = b,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 1. Initially at current year
+    expect(find.text('Books Read This Year'), findsOneWidget);
+    expect(find.text('$currentYear'), findsOneWidget);
+    expect(find.text('1 book finished'), findsOneWidget);
+    expect(find.text('Pride and Prejudice'), findsOneWidget);
+    expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+
+    // Tap on the finished book
+    await tester.tap(find.text('Pride and Prejudice'));
+    await tester.pumpAndSettle();
+    expect(tappedBook?.title, equals('Pride and Prejudice'));
+
+    // Next button should be disabled at current year
+    final nextButtons = tester.widgetList<IconButton>(find.widgetWithIcon(IconButton, Icons.chevron_right_rounded));
+    expect(nextButtons.first.onPressed, isNull);
+
+    // 2. Tap previous year (<) -> moves to 2025
+    final prevButtons = find.widgetWithIcon(IconButton, Icons.chevron_left_rounded);
+    await tester.tap(prevButtons);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Books Read in 2025'), findsOneWidget);
+    expect(find.text('2025'), findsOneWidget);
+    expect(find.text('Moby Dick'), findsOneWidget);
+
+    // 3. Tap previous year (<) again -> moves to 2024 (account creation year)
+    await tester.tap(prevButtons);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Books Read in 2024'), findsOneWidget);
+    expect(find.text('2024'), findsOneWidget);
+    expect(find.text('No Books Finished in 2024'), findsOneWidget);
+    expect(find.text('Books you finish will appear here.'), findsOneWidget);
+
+    // At 2024 (creation year), previous button should now be disabled
+    final prevButtonsAtMin = tester.widgetList<IconButton>(find.widgetWithIcon(IconButton, Icons.chevron_left_rounded));
+    expect(prevButtonsAtMin.first.onPressed, isNull);
+
+    // 4. Tap next year (>) -> moves back to 2025
+    final nextButtonsActive = find.widgetWithIcon(IconButton, Icons.chevron_right_rounded);
+    await tester.tap(nextButtonsActive);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Books Read in 2025'), findsOneWidget);
+    expect(find.text('Moby Dick'), findsOneWidget);
+  });
 }
 
 

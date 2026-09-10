@@ -11,6 +11,7 @@ class ReadingHabits {
   final Map<String, int> dailyHistory; // YYYY-MM-DD -> minutes read
   final int yearlyGoalBooks;
   final List<String> booksFinishedThisYear; // Book SHA-256 hashes
+  final Map<String, List<String>> yearlyFinishedBooks; // Year -> List of Book SHA-256 hashes
   final int totalReadingSeconds;
   final int totalSessions;
 
@@ -22,6 +23,7 @@ class ReadingHabits {
     this.dailyHistory = const {},
     this.yearlyGoalBooks = 12,
     this.booksFinishedThisYear = const [],
+    this.yearlyFinishedBooks = const {},
     this.totalReadingSeconds = 0,
     this.totalSessions = 0,
   });
@@ -123,13 +125,44 @@ class ReadingHabits {
     );
   }
 
-  /// Marks a book as completed in the annual reading challenge
-  ReadingHabits markBookFinished(String bookHash) {
-    if (booksFinishedThisYear.contains(bookHash)) {
+  /// Marks a book as completed in the annual reading challenge for a given year
+  ReadingHabits markBookFinished(String bookHash, {int? year}) {
+    final targetYear = (year ?? DateTime.now().year).toString();
+    final baseList = yearlyFinishedBooks[targetYear] ??
+        (targetYear == DateTime.now().year.toString()
+            ? booksFinishedThisYear
+            : const <String>[]);
+
+    if (baseList.contains(bookHash)) {
       return this;
     }
-    final updatedList = List<String>.from(booksFinishedThisYear)..add(bookHash);
-    return copyWith(booksFinishedThisYear: updatedList);
+
+    final yearList = List<String>.from(baseList)..add(bookHash);
+    final updatedYearly = Map<String, List<String>>.from(yearlyFinishedBooks);
+    updatedYearly[targetYear] = yearList;
+
+    final updatedThisYear = targetYear == DateTime.now().year.toString()
+        ? yearList
+        : (booksFinishedThisYear.contains(bookHash)
+            ? booksFinishedThisYear
+            : (List<String>.from(booksFinishedThisYear)..add(bookHash)));
+
+    return copyWith(
+      yearlyFinishedBooks: updatedYearly,
+      booksFinishedThisYear: updatedThisYear,
+    );
+  }
+
+  /// Returns the finished book hashes for a specific year
+  List<String> getFinishedBooksForYear(int year) {
+    final yearKey = year.toString();
+    if (yearlyFinishedBooks.containsKey(yearKey)) {
+      return yearlyFinishedBooks[yearKey] ?? const [];
+    }
+    if (year == DateTime.now().year) {
+      return booksFinishedThisYear;
+    }
+    return const [];
   }
 
   ReadingHabits copyWith({
@@ -140,6 +173,7 @@ class ReadingHabits {
     Map<String, int>? dailyHistory,
     int? yearlyGoalBooks,
     List<String>? booksFinishedThisYear,
+    Map<String, List<String>>? yearlyFinishedBooks,
     int? totalReadingSeconds,
     int? totalSessions,
   }) {
@@ -152,6 +186,8 @@ class ReadingHabits {
       yearlyGoalBooks: yearlyGoalBooks ?? this.yearlyGoalBooks,
       booksFinishedThisYear:
           booksFinishedThisYear ?? this.booksFinishedThisYear,
+      yearlyFinishedBooks:
+          yearlyFinishedBooks ?? this.yearlyFinishedBooks,
       totalReadingSeconds: totalReadingSeconds ?? this.totalReadingSeconds,
       totalSessions: totalSessions ?? this.totalSessions,
     );
@@ -166,12 +202,35 @@ class ReadingHabits {
       'dailyHistory': dailyHistory,
       'yearlyGoalBooks': yearlyGoalBooks,
       'booksFinishedThisYear': booksFinishedThisYear,
+      'yearlyFinishedBooks': yearlyFinishedBooks,
       'totalReadingSeconds': totalReadingSeconds,
       'totalSessions': totalSessions,
     };
   }
 
   factory ReadingHabits.fromMap(Map<String, dynamic> map) {
+    final rawThisYear = (map['booksFinishedThisYear'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        const [];
+
+    final rawYearly = map['yearlyFinishedBooks'];
+    final Map<String, List<String>> parsedYearly = {};
+    if (rawYearly is Map) {
+      rawYearly.forEach((k, v) {
+        if (v is List) {
+          parsedYearly[k.toString()] =
+              v.map((e) => e.toString()).toList();
+        }
+      });
+    }
+
+    // Ensure current year is populated if booksFinishedThisYear exists
+    final currentYearKey = DateTime.now().year.toString();
+    if (parsedYearly[currentYearKey] == null && rawThisYear.isNotEmpty) {
+      parsedYearly[currentYearKey] = List<String>.from(rawThisYear);
+    }
+
     return ReadingHabits(
       dailyGoalMinutes: (map['dailyGoalMinutes'] as num?)?.toInt() ?? 15,
       currentStreak: (map['currentStreak'] as num?)?.toInt() ?? 0,
@@ -185,10 +244,8 @@ class ReadingHabits {
             )
           : const {},
       yearlyGoalBooks: (map['yearlyGoalBooks'] as num?)?.toInt() ?? 12,
-      booksFinishedThisYear: (map['booksFinishedThisYear'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          const [],
+      booksFinishedThisYear: rawThisYear,
+      yearlyFinishedBooks: parsedYearly,
       totalReadingSeconds:
           (map['totalReadingSeconds'] as num?)?.toInt() ?? 0,
       totalSessions: (map['totalSessions'] as num?)?.toInt() ?? 0,

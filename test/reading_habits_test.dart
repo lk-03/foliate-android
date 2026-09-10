@@ -126,6 +126,24 @@ void main() {
       expect(weekMap[3], isTrue); // Wednesday
       expect(weekMap[4], isFalse); // Thursday
     });
+    test('Multi-year finished books tracking and serialization', () {
+      var habits = const ReadingHabits();
+      habits = habits.markBookFinished('book-2024', year: 2024);
+      habits = habits.markBookFinished('book-2025', year: 2025);
+      habits = habits.markBookFinished('book-now');
+
+      expect(habits.getFinishedBooksForYear(2024), equals(['book-2024']));
+      expect(habits.getFinishedBooksForYear(2025), equals(['book-2025']));
+      expect(habits.getFinishedBooksForYear(DateTime.now().year), contains('book-now'));
+      expect(habits.getFinishedBooksForYear(2020), isEmpty);
+
+      // Round-trip serialization
+      final jsonStr = habits.toJson();
+      final restored = ReadingHabits.fromJson(jsonStr);
+      expect(restored.getFinishedBooksForYear(2024), equals(['book-2024']));
+      expect(restored.getFinishedBooksForYear(2025), equals(['book-2025']));
+      expect(restored.getFinishedBooksForYear(DateTime.now().year), contains('book-now'));
+    });
   });
 
   group('StorageService Habits Persistence Tests', () {
@@ -150,6 +168,16 @@ void main() {
 
       final finished = await StorageService.instance.markBookFinished('hash-finished-1');
       expect(finished.booksFinishedThisYear, contains('hash-finished-1'));
+
+      final finished2025 = await StorageService.instance.markBookFinished('hash-2025-book', year: 2025);
+      expect(finished2025.getFinishedBooksForYear(2025), contains('hash-2025-book'));
+
+      final creationYear = await StorageService.instance.getAccountCreationYear();
+      expect(creationYear, equals(2024));
+
+      await StorageService.instance.saveAccountCreationYear(2023);
+      final updatedYear = await StorageService.instance.getAccountCreationYear();
+      expect(updatedYear, equals(2023));
     });
   });
 }

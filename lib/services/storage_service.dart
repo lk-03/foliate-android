@@ -13,6 +13,7 @@ class StorageService {
   static const String _linkedFoldersPrefKey = 'foliate_linked_folders';
   static const String _firstLaunchPrefKey = 'foliate_first_launch_done';
   static const String _readingHabitsPrefKey = 'foliate_reading_habits';
+  static const String _accountCreationYearPrefKey = 'foliate_account_creation_year';
 
   static StorageService? _instance;
   static StorageService get instance => _instance ??= StorageService._();
@@ -472,10 +473,37 @@ class StorageService {
     return updated;
   }
 
+  /// Retrieves user account creation year, defaulting to earliest book year or 2024.
+  Future<int> getAccountCreationYear() async {
+    final prefs = await SharedPreferences.getInstance();
+    final year = prefs.getInt(_accountCreationYearPrefKey);
+    if (year != null) return year;
+
+    // Detect earliest book addedAt year or default to 2024
+    int earliestYear = 2024;
+    final books = await getBooks();
+    for (final b in books) {
+      if (b.addedAt > 0) {
+        final bYear = DateTime.fromMillisecondsSinceEpoch(b.addedAt).year;
+        if (bYear < earliestYear && bYear >= 2000) {
+          earliestYear = bYear;
+        }
+      }
+    }
+    await prefs.setInt(_accountCreationYearPrefKey, earliestYear);
+    return earliestYear;
+  }
+
+  /// Sets user account creation year.
+  Future<void> saveAccountCreationYear(int year) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_accountCreationYearPrefKey, year);
+  }
+
   /// Marks a book as finished in the annual challenge.
-  Future<ReadingHabits> markBookFinished(String bookHash) async {
+  Future<ReadingHabits> markBookFinished(String bookHash, {int? year}) async {
     final current = await getReadingHabits();
-    final updated = current.markBookFinished(bookHash);
+    final updated = current.markBookFinished(bookHash, year: year);
     await saveReadingHabits(updated);
     return updated;
   }

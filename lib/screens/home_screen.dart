@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../components/components.dart';
 import '../models/models.dart';
+import '../services/storage_service.dart';
 import '../theme/theme.dart';
 import 'reader_screen.dart';
 
@@ -12,9 +13,11 @@ import 'reader_screen.dart';
 /// 3. Open Library Gems horizontal carousel with public domain classics.
 /// 4. Explore Horizons interactive genre recommendation row.
 /// 5. Reading Insights tracker: daily goal ring, day streak, weekly consistency, and annual challenge.
+/// 6. Books Read in [Year] overview with year navigation down to account creation year.
 class HomeScreen extends StatefulWidget {
   final List<Book> books;
   final ReadingHabits? readingHabits;
+  final int? accountCreationYear;
   final VoidCallback onNavigateToLibrary;
   final VoidCallback? onBooksChanged;
   final ValueChanged<int>? onDailyGoalChanged;
@@ -24,6 +27,7 @@ class HomeScreen extends StatefulWidget {
     super.key,
     required this.books,
     this.readingHabits,
+    this.accountCreationYear,
     required this.onNavigateToLibrary,
     this.onBooksChanged,
     this.onDailyGoalChanged,
@@ -36,6 +40,20 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String _selectedGenre = 'All';
+  int _accountCreationYear = 2024;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAccountCreationYear();
+  }
+
+  Future<void> _loadAccountCreationYear() async {
+    final year = await StorageService.instance.getAccountCreationYear();
+    if (mounted) {
+      setState(() => _accountCreationYear = year);
+    }
+  }
 
   String _getGreeting() {
     final hour = DateTime.now().hour;
@@ -305,6 +323,16 @@ class _HomeScreenState extends State<HomeScreen> {
               : widget.onNavigateToLibrary(),
           onDailyGoalChanged: widget.onDailyGoalChanged,
           onYearlyGoalChanged: widget.onYearlyGoalChanged,
+        ),
+
+        const SizedBox(height: 28),
+
+        // 7. Section: Books Read in [Year] (Apple Books style with year navigation)
+        YearlyBooksReadSection(
+          books: widget.books,
+          habits: habits,
+          accountCreationYear: widget.accountCreationYear ?? _accountCreationYear,
+          onBookTap: _openBook,
         ),
       ],
     );

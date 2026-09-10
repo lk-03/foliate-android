@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../components/components.dart';
 import '../models/models.dart';
+import '../services/storage_service.dart';
 import '../theme/theme.dart';
 
 /// Stitch & Apple Books inspired Reader Profile Screen.
@@ -32,19 +33,26 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   static const String _userNameKey = 'foliate_profile_user_name';
   String _userName = 'Elena Vance';
+  int _accountCreationYear = 2024;
   bool _isRescanning = false;
 
   @override
   void initState() {
     super.initState();
-    _loadUserName();
+    _loadProfileData();
   }
 
-  Future<void> _loadUserName() async {
+  Future<void> _loadProfileData() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_userNameKey);
-    if (saved != null && saved.isNotEmpty && mounted) {
-      setState(() => _userName = saved);
+    final year = await StorageService.instance.getAccountCreationYear();
+    if (mounted) {
+      setState(() {
+        if (saved != null && saved.isNotEmpty) {
+          _userName = saved;
+        }
+        _accountCreationYear = year;
+      });
     }
   }
 
@@ -367,7 +375,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Member since 2024',
+                      'Member since $_accountCreationYear',
                       style: TextStyle(fontSize: 12, color: colors.textMuted),
                     ),
                   ],
