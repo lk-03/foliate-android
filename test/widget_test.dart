@@ -55,6 +55,46 @@ void main() {
     // Verify SettingsSheet is open
     expect(find.text('Settings & Library'), findsOneWidget);
     expect(find.text('Books in Library'), findsOneWidget);
+
+    // Close SettingsSheet
+    await tester.tapAt(const Offset(20, 20));
+    await tester.pumpAndSettle();
+
+    // Verify all 5 NavigationBar destinations are present
+    expect(find.text('Home'), findsWidgets);
+    expect(find.text('Library'), findsWidgets);
+    expect(find.text('Explore'), findsWidgets);
+    expect(find.text('Annotations'), findsWidgets);
+    expect(find.text('Profile'), findsWidgets);
+
+    // Tap Explore tab in NavigationBar
+    await tester.tap(find.text('Explore'));
+    await tester.pumpAndSettle();
+    expect(find.text('Available Libraries (4)'), findsOneWidget);
+    expect(find.text('Project Gutenberg'), findsWidgets);
+
+    // Tap Profile tab in NavigationBar
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+    expect(find.text('Reading Metrics'), findsOneWidget);
+    expect(find.text('2026 Reading Challenge'), findsOneWidget);
+
+    // Scroll down in Profile ListView to reveal lower cards
+    await tester.scrollUntilVisible(
+      find.text('Weekly Consistency'),
+      50.0,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Weekly Consistency'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Folio Sync Active'),
+      50.0,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Folio Sync Active'), findsOneWidget);
   });
 
   testWidgets('AppLogo renders correctly with black gradient tile', (WidgetTester tester) async {

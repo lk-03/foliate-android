@@ -75,14 +75,15 @@ void main() {
     });
 
     test('Daily goal progress and achievement evaluation', () {
-      const habits = ReadingHabits(
+      final date = DateTime.now();
+      final dateStr = ReadingHabits.formatDate(date);
+      final habits = ReadingHabits(
         dailyGoalMinutes: 15,
         dailyHistory: {
-          '2026-09-09': 10,
+          dateStr: 10,
         },
       );
 
-      final date = DateTime(2026, 9, 9);
       expect(habits.getMinutesForDate(date), equals(10));
       expect(habits.dailyGoalFraction, closeTo(0.66, 0.02));
 

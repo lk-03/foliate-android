@@ -5,9 +5,10 @@ import '../models/models.dart';
 import '../services/services.dart';
 import '../theme/theme.dart';
 import 'annotations_screen.dart';
-import 'favorites_screen.dart';
 import 'home_screen.dart';
 import 'library_screen.dart';
+import 'open_libraries_screen.dart';
+import 'profile_screen.dart';
 import 'reader_screen.dart';
 
 /// Top-level mobile navigation shell hosting the Swipeable PageView,
@@ -92,7 +93,7 @@ class _MainShellState extends State<MainShell> {
     if (_currentIndex == index) return;
     HapticFeedback.selectionClick();
     setState(() => _currentIndex = index);
-    if (index == 0) {
+    if (index == 0 || index == 4) {
       _reloadHabits();
     }
     if (index == 3) {
@@ -115,9 +116,11 @@ class _MainShellState extends State<MainShell> {
       case 1:
         return 'Library';
       case 2:
-        return 'Favorites';
+        return 'Explore';
       case 3:
-        return 'Notes';
+        return 'Annotations';
+      case 4:
+        return 'Profile';
       default:
         return 'Foliate';
     }
@@ -191,8 +194,11 @@ class _MainShellState extends State<MainShell> {
           setState(() {
             _currentIndex = index;
           });
-          if (index == 0) {
+          if (index == 0 || index == 4) {
             _reloadHabits();
+          }
+          if (index == 3) {
+            _reloadAnnotations();
           }
         },
         children: [
@@ -221,7 +227,7 @@ class _MainShellState extends State<MainShell> {
             },
             onBooksChanged: _reloadBooks,
           ),
-          FavoritesScreen(books: _books),
+          const OpenLibrariesScreen(),
           AnnotationsScreen(
             annotations: _annotations,
             booksMap: booksMap,
@@ -237,6 +243,23 @@ class _MainShellState extends State<MainShell> {
                   ),
                 ).then((_) => _reloadAnnotations());
               }
+            },
+          ),
+          ProfileScreen(
+            books: _books,
+            readingHabits: _readingHabits,
+            onDailyGoalChanged: (newMins) async {
+              final updated = await StorageService.instance.updateDailyReadingGoal(newMins);
+              setState(() => _readingHabits = updated);
+            },
+            onYearlyGoalChanged: (newTarget) async {
+              final updated = await StorageService.instance.updateYearlyReadingGoal(newTarget);
+              setState(() => _readingHabits = updated);
+            },
+            onRescanStorage: () async {
+              await _autoScanLinkedFolders();
+              await _reloadBooks();
+              await _reloadHabits();
             },
           ),
         ],
@@ -268,14 +291,19 @@ class _MainShellState extends State<MainShell> {
               label: 'Library',
             ),
             NavigationDestination(
-              icon: const Icon(Icons.favorite_outline_rounded),
-              selectedIcon: Icon(Icons.favorite_rounded, color: primaryAccent),
-              label: 'Favorites',
+              icon: const Icon(Icons.explore_outlined),
+              selectedIcon: Icon(Icons.explore_rounded, color: primaryAccent),
+              label: 'Explore',
             ),
             NavigationDestination(
               icon: const Icon(Icons.bookmarks_outlined),
               selectedIcon: Icon(Icons.bookmarks_rounded, color: primaryAccent),
-              label: 'Notes',
+              label: 'Annotations',
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.person_outline_rounded),
+              selectedIcon: Icon(Icons.person_rounded, color: primaryAccent),
+              label: 'Profile',
             ),
           ],
         ),
