@@ -87,7 +87,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   void _checkAndShowCompletionCeremony(double percentage) {
-    if (percentage >= 0.995 && !_hasShownCompletionCeremony) {
+    if (percentage >= 99.5 && !_hasShownCompletionCeremony) {
       _hasShownCompletionCeremony = true;
       showModalBottomSheet(
         context: context,

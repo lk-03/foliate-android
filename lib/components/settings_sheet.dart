@@ -153,7 +153,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                 physics: const BouncingScrollPhysics(),
                 children: [
                   // Section: Appearance
-                  _buildSectionHeader('Appearance & Accent', colors),
+                  _buildSectionHeader('Appearance', colors),
                   Material(
                     color: colors.surfaceCard,
                     clipBehavior: Clip.antiAlias,
@@ -170,10 +170,18 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                           color: primaryAccent.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(Icons.palette_outlined, color: primaryAccent, size: 20),
+                        child: Icon(
+                          appTheme.mode == ThemeMode.system
+                              ? Icons.brightness_auto_rounded
+                              : (appTheme.mode == ThemeMode.dark
+                                  ? Icons.dark_mode_rounded
+                                  : Icons.light_mode_rounded),
+                          color: primaryAccent,
+                          size: 20,
+                        ),
                       ),
                       title: Text(
-                        'Warm Terracotta & Amber',
+                        'Appearance',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -186,32 +194,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                             : (appTheme.mode == ThemeMode.dark ? 'Dark Theme' : 'Light Theme'),
                         style: TextStyle(fontSize: 13, color: colors.textMuted),
                       ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 14,
-                            height: 14,
-                            decoration: BoxDecoration(
-                              color: appTheme.primaryColor,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 1.5),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Container(
-                            width: 14,
-                            height: 14,
-                            decoration: BoxDecoration(
-                              color: AdwaitaColors.amberStreak,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 1.5),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Icon(Icons.chevron_right_rounded, color: colors.textMuted),
-                        ],
-                      ),
+                      trailing: Icon(Icons.chevron_right_rounded, color: colors.textMuted),
                       onTap: () {
                         Navigator.pop(context);
                         AppThemeSheet.show(context);

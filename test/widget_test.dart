@@ -824,6 +824,85 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Export Highlights (Markdown)'), findsNothing);
   });
+
+  test('Book displayPercentage and progressFraction normalization test', () {
+    const book6 = Book(
+      hash: 'h-6',
+      title: 'Book 6',
+      addedAt: 0,
+      percentage: 6.0,
+    );
+    expect(book6.displayPercentage, equals(6));
+    expect(book6.progressFraction, closeTo(0.06, 0.001));
+
+    const book17 = Book(
+      hash: 'h-17',
+      title: 'Book 17',
+      addedAt: 0,
+      percentage: 17.0,
+    );
+    expect(book17.displayPercentage, equals(17));
+    expect(book17.progressFraction, closeTo(0.17, 0.001));
+
+    const book37 = Book(
+      hash: 'h-37',
+      title: 'Book 37',
+      addedAt: 0,
+      percentage: 37.0,
+    );
+    expect(book37.displayPercentage, equals(37));
+    expect(book37.progressFraction, closeTo(0.37, 0.001));
+
+    const book0 = Book(
+      hash: 'h-0',
+      title: 'Book 0',
+      addedAt: 0,
+      percentage: 0.0,
+    );
+    expect(book0.displayPercentage, equals(0));
+    expect(book0.progressFraction, equals(0.0));
+
+    const book100 = Book(
+      hash: 'h-100',
+      title: 'Book 100',
+      addedAt: 0,
+      percentage: 100.0,
+    );
+    expect(book100.displayPercentage, equals(100));
+    expect(book100.progressFraction, equals(1.0));
+
+    // Legacy fraction fallback
+    const legacyBook = Book(
+      hash: 'h-leg',
+      title: 'Legacy Fraction Book',
+      addedAt: 0,
+      percentage: 0.5,
+    );
+    expect(legacyBook.displayPercentage, equals(50));
+    expect(legacyBook.progressFraction, closeTo(0.5, 0.001));
+  });
+
+  testWidgets('AppThemeSheet renders mode selection and excludes signature palette', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const FoliateApp(),
+    );
+    await tester.pumpAndSettle();
+
+    final BuildContext context = tester.element(find.byType(PageView));
+    AppThemeSheet.show(context);
+    await tester.pumpAndSettle();
+
+    expect(find.text('App Appearance'), findsOneWidget);
+    expect(find.text('Choose your interface mode'), findsOneWidget);
+    expect(find.text('INTERFACE MODE'), findsOneWidget);
+    expect(find.text('Dark'), findsOneWidget);
+    expect(find.text('Light'), findsOneWidget);
+    expect(find.text('System'), findsOneWidget);
+
+    // Ensure SIGNATURE PALETTE is completely removed
+    expect(find.text('SIGNATURE PALETTE'), findsNothing);
+    expect(find.text('Warm Terracotta & Amber'), findsNothing);
+  });
 }
 
 

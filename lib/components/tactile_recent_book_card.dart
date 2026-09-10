@@ -18,7 +18,7 @@ class TactileRecentBookCard extends StatelessWidget {
 
   String _formatReadingTime(int totalReadingTimeMs) {
     if (totalReadingTimeMs <= 0) {
-      final pct = (book.percentage * 100).toInt();
+      final pct = book.displayPercentage;
       if (pct > 0) return '$pct% finished';
       return 'New book';
     }
@@ -34,7 +34,7 @@ class TactileRecentBookCard extends StatelessWidget {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
     final primaryAccent = Theme.of(context).colorScheme.primary;
-    final percent = (book.percentage * 100).round();
+    final percent = book.displayPercentage;
 
     return SizedBox(
       width: 154,
@@ -186,7 +186,7 @@ class TactileRecentBookCard extends StatelessWidget {
                           color: Colors.black.withValues(alpha: 0.35),
                           alignment: Alignment.centerLeft,
                           child: FractionallySizedBox(
-                            widthFactor: book.percentage.clamp(0.0, 1.0),
+                            widthFactor: book.progressFraction,
                             child: Container(
                               color: primaryAccent,
                             ),

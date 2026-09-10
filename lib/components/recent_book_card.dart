@@ -79,7 +79,7 @@ class RecentBookCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '${book.percentage.round()}% completed',
+                          '${book.displayPercentage}% completed',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
@@ -113,7 +113,7 @@ class RecentBookCard extends StatelessWidget {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
-                        value: (book.percentage / 100).clamp(0.0, 1.0),
+                        value: book.progressFraction,
                         minHeight: 5,
                         backgroundColor: colors.border.withValues(alpha: 0.5),
                         valueColor: AlwaysStoppedAnimation<Color>(

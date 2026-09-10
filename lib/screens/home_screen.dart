@@ -380,7 +380,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildCurrentlyReadingHero(Book book, FoliateThemeColors colors) {
     final primaryAccent = Theme.of(context).colorScheme.primary;
-    final percent = (book.percentage * 100).round();
+    final percent = book.displayPercentage;
 
     return Container(
       padding: const EdgeInsets.all(14),

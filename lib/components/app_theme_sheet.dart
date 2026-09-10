@@ -68,7 +68,7 @@ class AppThemeSheet extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      'Interface mode & Warm Terracotta theme',
+                      'Choose your interface mode',
                       style: TextStyle(
                         fontSize: 12,
                         color: colors.textMuted,
@@ -126,87 +126,7 @@ class AppThemeSheet extends ConsumerWidget {
               ],
             ),
 
-            const SizedBox(height: 24),
-
-            // Signature Palette Showcase
-            Text(
-              'SIGNATURE PALETTE',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.8,
-                color: colors.textMuted,
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: colors.inputBackground,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: colors.border),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          themeState.primaryColor,
-                          AdwaitaColors.amberStreak,
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.palette_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Warm Terracotta & Amber',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Signature editorial aesthetic across library and reader',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: themeState.primaryColor,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
           ],
         ),
       ),

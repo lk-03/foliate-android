@@ -123,7 +123,7 @@ class BookCard extends StatelessWidget {
                     ),
 
                     // Bottom Progress Pill Overlay
-                    if (book.percentage > 0)
+                    if (book.displayPercentage > 0)
                       Positioned(
                         bottom: 6,
                         left: 6,
@@ -137,7 +137,7 @@ class BookCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            '${book.percentage.round()}%',
+                            '${book.displayPercentage}%',
                             style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.bold,

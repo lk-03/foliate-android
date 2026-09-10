@@ -33,6 +33,22 @@ class Book {
     this.fileSize,
   });
 
+  /// Formatted integer percentage between 0 and 100
+  int get displayPercentage {
+    if (percentage <= 1.0 && percentage > 0.0) {
+      return (percentage * 100).round().clamp(0, 100);
+    }
+    return percentage.round().clamp(0, 100);
+  }
+
+  /// Progress fraction strictly between 0.0 and 1.0 (for progress bars and indicators)
+  double get progressFraction {
+    if (percentage > 1.0) {
+      return (percentage / 100.0).clamp(0.0, 1.0);
+    }
+    return percentage.clamp(0.0, 1.0);
+  }
+
   Book copyWith({
     String? hash,
     String? title,
