@@ -173,7 +173,7 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                         child: Icon(Icons.palette_outlined, color: primaryAccent, size: 20),
                       ),
                       title: Text(
-                        '${appTheme.accent.label} Accent',
+                        'Warm Terracotta & Amber',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -193,7 +193,17 @@ class _SettingsSheetState extends ConsumerState<SettingsSheet> {
                             width: 14,
                             height: 14,
                             decoration: BoxDecoration(
-                              color: appTheme.accent.color,
+                              color: appTheme.primaryColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 1.5),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: AdwaitaColors.amberStreak,
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white, width: 1.5),
                             ),

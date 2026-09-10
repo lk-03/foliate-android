@@ -66,6 +66,15 @@ class AdwaitaColors {
   /// Warm Terracotta primary editorial accent from Apple Books reference
   static const Color terracottaAccent = Color(0xFFC2410C);
 
+  /// Warm Terracotta for Dark mode
+  static const Color terracottaDark = Color(0xFFD97736);
+
+  /// Warm Terracotta for Light mode
+  static const Color terracottaLight = Color(0xFFC2410C);
+
+  /// Warm Terracotta / Warm Paper tone
+  static const Color warmTerracotta = Color(0xFFC6782E);
+
   /// Burnished Amber for streak flame and habit progress ring
   static const Color amberStreak = Color(0xFFD97706);
 
@@ -90,7 +99,7 @@ class AdwaitaColors {
   static const Color readerBlackText = Color(0xFFD1D1D6);
   static const Color readerBlackSurface = Color(0xFF161616);
 
-  // --- 9 Foliate Linux Desktop Themes ---
+  // --- Foliate Reading Themes Curated for Warm Terracotta / Amber Palette ---
   static const List<FoliateThemePreset> foliateThemes = [
     FoliateThemePreset(
       id: 'default',
@@ -101,52 +110,44 @@ class AdwaitaColors {
       darkText: Color(0xFFEDEDED),
     ),
     FoliateThemePreset(
+      id: 'sepia',
+      label: 'Calm Sepia',
+      lightBg: Color(0xFFF8F1E5),
+      lightText: Color(0xFF4D3826),
+      darkBg: Color(0xFF24201C),
+      darkText: Color(0xFFD4C5B0),
+    ),
+    FoliateThemePreset(
+      id: 'solarized',
+      label: 'Warm Cream',
+      lightBg: Color(0xFFFDF6E3),
+      lightText: Color(0xFF5F4B32),
+      darkBg: Color(0xFF211E1B),
+      darkText: Color(0xFFD9CEC2),
+    ),
+    FoliateThemePreset(
+      id: 'night',
+      label: 'Quiet Black',
+      lightBg: Color(0xFF1E1D1B),
+      lightText: Color(0xFFEDEDED),
+      darkBg: Color(0xFF1E1D1B),
+      darkText: Color(0xFFEDEDED),
+    ),
+    FoliateThemePreset(
+      id: 'black',
+      label: 'Contrast Black',
+      lightBg: Color(0xFF000000),
+      lightText: Color(0xFFD1D1D6),
+      darkBg: Color(0xFF000000),
+      darkText: Color(0xFFD1D1D6),
+    ),
+    FoliateThemePreset(
       id: 'gray',
       label: 'Gray',
       lightBg: Color(0xFFF0F0F0),
       lightText: Color(0xFF202020),
       darkBg: Color(0xFF2E2E2E),
       darkText: Color(0xFFD8D8D8),
-    ),
-    FoliateThemePreset(
-      id: 'sepia',
-      label: 'Sepia',
-      lightBg: Color(0xFFF8F1E5),
-      lightText: Color(0xFF4D3826),
-      darkBg: Color(0xFF2D241E),
-      darkText: Color(0xFFEBD8C3),
-    ),
-    FoliateThemePreset(
-      id: 'grass',
-      label: 'Grass',
-      lightBg: Color(0xFFEBF2E8),
-      lightText: Color(0xFF1D381D),
-      darkBg: Color(0xFF1E2A20),
-      darkText: Color(0xFFD2E4D2),
-    ),
-    FoliateThemePreset(
-      id: 'cherry',
-      label: 'Cherry',
-      lightBg: Color(0xFFF5EBEF),
-      lightText: Color(0xFF3D1B25),
-      darkBg: Color(0xFF2D1C22),
-      darkText: Color(0xFFE8D2DA),
-    ),
-    FoliateThemePreset(
-      id: 'sky',
-      label: 'Sky',
-      lightBg: Color(0xFFEBF1F7),
-      lightText: Color(0xFF1D2D3D),
-      darkBg: Color(0xFF1C232E),
-      darkText: Color(0xFFD2E0F0),
-    ),
-    FoliateThemePreset(
-      id: 'solarized',
-      label: 'Solarized',
-      lightBg: Color(0xFFFDF6E3),
-      lightText: Color(0xFF657B83),
-      darkBg: Color(0xFF002B36),
-      darkText: Color(0xFF93A1A1),
     ),
     FoliateThemePreset(
       id: 'gruvbox',
@@ -166,35 +167,31 @@ class AdwaitaColors {
     ),
   ];
 
-  /// Returns the theme-specific accent color for the reader HUD and controls
+  /// Returns the theme-specific accent color for the reader HUD and controls,
+  /// harmonized with the Warm Terracotta and Amber signature aesthetic.
   static Color getThemeAccent(String themeId, bool isDarkMode) {
     switch (themeId.toLowerCase()) {
       case 'sepia':
-        return const Color(0xFFC6782E); // Warm amber / terracotta
-      case 'gruvbox':
-        return const Color(0xFFD79921); // Golden warm amber
-      case 'nord':
-        return const Color(0xFF88C0D0); // Frost cyan
-      case 'cherry':
-        return const Color(0xFFD43C6E); // Rose berry
-      case 'grass':
-        return const Color(0xFF26A269); // Forest emerald
+      case 'warm':
       case 'solarized':
-        return const Color(0xFF2AA198); // Teal cyan
-      case 'sky':
-        return const Color(0xFF3584E4); // Sky blue
-      case 'gray':
-      case 'grey':
-        return isDarkMode ? const Color(0xFF3DB88F) : const Color(0xFF2E6F54);
+        return warmTerracotta;
+      case 'black':
+      case 'contrast':
+        return amberStreak;
+      case 'gruvbox':
+        return const Color(0xFFD79921);
+      case 'night':
+        return terracottaDark;
       case 'day':
       case 'light':
-        return const Color(0xFF2EC27E);
-      case 'night':
-      case 'black':
+        return terracottaLight;
+      case 'nord':
+      case 'gray':
+      case 'grey':
       case 'default':
       case 'defaulttheme':
       default:
-        return const Color(0xFF3DB88F); // Foliate leaf green
+        return isDarkMode ? terracottaDark : terracottaLight;
     }
   }
 

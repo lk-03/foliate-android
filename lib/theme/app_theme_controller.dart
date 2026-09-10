@@ -1,32 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'adwaita_colors.dart';
 
-/// Available Libadwaita / Android accent color palettes
+/// App signature accent definition - unified Warm Terracotta and Amber
 enum AppAccentColor {
-  emerald(
-    label: 'Emerald',
-    color: Color(0xFF3DB88F),
-  ),
-  blue(
-    label: 'Ocean Blue',
-    color: Color(0xFF3584E4),
-  ),
-  amber(
-    label: 'Sunset Amber',
-    color: Color(0xFFE5A50A),
-  ),
-  rose(
-    label: 'Coral Rose',
-    color: Color(0xFFE06377),
-  ),
-  purple(
-    label: 'Royal Violet',
-    color: Color(0xFF9141AC),
-  ),
-  slate(
-    label: 'Neutral Slate',
-    color: Color(0xFF77767B),
+  terracotta(
+    label: 'Warm Terracotta',
+    color: AdwaitaColors.terracottaDark,
   );
 
   final String label;
@@ -38,11 +19,7 @@ enum AppAccentColor {
   });
 
   static AppAccentColor fromString(String? val) {
-    if (val == null) return AppAccentColor.emerald;
-    return AppAccentColor.values.firstWhere(
-      (e) => e.name == val,
-      orElse: () => AppAccentColor.emerald,
-    );
+    return AppAccentColor.terracotta;
   }
 }
 
@@ -52,8 +29,12 @@ class AppThemeState {
 
   const AppThemeState({
     this.mode = ThemeMode.dark,
-    this.accent = AppAccentColor.emerald,
+    this.accent = AppAccentColor.terracotta,
   });
+
+  Color get primaryColor => mode == ThemeMode.light
+      ? AdwaitaColors.terracottaLight
+      : AdwaitaColors.terracottaDark;
 
   AppThemeState copyWith({
     ThemeMode? mode,
@@ -77,16 +58,17 @@ class AppThemeNotifier extends StateNotifier<AppThemeState> {
   Future<void> _loadFromPrefs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final modeStr = prefs.getString(_modePrefKey);
-      final accentStr = prefs.getString(_accentPrefKey);
+      // Purge any legacy saved accent preference from previous versions
+      if (prefs.containsKey(_accentPrefKey)) {
+        await prefs.remove(_accentPrefKey);
+      }
 
+      final modeStr = prefs.getString(_modePrefKey);
       ThemeMode mode = ThemeMode.dark;
       if (modeStr == 'light') mode = ThemeMode.light;
       if (modeStr == 'system') mode = ThemeMode.system;
 
-      final accent = AppAccentColor.fromString(accentStr);
-
-      state = AppThemeState(mode: mode, accent: accent);
+      state = AppThemeState(mode: mode, accent: AppAccentColor.terracotta);
     } catch (_) {}
   }
 
@@ -102,10 +84,10 @@ class AppThemeNotifier extends StateNotifier<AppThemeState> {
   }
 
   Future<void> setAccent(AppAccentColor accent) async {
-    state = state.copyWith(accent: accent);
+    state = state.copyWith(accent: AppAccentColor.terracotta);
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_accentPrefKey, accent.name);
+      await prefs.remove(_accentPrefKey);
     } catch (_) {}
   }
 }

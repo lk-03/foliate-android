@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:foliate/models/models.dart';
 import 'package:foliate/reader/reader.dart';
@@ -638,11 +637,11 @@ void main() {
     });
 
     test('Theme accents are correctly mapped across reader themes', () {
-      expect(AdwaitaColors.getThemeAccent('sepia', false), equals(const Color(0xFFC6782E)));
-      expect(AdwaitaColors.getThemeAccent('gruvbox', true), equals(const Color(0xFFD79921)));
-      expect(AdwaitaColors.getThemeAccent('nord', true), equals(const Color(0xFF88C0D0)));
-      expect(AdwaitaColors.getThemeAccent('cherry', false), equals(const Color(0xFFD43C6E)));
-      expect(AdwaitaColors.getThemeAccent('default', true), equals(const Color(0xFF3DB88F)));
+      expect(AdwaitaColors.getThemeAccent('sepia', false), equals(AdwaitaColors.warmTerracotta));
+      expect(AdwaitaColors.getThemeAccent('solarized', false), equals(AdwaitaColors.warmTerracotta));
+      expect(AdwaitaColors.getThemeAccent('black', true), equals(AdwaitaColors.amberStreak));
+      expect(AdwaitaColors.getThemeAccent('default', true), equals(AdwaitaColors.terracottaDark));
+      expect(AdwaitaColors.getThemeAccent('default', false), equals(AdwaitaColors.terracottaLight));
     });
   });
 }

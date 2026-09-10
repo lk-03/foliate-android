@@ -53,7 +53,7 @@ class AppThemeSheet extends ConsumerWidget {
               children: [
                 AppLogo(
                   size: 36,
-                  accentColor: themeState.accent.color,
+                  accentColor: themeState.primaryColor,
                 ),
                 const SizedBox(width: 14),
                 Column(
@@ -68,7 +68,7 @@ class AppThemeSheet extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      'Customize UI theme and accent color',
+                      'Interface mode & Warm Terracotta theme',
                       style: TextStyle(
                         fontSize: 12,
                         color: colors.textMuted,
@@ -100,7 +100,7 @@ class AppThemeSheet extends ConsumerWidget {
                   icon: Icons.dark_mode_rounded,
                   isSelected: themeState.mode == ThemeMode.dark,
                   colors: colors,
-                  accentColor: themeState.accent.color,
+                  accentColor: themeState.primaryColor,
                   onTap: () => themeNotifier.setThemeMode(ThemeMode.dark),
                 ),
                 const SizedBox(width: 8),
@@ -110,7 +110,7 @@ class AppThemeSheet extends ConsumerWidget {
                   icon: Icons.light_mode_rounded,
                   isSelected: themeState.mode == ThemeMode.light,
                   colors: colors,
-                  accentColor: themeState.accent.color,
+                  accentColor: themeState.primaryColor,
                   onTap: () => themeNotifier.setThemeMode(ThemeMode.light),
                 ),
                 const SizedBox(width: 8),
@@ -120,7 +120,7 @@ class AppThemeSheet extends ConsumerWidget {
                   icon: Icons.brightness_auto_rounded,
                   isSelected: themeState.mode == ThemeMode.system,
                   colors: colors,
-                  accentColor: themeState.accent.color,
+                  accentColor: themeState.primaryColor,
                   onTap: () => themeNotifier.setThemeMode(ThemeMode.system),
                 ),
               ],
@@ -128,9 +128,9 @@ class AppThemeSheet extends ConsumerWidget {
 
             const SizedBox(height: 24),
 
-            // Accent Color Selector
+            // Signature Palette Showcase
             Text(
-              'ACCENT COLOR',
+              'SIGNATURE PALETTE',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
@@ -138,62 +138,72 @@ class AppThemeSheet extends ConsumerWidget {
                 color: colors.textMuted,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: AppAccentColor.values.map((accent) {
-                final isSelected = themeState.accent == accent;
-                return InkWell(
-                  onTap: () => themeNotifier.setAccent(accent),
-                  borderRadius: BorderRadius.circular(14),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colors.inputBackground,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: colors.border),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? accent.color.withValues(alpha: 0.15)
-                          : colors.inputBackground,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isSelected ? accent.color : colors.border,
-                        width: isSelected ? 1.5 : 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 16,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            color: accent.color,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          accent.label,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                            color: isSelected ? colors.textPrimary : colors.textSecondary,
-                          ),
-                        ),
-                        if (isSelected) ...[
-                          const SizedBox(width: 6),
-                          Icon(
-                            Icons.check_rounded,
-                            size: 14,
-                            color: accent.color,
-                          ),
+                      gradient: LinearGradient(
+                        colors: [
+                          themeState.primaryColor,
+                          AdwaitaColors.amberStreak,
                         ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.palette_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Warm Terracotta & Amber',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Signature editorial aesthetic across library and reader',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                );
-              }).toList(),
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: themeState.primaryColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+              ),
             ),
 
             const SizedBox(height: 16),

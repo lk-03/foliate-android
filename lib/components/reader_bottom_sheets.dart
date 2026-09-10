@@ -124,7 +124,7 @@ class _ReaderLayoutSheetState extends State<ReaderLayoutSheet> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
-    final activeColor = widget.accentColor ?? AdwaitaColors.foliateGreen;
+    final activeColor = widget.accentColor ?? AdwaitaColors.terracottaDark;
 
     return Container(
       decoration: BoxDecoration(
@@ -503,6 +503,12 @@ class _ReaderThemeCustomizeSheetState extends State<ReaderThemeCustomizeSheet> {
   ({Color bg, Color text}) get _themePreviewColors {
     for (final opt in kReaderThemeOptions) {
       if (opt.mode == _current.theme) {
+        if (opt.mode == ReaderThemeMode.sepia) {
+          if (opt.isDark == _current.isDarkMode) {
+            return (bg: opt.bg, text: opt.text);
+          }
+          continue;
+        }
         return (bg: opt.bg, text: opt.text);
       }
     }
@@ -516,7 +522,7 @@ class _ReaderThemeCustomizeSheetState extends State<ReaderThemeCustomizeSheet> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
-    final activeColor = widget.accentColor ?? AdwaitaColors.foliateGreen;
+    final activeColor = widget.accentColor ?? AdwaitaColors.terracottaDark;
     final previewColors = _themePreviewColors;
 
     final previewTextAlign = _current.fullJustification

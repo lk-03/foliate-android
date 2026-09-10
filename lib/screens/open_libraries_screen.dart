@@ -292,11 +292,11 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
       case 'gutenberg':
         return Icon(Icons.auto_stories_rounded, color: primaryAccent, size: 24);
       case 'standard_ebooks':
-        return const Icon(Icons.local_library_rounded, color: AdwaitaColors.libadwaitaBlue, size: 24);
+        return const Icon(Icons.local_library_rounded, color: AdwaitaColors.amberStreak, size: 24);
       case 'internet_archive':
-        return const Icon(Icons.account_balance_rounded, color: Color(0xFFE5A50A), size: 24);
+        return const Icon(Icons.account_balance_rounded, color: AdwaitaColors.warmTerracotta, size: 24);
       case 'feedbooks':
-        return const Icon(Icons.rss_feed_rounded, color: Color(0xFFC061CB), size: 24);
+        return Icon(Icons.rss_feed_rounded, color: primaryAccent, size: 24);
       default:
         return Icon(Icons.public_rounded, color: primaryAccent, size: 24);
     }

@@ -5715,51 +5715,24 @@ ${doc.querySelector("parsererror").innerText}`);
         'default':      { light: { bg: '#FFFFFF', fg: '#1A1A1A' }, dark: { bg: '#1E1D1B', fg: '#EDEDED' } },
         'defaulttheme': { light: { bg: '#FFFFFF', fg: '#1A1A1A' }, dark: { bg: '#1E1D1B', fg: '#EDEDED' } },
         'day':          { light: { bg: '#FFFFFF', fg: '#1A1A1A' }, dark: { bg: '#FFFFFF', fg: '#1A1A1A' } },
+        'sepia':        { light: { bg: '#F8F1E5', fg: '#4D3826' }, dark: { bg: '#24201C', fg: '#D4C5B0' } },
+        'solarized':    { light: { bg: '#FDF6E3', fg: '#5F4B32' }, dark: { bg: '#211E1B', fg: '#D9CEC2' } },
+        'warm':         { light: { bg: '#F6EFE6', fg: '#332B24' }, dark: { bg: '#24211E', fg: '#D9CEC2' } },
         'gray':         { light: { bg: '#F0F0F0', fg: '#202020' }, dark: { bg: '#2E2E2E', fg: '#D8D8D8' } },
-        'sepia':        { light: { bg: '#F8F1E5', fg: '#4D3826' }, dark: { bg: '#2D241E', fg: '#EBD8C3' } },
-        'grass':        { light: { bg: '#EBF2E8', fg: '#1D381D' }, dark: { bg: '#1E2A20', fg: '#D2E4D2' } },
-        'cherry':       { light: { bg: '#F5EBEF', fg: '#3D1B25' }, dark: { bg: '#2D1C22', fg: '#E8D2DA' } },
-        'sky':          { light: { bg: '#EBF1F7', fg: '#1D2D3D' }, dark: { bg: '#1C232E', fg: '#D2E0F0' } },
-        'solarized':    { light: { bg: '#FDF6E3', fg: '#657B83' }, dark: { bg: '#002B36', fg: '#93A1A1' } },
         'gruvbox':      { light: { bg: '#FBF1C7', fg: '#3C3836' }, dark: { bg: '#282828', fg: '#EBDBB2' } },
         'nord':         { light: { bg: '#ECEFF4', fg: '#2E3440' }, dark: { bg: '#2E3440', fg: '#ECEFF4' } },
         'night':        { light: { bg: '#1E1D1B', fg: '#EDEDED' }, dark: { bg: '#1E1D1B', fg: '#EDEDED' } },
-        'black':        { light: { bg: '#000000', fg: '#D1D1D6' }, dark: { bg: '#000000', fg: '#D1D1D6' } }
+        'black':        { light: { bg: '#000000', fg: '#D1D1D6' }, dark: { bg: '#000000', fg: '#D1D1D6' } },
+        'contrast':     { light: { bg: '#FFFFFF', fg: '#000000' }, dark: { bg: '#000000', fg: '#FFFFFF' } }
       };
 
-      let bg = '#FFFFFF';
-      let fg = '#1A1A1A';
+      const themeKey = (theme || 'default').toLowerCase();
+      const themeObj = THEMES[themeKey] || THEMES['default'];
+      const pair = isDarkMode ? themeObj.dark : themeObj.light;
+      let bg = pair.bg;
+      let fg = pair.fg;
 
-      if (theme === 'sepia') {
-        bg = isDarkMode ? '#24201C' : '#FBF0D9';
-        fg = isDarkMode ? '#D4C5B0' : '#473621';
-      } else if (theme === 'warm') {
-        bg = isDarkMode ? '#24211E' : '#F6EFE6';
-        fg = isDarkMode ? '#D9CEC2' : '#332B24';
-      } else if (theme === 'gray') {
-        bg = isDarkMode ? '#232425' : '#E8E8E8';
-        fg = isDarkMode ? '#CFD1D3' : '#2A2C2E';
-      } else if (theme === 'nord') {
-        bg = isDarkMode ? '#2E3440' : '#ECEFF4';
-        fg = isDarkMode ? '#D8DEE9' : '#2E3440';
-      } else if (theme === 'gruvbox') {
-        bg = isDarkMode ? '#282828' : '#FBF1C7';
-        fg = isDarkMode ? '#EBDBB2' : '#3C3836';
-      } else if (theme === 'grass') {
-        bg = isDarkMode ? '#1E261E' : '#EAF0E8';
-        fg = isDarkMode ? '#C8D4C8' : '#253525';
-      } else if (theme === 'black') {
-        bg = '#1E1D1B';
-        fg = '#D6D6D6';
-      } else if (theme === 'contrast') {
-        bg = '#000000';
-        fg = '#FFFFFF';
-      } else {
-        bg = isDarkMode ? '#1C1C1E' : '#FFFFFF';
-        fg = isDarkMode ? '#EDEDED' : '#1A1A1A';
-      }
-
-      if (theme !== 'black' && theme !== 'contrast' && isDarkMode && theme === 'default') {
+      if (invertColors) {
         const tmp = bg;
         bg = fg;
         fg = tmp;

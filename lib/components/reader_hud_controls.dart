@@ -68,7 +68,7 @@ class DottedFontSizeStepper extends StatelessWidget {
         FoliateThemeColors.dark;
     final totalSteps = kReaderFontSizes.length;
     final activeIdx = _currentIndex;
-    final activeColor = accentColor ?? AdwaitaColors.foliateGreen;
+    final activeColor = accentColor ?? AdwaitaColors.terracottaDark;
 
     return RepaintBoundary(
       child: Container(
@@ -447,7 +447,7 @@ class FloatingReaderCapsule extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
-    final activeColor = accentColor ?? AdwaitaColors.foliateGreen;
+    final activeColor = accentColor ?? AdwaitaColors.terracottaDark;
 
     return RepaintBoundary(
       child: Material(
@@ -690,7 +690,7 @@ class ReaderPageSliderBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
-    final activeColor = accentColor ?? AdwaitaColors.foliateGreen;
+    final activeColor = accentColor ?? AdwaitaColors.terracottaDark;
     final pageText = _formatPageLabel();
 
     return Positioned(
@@ -880,35 +880,14 @@ const List<ReaderThemeOption> kReaderThemeOptions = [
     mode: ReaderThemeMode.solarized,
     isDark: false,
     bg: Color(0xFFFDF6E3),
-    text: Color(0xFF657B83),
+    text: Color(0xFF5F4B32),
   ),
   ReaderThemeOption(
-    label: 'Grey',
-    mode: ReaderThemeMode.gray,
+    label: 'Sepia Dark',
+    mode: ReaderThemeMode.sepia,
     isDark: true,
-    bg: Color(0xFF2E2E2E),
-    text: Color(0xFFD8D8D8),
-  ),
-  ReaderThemeOption(
-    label: 'Nord',
-    mode: ReaderThemeMode.nord,
-    isDark: true,
-    bg: Color(0xFF2E3440),
-    text: Color(0xFFECEFF4),
-  ),
-  ReaderThemeOption(
-    label: 'Gruvbox',
-    mode: ReaderThemeMode.gruvbox,
-    isDark: true,
-    bg: Color(0xFF282828),
-    text: Color(0xFFEBDBB2),
-  ),
-  ReaderThemeOption(
-    label: 'Grass',
-    mode: ReaderThemeMode.grass,
-    isDark: false,
-    bg: Color(0xFFEBF2E8),
-    text: Color(0xFF1D381D),
+    bg: Color(0xFF24201C),
+    text: Color(0xFFD4C5B0),
   ),
   ReaderThemeOption(
     label: 'Quiet Black',
@@ -923,6 +902,20 @@ const List<ReaderThemeOption> kReaderThemeOptions = [
     isDark: true,
     bg: Color(0xFF000000),
     text: Color(0xFFD1D1D6),
+  ),
+  ReaderThemeOption(
+    label: 'Grey',
+    mode: ReaderThemeMode.gray,
+    isDark: true,
+    bg: Color(0xFF2E2E2E),
+    text: Color(0xFFD8D8D8),
+  ),
+  ReaderThemeOption(
+    label: 'Gruvbox',
+    mode: ReaderThemeMode.gruvbox,
+    isDark: true,
+    bg: Color(0xFF282828),
+    text: Color(0xFFEBDBB2),
   ),
 ];
 
@@ -1066,7 +1059,7 @@ class _FloatingReaderMenuState extends State<FloatingReaderMenu> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
-    final activeColor = widget.accentColor ?? AdwaitaColors.foliateGreen;
+    final activeColor = widget.accentColor ?? AdwaitaColors.terracottaDark;
     final screenHeight = MediaQuery.of(context).size.height;
     final sheetHeight = (screenHeight * 0.60).clamp(340.0, 560.0);
 

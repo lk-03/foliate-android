@@ -801,9 +801,17 @@ class _ReaderScreenState extends State<ReaderScreen> {
       _settings.theme.id,
       _settings.isDarkMode,
     );
+    final readerBg = AdwaitaColors.getReaderBgColor(
+      _settings.theme.id,
+      _settings.isDarkMode,
+    );
+    final readerFg = AdwaitaColors.getReaderFgColor(
+      _settings.theme.id,
+      _settings.isDarkMode,
+    );
 
     return Scaffold(
-      backgroundColor: AdwaitaColors.darkWindowBg,
+      backgroundColor: readerBg,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -811,14 +819,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
           Positioned.fill(
             child: PageCurlOverlay(
               settings: _settings,
-              backgroundColor: AdwaitaColors.getReaderBgColor(
-                _settings.theme.id,
-                _settings.isDarkMode,
-              ),
-              textColor: AdwaitaColors.getReaderFgColor(
-                _settings.theme.id,
-                _settings.isDarkMode,
-              ),
+              backgroundColor: readerBg,
+              textColor: readerFg,
               onNextPage: () {
                 _resetInactivityTimer();
                 _bridge.goNext();
@@ -861,7 +863,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: colors.textSecondary.withValues(alpha: 0.6),
+                    color: readerFg.withValues(alpha: 0.65),
                     letterSpacing: 0.2,
                   ),
                 ),
@@ -882,7 +884,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: colors.textSecondary.withValues(alpha: 0.65),
+                    color: readerFg.withValues(alpha: 0.7),
                     letterSpacing: 0.2,
                   ),
                 ),
@@ -946,7 +948,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: colors.textSecondary.withValues(alpha: 0.8),
+                    color: readerFg.withValues(alpha: 0.85),
                     letterSpacing: -0.2,
                   ),
                 ),
@@ -1022,7 +1024,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
           // Full-screen Loading Overlay
           if (!_isReady)
             Container(
-              color: AdwaitaColors.darkWindowBg,
+              color: readerBg,
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1033,9 +1035,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       'Opening book...',
-                      style: TextStyle(fontSize: 13, color: Colors.white70),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: readerFg.withValues(alpha: 0.7),
+                      ),
                     ),
                   ],
                 ),

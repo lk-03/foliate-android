@@ -20,8 +20,8 @@ class FoliateApp extends StatelessWidget {
           return MaterialApp(
             title: 'Foliate',
             debugShowCheckedModeBanner: false,
-            theme: AdwaitaTheme.light(accentColor: appTheme.accent.color),
-            darkTheme: AdwaitaTheme.dark(accentColor: appTheme.accent.color),
+            theme: AdwaitaTheme.light(accentColor: appTheme.primaryColor),
+            darkTheme: AdwaitaTheme.dark(accentColor: appTheme.primaryColor),
             themeMode: appTheme.mode,
             home: const MainShell(),
           );

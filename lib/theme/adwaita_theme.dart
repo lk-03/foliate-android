@@ -167,14 +167,14 @@ class AdwaitaTheme {
   AdwaitaTheme._();
 
   static ThemeData dark({Color? accentColor}) {
-    final accent = accentColor ?? AdwaitaColors.foliateGreen;
+    final accent = accentColor ?? AdwaitaColors.terracottaDark;
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       scaffoldBackgroundColor: AdwaitaColors.darkWindowBg,
       colorScheme: ColorScheme.dark(
         primary: accent,
-        secondary: AdwaitaColors.libadwaitaBlue,
+        secondary: AdwaitaColors.amberStreak,
         surface: AdwaitaColors.darkSurfaceCard,
         onSurface: AdwaitaColors.darkTextPrimary,
         outline: AdwaitaColors.darkBorder,
@@ -241,14 +241,14 @@ class AdwaitaTheme {
   }
 
   static ThemeData light({Color? accentColor}) {
-    final accent = accentColor ?? AdwaitaColors.foliateGreen;
+    final accent = accentColor ?? AdwaitaColors.terracottaLight;
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: AdwaitaColors.lightWindowBg,
       colorScheme: ColorScheme.light(
         primary: accent,
-        secondary: AdwaitaColors.libadwaitaBlue,
+        secondary: AdwaitaColors.amberStreak,
         surface: AdwaitaColors.lightSurfaceCard,
         onSurface: AdwaitaColors.lightTextPrimary,
         outline: AdwaitaColors.lightBorder,
