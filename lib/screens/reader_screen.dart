@@ -857,6 +857,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
           // Underlying Foliate WebView with Page-Turn Animation & Gesture Overlay
           Positioned.fill(
             child: PageCurlOverlay(
+              enabled: false,
               settings: _settings,
               backgroundColor: readerBg,
               textColor: readerFg,

@@ -42,6 +42,7 @@ class PageCurlOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!enabled) return child;
     return Stack(
       fit: StackFit.expand,
       children: [

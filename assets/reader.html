@@ -5979,6 +5979,8 @@ ${doc.querySelector("parsererror").innerText}`);
           margin: 0 !important;
           padding: 0 !important;
           box-sizing: border-box !important;
+          -webkit-user-select: text !important;
+          user-select: text !important;
           ${fontCss}
           ${sizeCss}
           ${minSizeCss}
@@ -5989,6 +5991,8 @@ ${doc.querySelector("parsererror").innerText}`);
         p, div, span, li, h1, h2, h3, h4, h5, h6, a, blockquote {
           background-color: ${bg} !important;
           color: ${fg} !important;
+          -webkit-user-select: text !important;
+          user-select: text !important;
           ${fontCss}
           ${sizeCss}
           ${minSizeCss}
@@ -6057,6 +6061,13 @@ ${doc.querySelector("parsererror").innerText}`);
         const c = color || '#FFE066';
         activeAnnotations.set(cfi, c);
         view.addAnnotation({ value: cfi, color: c });
+        try {
+          const contents = view.renderer?.getContents?.() || [];
+          for (const item of contents) {
+            item.doc?.defaultView?.getSelection?.()?.removeAllRanges?.();
+          }
+          window.getSelection()?.removeAllRanges?.();
+        } catch (e) {}
       }
     };
 
