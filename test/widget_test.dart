@@ -538,6 +538,7 @@ void main() {
       (WidgetTester tester) async {
     bool closed = false;
     bool layoutOpened = false;
+    bool stayAwakeToggled = false;
     double? newBrightness;
 
     await tester.pumpWidget(
@@ -572,6 +573,8 @@ void main() {
             currentTheme: ReaderThemeMode.sepia,
             isDarkMode: false,
             onThemeChanged: (theme, dark) {},
+            isStayAwake: false,
+            onToggleStayAwake: () => stayAwakeToggled = true,
           ),
         ),
       ),
@@ -581,6 +584,8 @@ void main() {
     expect(find.byType(FloatingReaderMenu), findsOneWidget);
     expect(find.text('Close'), findsOneWidget);
     expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+    expect(find.text('Sleep'), findsOneWidget);
+    expect(find.byIcon(Icons.remove_red_eye_outlined), findsOneWidget);
     expect(find.text('Theme Palette'), findsOneWidget);
     expect(find.text('Calm Sepia'), findsWidgets);
     expect(find.text('Warm Cream'), findsOneWidget);
@@ -593,6 +598,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(layoutOpened, isTrue);
     expect(closed, isFalse);
+
+    // Tap Sleep button -> fires onToggleStayAwake
+    await tester.tap(find.text('Sleep'));
+    await tester.pumpAndSettle();
+    expect(stayAwakeToggled, isTrue);
 
     // Drag brightness slider
     await tester.drag(find.byType(Slider), const Offset(-50, 0));
@@ -669,9 +679,21 @@ void main() {
         theme: ThemeData.dark(),
         home: Scaffold(
           body: ReaderTOCSheet(
+            book: const Book(
+              hash: 'jezebel-hash',
+              title: 'Jezebel',
+              author: 'Irene Nemirovsky',
+              addedAt: 123456789,
+            ),
+            currentLocation: const ReadingLocation(
+              cfi: 'cfi-1',
+              sectionTitle: 'Chapter 1: The Arrival',
+              currentLocation: 15,
+              totalLocations: 200,
+            ),
             toc: const [
-              TOCItem(label: 'Chapter 1: The Arrival', href: 'ch1.html'),
-              TOCItem(label: 'Chapter 2: The Secret', href: 'ch2.html'),
+              TOCItem(label: 'Chapter 1: The Arrival', href: 'ch1.html', pageNumber: 15),
+              TOCItem(label: 'Chapter 2: The Secret', href: 'ch2.html', pageNumber: 57),
             ],
             bookmarks: const [],
             onChapterSelected: (href) => selectedHref = href,
@@ -683,9 +705,14 @@ void main() {
 
     expect(find.byType(ReaderTOCSheet), findsOneWidget);
     expect(find.byType(DraggableScrollableSheet), findsOneWidget);
+    expect(find.text('Jezebel'), findsOneWidget);
+    expect(find.text('Irene Nemirovsky'), findsOneWidget);
     expect(find.text('Contents'), findsOneWidget);
     expect(find.text('Bookmarks (0)'), findsOneWidget);
     expect(find.text('Chapter 1: The Arrival'), findsOneWidget);
+    expect(find.text('15'), findsOneWidget);
+    expect(find.text('Chapter 2: The Secret'), findsOneWidget);
+    expect(find.text('57'), findsOneWidget);
 
     // Verify draggable downwards drag gesture
     await tester.drag(find.byType(DraggableScrollableSheet), const Offset(0, 100));
@@ -998,6 +1025,7 @@ void main() {
 
     // Verify annual challenge
     expect(find.textContaining('Challenge'), findsOneWidget);
+    expect(newDailyGoal, isNull);
   });
 
   testWidgets('CuratedBookCard and RecentBookCard render unboxed without grey card backgrounds', (WidgetTester tester) async {

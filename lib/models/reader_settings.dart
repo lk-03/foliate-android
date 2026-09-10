@@ -206,6 +206,7 @@ class ReaderSettings {
   final double paddingBottom;
   final double? marginSide;
   final PageAnimationMode pageAnimationMode;
+  final bool stayAwake;
 
   const ReaderSettings({
     this.theme = ReaderThemeMode.defaultTheme,
@@ -233,6 +234,7 @@ class ReaderSettings {
     this.paddingBottom = 96.0,
     this.marginSide,
     this.pageAnimationMode = PageAnimationMode.slide,
+    this.stayAwake = false,
   });
 
   ReaderSettings copyWith({
@@ -261,6 +263,7 @@ class ReaderSettings {
     double? paddingBottom,
     double? marginSide,
     PageAnimationMode? pageAnimationMode,
+    bool? stayAwake,
   }) {
     return ReaderSettings(
       theme: theme ?? this.theme,
@@ -288,6 +291,7 @@ class ReaderSettings {
       paddingBottom: paddingBottom ?? this.paddingBottom,
       marginSide: marginSide ?? this.marginSide,
       pageAnimationMode: pageAnimationMode ?? this.pageAnimationMode,
+      stayAwake: stayAwake ?? this.stayAwake,
     );
   }
 
@@ -318,6 +322,7 @@ class ReaderSettings {
       'paddingBottom': paddingBottom,
       'marginSide': marginSide,
       'pageAnimationMode': pageAnimationMode.id,
+      'stayAwake': stayAwake,
     };
   }
 
@@ -348,6 +353,7 @@ class ReaderSettings {
       paddingBottom: (map['paddingBottom'] as num?)?.toDouble() ?? 96.0,
       marginSide: (map['marginSide'] as num?)?.toDouble(),
       pageAnimationMode: PageAnimationMode.fromString(map['pageAnimationMode'] as String?),
+      stayAwake: map['stayAwake'] as bool? ?? false,
     );
   }
 
@@ -384,7 +390,8 @@ class ReaderSettings {
         other.paddingTop == paddingTop &&
         other.paddingBottom == paddingBottom &&
         other.marginSide == marginSide &&
-        other.pageAnimationMode == pageAnimationMode;
+        other.pageAnimationMode == pageAnimationMode &&
+        other.stayAwake == stayAwake;
   }
 
   @override
@@ -414,5 +421,6 @@ class ReaderSettings {
         paddingBottom,
         marginSide,
         pageAnimationMode,
+        stayAwake,
       ]);
 }

@@ -6,12 +6,14 @@ class TOCItem {
   final String? href;
   final List<TOCItem> subitems;
   final int depth;
+  final int? pageNumber;
 
   const TOCItem({
     required this.label,
     this.href,
     this.subitems = const [],
     this.depth = 0,
+    this.pageNumber,
   });
 
   TOCItem copyWith({
@@ -19,12 +21,14 @@ class TOCItem {
     String? href,
     List<TOCItem>? subitems,
     int? depth,
+    int? pageNumber,
   }) {
     return TOCItem(
       label: label ?? this.label,
       href: href ?? this.href,
       subitems: subitems ?? this.subitems,
       depth: depth ?? this.depth,
+      pageNumber: pageNumber ?? this.pageNumber,
     );
   }
 
@@ -34,6 +38,7 @@ class TOCItem {
       'href': href,
       'subitems': subitems.map((x) => x.toMap()).toList(),
       'depth': depth,
+      'pageNumber': pageNumber,
     };
   }
 
@@ -43,6 +48,7 @@ class TOCItem {
       label: map['label'] as String? ?? '',
       href: map['href'] as String?,
       depth: (map['depth'] as num?)?.toInt() ?? currentDepth,
+      pageNumber: (map['pageNumber'] as num?)?.toInt(),
       subitems: subitemsList != null
           ? subitemsList
               .whereType<Map<String, dynamic>>()
@@ -58,5 +64,5 @@ class TOCItem {
       TOCItem.fromMap(json.decode(source) as Map<String, dynamic>);
 
   @override
-  String toString() => 'TOCItem(label: $label, href: $href, depth: $depth, subitems: ${subitems.length})';
+  String toString() => 'TOCItem(label: $label, href: $href, depth: $depth, pageNumber: $pageNumber, subitems: ${subitems.length})';
 }

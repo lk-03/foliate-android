@@ -100,6 +100,7 @@ void main() {
         paddingBottom: 98.0,
         marginSide: 28.0,
         pageAnimationMode: PageAnimationMode.slide,
+        stayAwake: true,
       );
 
       final jsonString = settings.toJson();
@@ -107,6 +108,7 @@ void main() {
 
       expect(restored.theme, equals(ReaderThemeMode.gruvbox));
       expect(restored.isDarkMode, isTrue);
+      expect(restored.stayAwake, isTrue);
       expect(restored.fontSize, equals(18.0));
       expect(restored.minFontSize, equals(12.0));
       expect(restored.fontFamily, equals('serif'));
@@ -181,9 +183,10 @@ void main() {
         label: 'Part I: Lispenard Street',
         href: 'part1.html',
         depth: 0,
+        pageNumber: 1,
         subitems: [
-          TOCItem(label: 'Chapter 1', href: 'chap1.html', depth: 1),
-          TOCItem(label: 'Chapter 2', href: 'chap2.html', depth: 1),
+          TOCItem(label: 'Chapter 1', href: 'chap1.html', depth: 1, pageNumber: 15),
+          TOCItem(label: 'Chapter 2', href: 'chap2.html', depth: 1, pageNumber: 57),
         ],
       );
 
@@ -191,9 +194,12 @@ void main() {
       final restored = TOCItem.fromJson(jsonString);
 
       expect(restored.label, equals(toc.label));
+      expect(restored.pageNumber, equals(1));
       expect(restored.subitems.length, equals(2));
       expect(restored.subitems[0].label, equals('Chapter 1'));
+      expect(restored.subitems[0].pageNumber, equals(15));
       expect(restored.subitems[1].label, equals('Chapter 2'));
+      expect(restored.subitems[1].pageNumber, equals(57));
     });
 
     test('Catalog model serialization and default catalogs', () {

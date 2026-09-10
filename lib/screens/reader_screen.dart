@@ -111,7 +111,24 @@ class _ReaderScreenState extends State<ReaderScreen> {
     final s = await StorageService.instance.getBookSettings(widget.book.hash);
     if (mounted) {
       setState(() => _settings = s);
+      if (s.stayAwake) {
+        ScreenAwakeService.instance.setKeepScreenOn(true);
+      }
     }
+  }
+
+  void _toggleStayAwake() {
+    final nextState = !_settings.stayAwake;
+    _applySettings(_settings.copyWith(stayAwake: nextState));
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          nextState ? 'Stay Awake enabled' : 'Stay Awake disabled',
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -123,6 +140,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _isSearchingNotifier.dispose();
     _totalMatchesNotifier.dispose();
     SystemChrome.setPreferredOrientations([]);
+    ScreenAwakeService.instance.setKeepScreenOn(false);
     super.dispose();
   }
 
@@ -261,7 +279,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   void _applySettings(ReaderSettings newSettings) {
+    final prevAwake = _settings.stayAwake;
     setState(() => _settings = newSettings);
+    if (prevAwake != newSettings.stayAwake) {
+      ScreenAwakeService.instance.setKeepScreenOn(newSettings.stayAwake);
+    }
     final effective = _computeEffectiveSettings(newSettings);
     _bridge.applyReaderSettings(effective);
     StorageService.instance.saveBookSettings(widget.book.hash, newSettings);
@@ -486,13 +508,21 @@ class _ReaderScreenState extends State<ReaderScreen> {
         await StorageService.instance.getBookmarks(widget.book.hash);
     if (!mounted) return;
 
+    final themeAccent = AdwaitaColors.getThemeAccent(
+      _settings.theme.id,
+      _settings.isDarkMode,
+    );
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => ReaderTOCSheet(
+        book: widget.book,
         toc: _tableOfContents,
         bookmarks: bookmarks,
+        currentLocation: _currentLocation,
+        accentColor: themeAccent,
         onChapterSelected: (href) => _bridge.goToHref(href),
         onDeleteBookmark: (b) async {
           await StorageService.instance.deleteBookmark(widget.book.hash, b.cfi);
@@ -530,6 +560,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
               onFontSizeChanged: (newSize) {
                 setSheetState(() {});
                 _applySettings(_settings.copyWith(fontSize: newSize));
+              },
+              isStayAwake: _settings.stayAwake,
+              onToggleStayAwake: () {
+                setSheetState(() {});
+                _toggleStayAwake();
               },
               progressPercentage: (_currentLocation?.percentage ?? widget.book.percentage),
               progressLabel: _currentLocation != null

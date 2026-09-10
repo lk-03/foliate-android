@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/models.dart';
@@ -398,6 +399,24 @@ class _ReaderLayoutSheetState extends State<ReaderLayoutSheet> {
                               ),
                             ],
                           ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    _buildSectionHeader('Screen & Reading Behavior'),
+                    _buildCard(
+                      colors: colors,
+                      children: [
+                        SwitchListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                          title: const Text('Stay Awake', style: TextStyle(fontSize: 14)),
+                          subtitle: Text(
+                            'Keep screen illuminated while reading',
+                            style: TextStyle(fontSize: 12, color: colors.textMuted),
+                          ),
+                          value: _current.stayAwake,
+                          activeThumbColor: activeColor,
+                          onChanged: (val) => _update(_current.copyWith(stayAwake: val)),
                         ),
                       ],
                     ),
@@ -925,6 +944,9 @@ class ReaderTOCSheet extends StatefulWidget {
   final List<Bookmark> bookmarks;
   final ValueChanged<String> onChapterSelected;
   final ValueChanged<Bookmark>? onDeleteBookmark;
+  final Book? book;
+  final ReadingLocation? currentLocation;
+  final Color? accentColor;
 
   const ReaderTOCSheet({
     super.key,
@@ -932,6 +954,9 @@ class ReaderTOCSheet extends StatefulWidget {
     this.bookmarks = const [],
     required this.onChapterSelected,
     this.onDeleteBookmark,
+    this.book,
+    this.currentLocation,
+    this.accentColor,
   });
 
   @override
@@ -941,10 +966,49 @@ class ReaderTOCSheet extends StatefulWidget {
 class _ReaderTOCSheetState extends State<ReaderTOCSheet> {
   int _selectedTab = 0; // 0: Contents, 1: Bookmarks
 
+  int _countAllItems(List<TOCItem> items) {
+    var count = 0;
+    for (final it in items) {
+      count++;
+      if (it.subitems.isNotEmpty) count += _countAllItems(it.subitems);
+    }
+    return count;
+  }
+
+  int? _resolvePageNumber(TOCItem item, int index, int totalItems) {
+    if (item.pageNumber != null && item.pageNumber! > 0) {
+      return item.pageNumber;
+    }
+    final totalPages = widget.currentLocation?.totalLocations ?? 0;
+    if (totalPages > 0 && totalItems > 0) {
+      final frac = (index + 1) / totalItems;
+      return (frac * totalPages).round().clamp(1, totalPages);
+    }
+    return null;
+  }
+
+  bool _isItemActive(TOCItem item, int? pageNum, int? nextItemPageNum) {
+    final curChap = widget.currentLocation?.sectionTitle?.trim().toLowerCase();
+    if (curChap != null && curChap.isNotEmpty && curChap == item.label.trim().toLowerCase()) {
+      return true;
+    }
+    final curPage = widget.currentLocation?.currentLocation;
+    if (curPage != null && pageNum != null) {
+      if (nextItemPageNum != null) {
+        return curPage >= pageNum && curPage < nextItemPageNum;
+      } else {
+        return curPage >= pageNum;
+      }
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+    final activeColor = widget.accentColor ?? AdwaitaColors.terracottaDark;
+    final totalItems = _countAllItems(widget.toc);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
@@ -954,9 +1018,19 @@ class _ReaderTOCSheetState extends State<ReaderTOCSheet> {
       builder: (context, scrollController) {
         return Container(
           decoration: BoxDecoration(
-            color: colors.surfaceCard,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            border: Border.all(color: colors.border),
+            color: colors.headerBar.withValues(alpha: 0.98),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(
+              color: colors.border.withValues(alpha: 0.8),
+              width: 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 20,
+                offset: const Offset(0, -6),
+              ),
+            ],
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Material(
@@ -965,128 +1039,223 @@ class _ReaderTOCSheetState extends State<ReaderTOCSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: colors.border,
-                      borderRadius: BorderRadius.circular(2),
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: colors.border,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                ),
 
-                // Segmented Header Bar
-                Row(
-                  children: [
-                    _buildTabButton('Contents', 0, colors),
-                    const SizedBox(width: 8),
-                    _buildTabButton('Bookmarks (${widget.bookmarks.length})', 1, colors),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                Expanded(
-                  child: _selectedTab == 0
-                      ? (widget.toc.isEmpty
-                          ? Center(
-                              child: Text(
-                                'No chapters found',
-                                style: TextStyle(color: colors.textMuted),
+                  // Header with Book Thumbnail, Title, and Close Button
+                  if (widget.book != null) ...[
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Container(
+                            width: 32,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: colors.inputBackground,
+                              border: Border.all(color: colors.border),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: (widget.book!.coverUri != null &&
+                                    File(widget.book!.coverUri!).existsSync())
+                                ? Image.file(
+                                    File(widget.book!.coverUri!),
+                                    fit: BoxFit.cover,
+                                  )
+                                : Icon(Icons.menu_book_rounded,
+                                    size: 18, color: colors.textMuted),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                widget.book!.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.textPrimary,
+                                  letterSpacing: -0.2,
+                                ),
                               ),
-                            )
-                          : ListView(
-                              controller: scrollController,
-                              children: _buildTOCList(widget.toc, colors, context),
-                            ))
-                      : (widget.bookmarks.isEmpty
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(24.0),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.bookmark_border_rounded,
-                                      size: 40,
-                                      color: colors.textMuted,
+                              if (widget.book!.author.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  widget.book!.author,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: colors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: colors.inputBackground,
+                              border: Border.all(color: colors.border),
+                            ),
+                            child: Icon(Icons.close_rounded,
+                                size: 16, color: colors.textPrimary),
+                          ),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
+                  // Segmented Header Bar
+                  Row(
+                    children: [
+                      _buildTabButton('Contents', 0, colors, activeColor),
+                      const SizedBox(width: 8),
+                      _buildTabButton(
+                        'Bookmarks (${widget.bookmarks.length})',
+                        1,
+                        colors,
+                        activeColor,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  Expanded(
+                    child: _selectedTab == 0
+                        ? (widget.toc.isEmpty
+                            ? Center(
+                                child: Text(
+                                  'No chapters found',
+                                  style: TextStyle(color: colors.textMuted),
+                                ),
+                              )
+                            : ListView(
+                                controller: scrollController,
+                                children: _buildTOCList(
+                                  widget.toc,
+                                  colors,
+                                  activeColor,
+                                  context,
+                                  totalItems,
+                                  [0],
+                                ),
+                              ))
+                        : (widget.bookmarks.isEmpty
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24.0),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.bookmark_border_rounded,
+                                        size: 40,
+                                        color: colors.textMuted,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      const Text(
+                                        'No Bookmarks Yet',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Tap the top-right ribbon while reading to bookmark any page.',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: colors.textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : ListView.separated(
+                                controller: scrollController,
+                                itemCount: widget.bookmarks.length,
+                                separatorBuilder: (_, _) =>
+                                    Divider(color: colors.border, height: 1),
+                                itemBuilder: (context, index) {
+                                  final b = widget.bookmarks[index];
+                                  return ListTile(
+                                    leading: const Icon(
+                                      Icons.bookmark_rounded,
+                                      color: Color(0xFFE01B24),
+                                      size: 22,
                                     ),
-                                    const SizedBox(height: 12),
-                                    const Text(
-                                      'No Bookmarks Yet',
-                                      style: TextStyle(
-                                        fontSize: 15,
+                                    title: Text(
+                                      b.chapterTitle ?? 'Page ${b.pageNumber ?? 1}',
+                                      style: const TextStyle(
+                                        fontSize: 14,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      'Tap the top-right ribbon while reading to bookmark any page.',
-                                      textAlign: TextAlign.center,
+                                    subtitle: Text(
+                                      '${b.percentage.round()}% through book',
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: colors.textMuted,
                                       ),
                                     ),
-                                  ],
-                                ),
-                              ),
-                            )
-                          : ListView.separated(
-                              controller: scrollController,
-                              itemCount: widget.bookmarks.length,
-                              separatorBuilder: (_, _) => Divider(color: colors.border, height: 1),
-                          itemBuilder: (context, index) {
-                            final b = widget.bookmarks[index];
-                            return ListTile(
-                              leading: const Icon(
-                                Icons.bookmark_rounded,
-                                color: Color(0xFFE01B24),
-                                size: 22,
-                              ),
-                              title: Text(
-                                b.chapterTitle ?? 'Page ${b.pageNumber ?? 1}',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              subtitle: Text(
-                                '${b.percentage.round()}% through book',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: colors.textMuted,
-                                ),
-                              ),
-                              trailing: widget.onDeleteBookmark != null
-                                  ? IconButton(
-                                      icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                                      tooltip: 'Delete Bookmark',
-                                      onPressed: () {
-                                        widget.onDeleteBookmark!(b);
-                                        setState(() {});
-                                      },
-                                    )
-                                  : null,
-                              onTap: () {
-                                widget.onChapterSelected(b.cfi);
-                                Navigator.of(context).pop();
-                              },
-                            );
-                          },
-                        )),
+                                    trailing: widget.onDeleteBookmark != null
+                                        ? IconButton(
+                                            icon: const Icon(
+                                                Icons.delete_outline_rounded,
+                                                size: 18),
+                                            tooltip: 'Delete Bookmark',
+                                            onPressed: () {
+                                              widget.onDeleteBookmark!(b);
+                                              setState(() {});
+                                            },
+                                          )
+                                        : null,
+                                    onTap: () {
+                                      widget.onChapterSelected(b.cfi);
+                                      Navigator.of(context).pop();
+                                    },
+                                  );
+                                },
+                              )),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-      ),
-    ),
-  );
-},
-);
+          ),
+        );
+      },
+    );
   }
 
-  Widget _buildTabButton(String title, int tabIndex, FoliateThemeColors colors) {
+  Widget _buildTabButton(
+    String title,
+    int tabIndex,
+    FoliateThemeColors colors,
+    Color activeColor,
+  ) {
     final isSelected = _selectedTab == tabIndex;
     return GestureDetector(
       onTap: () {
@@ -1096,10 +1265,10 @@ class _ReaderTOCSheetState extends State<ReaderTOCSheet> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? colors.activePill : Colors.transparent,
+          color: isSelected ? activeColor.withValues(alpha: 0.16) : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? Theme.of(context).colorScheme.primary : colors.border,
+            color: isSelected ? activeColor : colors.border,
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -1118,30 +1287,74 @@ class _ReaderTOCSheetState extends State<ReaderTOCSheet> {
   List<Widget> _buildTOCList(
     List<TOCItem> items,
     FoliateThemeColors colors,
+    Color activeColor,
     BuildContext context,
+    int totalItems,
+    List<int> itemCounter,
   ) {
     final list = <Widget>[];
-    for (final item in items) {
+    for (int i = 0; i < items.length; i++) {
+      final item = items[i];
+      final currentIndex = itemCounter[0]++;
+      final pageNum = _resolvePageNumber(item, currentIndex, totalItems);
+      int? nextItemPageNum;
+      if (i + 1 < items.length) {
+        nextItemPageNum = _resolvePageNumber(items[i + 1], currentIndex + 1, totalItems);
+      }
+      final isActive = _isItemActive(item, pageNum, nextItemPageNum);
+
       list.add(
-        ListTile(
-          contentPadding: EdgeInsets.only(left: 12.0 + (item.depth * 16.0), right: 12.0),
-          title: Text(
-            item.label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: item.depth == 0 ? FontWeight.w600 : FontWeight.normal,
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Material(
+            color: isActive ? activeColor.withValues(alpha: 0.12) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            child: ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.only(
+                left: 12.0 + (item.depth * 14.0),
+                right: 14.0,
+              ),
+            title: Text(
+              item.label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isActive
+                    ? FontWeight.w700
+                    : (item.depth == 0 ? FontWeight.w600 : FontWeight.w400),
+                color: isActive ? activeColor : colors.textPrimary,
+              ),
             ),
+            trailing: pageNum != null
+                ? Text(
+                    '$pageNum',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                      color: isActive ? activeColor : colors.textMuted,
+                    ),
+                  )
+                : null,
+            onTap: () {
+              if (item.href != null) {
+                widget.onChapterSelected(item.href!);
+                Navigator.of(context).pop();
+              }
+            },
           ),
-          onTap: () {
-            if (item.href != null) {
-              widget.onChapterSelected(item.href!);
-              Navigator.of(context).pop();
-            }
-          },
         ),
-      );
+      ));
       if (item.subitems.isNotEmpty) {
-        list.addAll(_buildTOCList(item.subitems, colors, context));
+        list.addAll(_buildTOCList(
+          item.subitems,
+          colors,
+          activeColor,
+          context,
+          totalItems,
+          itemCounter,
+        ));
       }
     }
     return list;

@@ -965,6 +965,8 @@ class FloatingReaderMenu extends StatefulWidget {
   final Color? accentColor;
   final double brightness;
   final ValueChanged<double>? onBrightnessChanged;
+  final bool isStayAwake;
+  final VoidCallback? onToggleStayAwake;
 
   const FloatingReaderMenu({
     super.key,
@@ -1012,6 +1014,8 @@ class FloatingReaderMenu extends StatefulWidget {
     this.accentColor,
     this.brightness = 1.0,
     this.onBrightnessChanged,
+    this.isStayAwake = false,
+    this.onToggleStayAwake,
   });
 
   @override
@@ -1141,6 +1145,16 @@ class _FloatingReaderMenuState extends State<FloatingReaderMenu> {
                                       widget.onOpenAppearance!();
                                     }
                                   },
+                                  colors: colors,
+                                  activeColor: activeColor,
+                                ),
+                                _buildActionButton(
+                                  icon: widget.isStayAwake
+                                      ? Icons.remove_red_eye_rounded
+                                      : Icons.remove_red_eye_outlined,
+                                  label: widget.isStayAwake ? 'Awake' : 'Sleep',
+                                  isActive: widget.isStayAwake,
+                                  onTap: () => widget.onToggleStayAwake?.call(),
                                   colors: colors,
                                   activeColor: activeColor,
                                 ),
@@ -1429,7 +1443,7 @@ class _FloatingReaderMenuState extends State<FloatingReaderMenu> {
         },
         borderRadius: BorderRadius.circular(10),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

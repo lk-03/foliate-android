@@ -5632,7 +5632,31 @@ ${doc.querySelector("parsererror").innerText}`);
         }
 
         try {
-          const toc = activeView.book?.toc ?? [];
+          const rawToc = activeView.book?.toc ?? [];
+          const enrichToc = (items) => {
+            if (!Array.isArray(items)) return [];
+            return items.map((item) => {
+              let pageNum = null;
+              if (item.href) {
+                try {
+                  const resolved = activeView.resolveNavigation
+                    ? activeView.resolveNavigation(item.href)
+                    : activeView.book?.resolveHref?.(item.href);
+                  const sIndex = resolved?.index;
+                  if (typeof sIndex === 'number' && bookSectionPages && bookSectionPages[sIndex]) {
+                    pageNum = bookSectionPages[sIndex].startPage + 1;
+                  }
+                } catch (e) {}
+              }
+              const subitems = item.subitems ? enrichToc(item.subitems) : [];
+              return {
+                ...item,
+                pageNumber: pageNum,
+                subitems,
+              };
+            });
+          };
+          const toc = enrichToc(rawToc);
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'TOC_READY', payload: toc }));
         } catch (tocErr) {
           window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'TOC_READY', payload: [] }));
