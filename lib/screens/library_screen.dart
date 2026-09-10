@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../components/components.dart';
 import '../models/models.dart';
 import '../services/services.dart';
 import '../theme/theme.dart';
-import 'open_libraries_screen.dart';
 import 'reader_screen.dart';
 
 enum LibraryCategory {
@@ -19,7 +17,7 @@ enum LibraryCategory {
 }
 
 /// Mobile Library Catalog Screen with 3-column grid, filter pills, pull-to-refresh,
-/// segmented Discover tab, and batch file / folder linking options.
+/// and batch file / folder linking options.
 class LibraryScreen extends StatefulWidget {
   final List<Book> books;
   final VoidCallback? onAddBook;
@@ -40,7 +38,6 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen>
     with AutomaticKeepAliveClientMixin {
-  int _libraryTab = 0; // 0: My Books, 1: Discover
   LibraryCategory _selectedCategory = LibraryCategory.all;
   bool _isImporting = false;
   ImportProgress? _currentProgress;
@@ -143,29 +140,6 @@ class _LibraryScreenState extends State<LibraryScreen>
                     },
                   ),
                 ),
-                const SizedBox(height: 10),
-                Material(
-                  color: colors.surfaceCard,
-                  borderRadius: BorderRadius.circular(14),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: colors.activePill,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.public_rounded, color: Colors.white, size: 22),
-                    ),
-                    title: const Text('Browse Open Libraries', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                    subtitle: Text('Free books from Gutenberg, Standard Ebooks & more', style: TextStyle(fontSize: 12, color: colors.textMuted)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      setState(() => _libraryTab = 1);
-                    },
-                  ),
-                ),
                 const SizedBox(height: 8),
               ],
             ),
@@ -248,123 +222,17 @@ class _LibraryScreenState extends State<LibraryScreen>
       backgroundColor: Colors.transparent,
       body: Column(
         children: [
-          // Segmented Switcher: My Books | Discover
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-            child: Container(
-              height: 42,
-              decoration: BoxDecoration(
-                color: colors.surfaceCard,
-                borderRadius: BorderRadius.circular(21),
-                border: Border.all(color: colors.border),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        setState(() => _libraryTab = 0);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        decoration: BoxDecoration(
-                          color: _libraryTab == 0
-                              ? primaryAccent
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(19),
-                        ),
-                        alignment: Alignment.center,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.auto_stories_rounded,
-                              size: 16,
-                              color: _libraryTab == 0
-                                  ? Colors.white
-                                  : colors.textMuted,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'My Books (${widget.books.length})',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: _libraryTab == 0
-                                    ? FontWeight.bold
-                                    : FontWeight.w500,
-                                color: _libraryTab == 0
-                                    ? Colors.white
-                                    : colors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        setState(() => _libraryTab = 1);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        decoration: BoxDecoration(
-                          color: _libraryTab == 1
-                              ? primaryAccent
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(19),
-                        ),
-                        alignment: Alignment.center,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.public_rounded,
-                              size: 16,
-                              color: _libraryTab == 1
-                                  ? Colors.white
-                                  : colors.textMuted,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Discover',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: _libraryTab == 1
-                                    ? FontWeight.bold
-                                    : FontWeight.w500,
-                                color: _libraryTab == 1
-                                    ? Colors.white
-                                    : colors.textMuted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          if (_libraryTab == 1)
-            const Expanded(child: OpenLibrariesScreen())
-          else ...[
-            // Filter Category Pills
-            SizedBox(
-              height: 48,
-              child: ListView.separated(
-                physics: const BouncingScrollPhysics(),
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                itemCount: LibraryCategory.values.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final cat = LibraryCategory.values[index];
+          // Filter Category Pills
+          SizedBox(
+            height: 48,
+            child: ListView.separated(
+              physics: const BouncingScrollPhysics(),
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              itemCount: LibraryCategory.values.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final cat = LibraryCategory.values[index];
                   final isSelected = _selectedCategory == cat;
 
                   return GestureDetector(
@@ -500,17 +368,14 @@ class _LibraryScreenState extends State<LibraryScreen>
             ),
           ),
         ],
-      ],
-    ),
-    floatingActionButton: _libraryTab == 0
-        ? FloatingActionButton.extended(
-            backgroundColor: primaryAccent,
-            foregroundColor: Colors.white,
-            onPressed: widget.onAddBook ?? () => _showImportOptions(context, colors),
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Add Book'),
-          )
-        : null,
-  );
-}
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: primaryAccent,
+        foregroundColor: Colors.white,
+        onPressed: widget.onAddBook ?? () => _showImportOptions(context, colors),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add Book'),
+      ),
+    );
+  }
 }

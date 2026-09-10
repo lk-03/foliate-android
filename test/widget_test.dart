@@ -36,17 +36,12 @@ void main() {
     await tester.drag(find.byType(PageView), const Offset(-500, 0));
     await tester.pumpAndSettle();
 
-    // Verify Library screen active with segmented switcher
-    expect(find.text('My Books (1)'), findsOneWidget);
-    expect(find.text('Discover'), findsOneWidget);
-
-    // Tap Discover segmented tab
-    await tester.tap(find.text('Discover'));
-    await tester.pumpAndSettle();
-
-    // Verify Open Libraries catalogs visible under Discover tab
-    expect(find.text('Project Gutenberg'), findsOneWidget);
-    expect(find.text('Standard Ebooks'), findsOneWidget);
+    // Verify Library screen active with category filter chips and cataloged books
+    expect(find.text('All'), findsWidgets);
+    expect(find.text('Reading'), findsWidgets);
+    expect(find.text('Favorites'), findsWidgets);
+    expect(find.text('A Little Life'), findsWidgets);
+    expect(find.text('Add Book'), findsOneWidget);
 
     // Tap Settings gear in top bar
     await tester.tap(find.byIcon(Icons.settings_outlined));
