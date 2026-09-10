@@ -3,16 +3,22 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../theme/theme.dart';
 
-/// Reading habits dashboard card displaying daily goal ring, streak counter,
-/// weekly consistency bubbles, and annual reading challenge progress.
+/// Apple Books inspired unboxed Reading Goals overview.
+/// Features a semicircular arch gauge, today's minutes read, daily goal trigger,
+/// "Keep Reading" pill button for active book, 7-day consistency ring tracker,
+/// streak record summary, and annual challenge progress.
 class ReadingInsightsCard extends StatelessWidget {
   final ReadingHabits habits;
+  final Book? activeBook;
+  final VoidCallback? onKeepReading;
   final ValueChanged<int>? onDailyGoalChanged;
   final ValueChanged<int>? onYearlyGoalChanged;
 
   const ReadingInsightsCard({
     super.key,
     required this.habits,
+    this.activeBook,
+    this.onKeepReading,
     this.onDailyGoalChanged,
     this.onYearlyGoalChanged,
   });
@@ -81,7 +87,10 @@ class ReadingInsightsCard extends StatelessWidget {
         return AlertDialog(
           backgroundColor: colors.surfaceCard,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('${DateTime.now().year} Reading Challenge', style: const TextStyle(fontSize: 16)),
+          title: Text(
+            '${DateTime.now().year} Reading Challenge',
+            style: const TextStyle(fontSize: 16),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -126,345 +135,305 @@ class ReadingInsightsCard extends StatelessWidget {
     final primaryAccent = Theme.of(context).colorScheme.primary;
 
     final weekActivity = habits.getWeekActivityMap();
-    final weekLetters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-    final currentYear = DateTime.now().year;
+    // Week letters matching Apple Books: Sunday to Saturday (S M T W T F S)
+    const weekLetters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    final todayWeekday = DateTime.now().weekday; // 1=Mon ... 7=Sun
+    final todayIndex = todayWeekday % 7; // Sun=0, Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6
 
+    final currentYear = DateTime.now().year;
     final booksDone = habits.booksFinishedThisYear.length;
     final targetBooks = habits.yearlyGoalBooks;
-    final yearlyPercent = (habits.yearlyProgressFraction * 100).round();
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surfaceCard,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: colors.border.withValues(alpha: 0.8)),
-      ),
-      padding: const EdgeInsets.all(18),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Section Header: Reading Insights Title & Flame Pill
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.insights_rounded,
-                    size: 18,
-                    color: primaryAccent,
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Reading Insights',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.3,
+          // 1. Reading Goals Title & Subtitle (Apple Books Serif style)
+          Text(
+            'Reading Goals',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'serif',
+              letterSpacing: -0.4,
+              color: colors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Read every day, see your stats soar and finish\nmore books.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.35,
+              color: colors.textMuted,
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // 2. Semicircular Arch Gauge with Today's Reading stats
+          SizedBox(
+            width: 270,
+            height: 145,
+            child: Stack(
+              alignment: Alignment.topCenter,
+              children: [
+                // Arch Custom Painter
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _ArchGaugePainter(
+                      fraction: habits.dailyGoalFraction,
+                      trackColor: colors.border.withValues(alpha: 0.35),
+                      progressColor: primaryAccent,
                     ),
-                  ),
-                ],
-              ),
-              // Day Streak Flame Counter
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AdwaitaColors.amberStreak.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AdwaitaColors.amberStreak.withValues(alpha: 0.3),
                   ),
                 ),
-                child: Row(
+
+                // Center Statistics Column
+                Positioned(
+                  top: 22,
+                  left: 0,
+                  right: 0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "Today's Reading",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'serif',
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${habits.todayMinutesRead}',
+                        style: TextStyle(
+                          fontSize: 54,
+                          fontWeight: FontWeight.normal,
+                          fontFamily: 'serif',
+                          height: 1.05,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => _showDailyGoalDialog(context),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'of your ${habits.dailyGoalMinutes}-minute goal',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: colors.textMuted,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 3),
+                                  Icon(
+                                    Icons.chevron_right_rounded,
+                                    size: 14,
+                                    color: colors.textMuted,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // 3. Apple Books "Keep Reading" Pill Action Button
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onKeepReading,
+              borderRadius: BorderRadius.circular(28),
+              child: Container(
+                constraints: const BoxConstraints(minWidth: 230, maxWidth: 280),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF24262E),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(
+                    color: colors.border.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.local_fire_department_rounded,
-                      size: 16,
-                      color: AdwaitaColors.amberStreak,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${habits.currentStreak} Day Streak',
-                      style: const TextStyle(
-                        fontSize: 12,
+                    const Text(
+                      'Keep Reading',
+                      style: TextStyle(
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: AdwaitaColors.amberStreak,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      activeBook != null ? activeBook!.title : 'Explore Library',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textMuted,
                       ),
                     ),
                   ],
                 ),
               ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // 4. 7-Day Consistency Circles (S M T W T F S)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (int i = 0; i < 7; i++) ...[
+                _buildDayBubble(
+                  letter: weekLetters[i],
+                  isToday: i == todayIndex,
+                  hasRead: weekActivity[i == 0 ? 7 : i] ?? false,
+                  accentColor: primaryAccent,
+                  colors: colors,
+                ),
+                if (i < 6) const SizedBox(width: 10),
+              ],
             ],
           ),
 
           const SizedBox(height: 18),
 
-          // Daily Goal & Streak Summary Cards (2-Columns)
-          Row(
-            children: [
-              // 1. Daily Reading Goal Card
-              Expanded(
-                child: InkWell(
-                  onTap: () => _showDailyGoalDialog(context),
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: colors.inputBackground,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: colors.border),
-                    ),
-                    child: Row(
+          // 5. Streak & Record Summary (Matching Apple Books)
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _showDailyGoalDialog(context),
+              borderRadius: BorderRadius.circular(10),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Circular Progress Ring
-                        SizedBox(
-                          width: 44,
-                          height: 44,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              CustomPaint(
-                                size: const Size(44, 44),
-                                painter: _GoalRingPainter(
-                                  fraction: habits.dailyGoalFraction,
-                                  trackColor: colors.border,
-                                  progressColor: primaryAccent,
-                                ),
-                              ),
-                              Icon(
-                                habits.isDailyGoalAchieved
-                                    ? Icons.check_rounded
-                                    : Icons.timer_outlined,
-                                size: 18,
-                                color: primaryAccent,
-                              ),
-                            ],
+                        Text(
+                          habits.currentStreak > 0
+                              ? '${habits.currentStreak} Day Streak'
+                              : 'Start a new streak.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textPrimary,
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              RichText(
-                                text: TextSpan(
-                                  text: '${habits.todayMinutesRead}',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: colors.textPrimary,
-                                  ),
-                                  children: [
-                                    TextSpan(
-                                      text: '/${habits.dailyGoalMinutes}m',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.normal,
-                                        color: colors.textMuted,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Daily Goal',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: colors.textMuted,
-                                ),
-                              ),
-                            ],
-                          ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          size: 15,
+                          color: colors.textMuted,
                         ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 3),
+                    Text(
+                      habits.longestStreak > 0
+                          ? 'Your record is ${habits.longestStreak} days.'
+                          : 'Read daily to set your personal record.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: colors.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+            ),
+          ),
 
-              const SizedBox(width: 10),
+          const SizedBox(height: 22),
 
-              // Right: Day Streak Flame Card
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: colors.inputBackground,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colors.border.withValues(alpha: 0.5)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: AdwaitaColors.amberStreak.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.local_fire_department_rounded,
-                            size: 24,
-                            color: AdwaitaColors.amberStreak,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+          // 6. Annual Reading Challenge (Clean unboxed progress bar)
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _showYearlyGoalDialog(context),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
                           children: [
-                            Text(
-                              '${habits.currentStreak}',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: colors.textPrimary,
-                              ),
+                            Icon(
+                              Icons.auto_stories_rounded,
+                              size: 14,
+                              color: primaryAccent,
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(width: 6),
                             Text(
-                              'Day streak',
+                              '$currentYear Challenge',
                               style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: colors.textMuted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: colors.textSecondary,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // Weekly Consistency Checkmark Bubbles (M, T, W, T, F, S, S)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: colors.inputBackground.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                for (int i = 0; i < 7; i++) ...[
-                  _buildDayBubble(
-                    colors: colors,
-                    letter: weekLetters[i],
-                    isActive: weekActivity[i + 1] ?? false,
-                    accentColor: primaryAccent,
-                  ),
-                ],
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Annual Reading Challenge Card
-          InkWell(
-            onTap: () => _showYearlyGoalDialog(context),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colors.inputBackground,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colors.border.withValues(alpha: 0.5)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.auto_stories_rounded,
-                            size: 16,
+                        Text(
+                          '$booksDone of $targetBooks completed',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
                             color: primaryAccent,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '$currentYear Challenge',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        '$booksDone of $targetBooks completed',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: primaryAccent,
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Gradient Progress Bar
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: Container(
-                      height: 6,
-                      color: colors.border,
-                      alignment: Alignment.centerLeft,
-                      child: FractionallySizedBox(
-                        widthFactor: habits.yearlyProgressFraction,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                primaryAccent.withValues(alpha: 0.65),
-                                primaryAccent,
-                              ],
-                            ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: Container(
+                        height: 4,
+                        color: colors.border.withValues(alpha: 0.35),
+                        alignment: Alignment.centerLeft,
+                        child: FractionallySizedBox(
+                          widthFactor: habits.yearlyProgressFraction,
+                          child: Container(
+                            color: primaryAccent,
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Status Text
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '$yearlyPercent% of annual goal',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: colors.textMuted,
-                        ),
-                      ),
-                      Text(
-                        booksDone >= targetBooks ? 'Goal achieved!' : 'Keep reading',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: booksDone >= targetBooks
-                              ? primaryAccent
-                              : colors.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -474,58 +443,53 @@ class ReadingInsightsCard extends StatelessWidget {
   }
 
   Widget _buildDayBubble({
-    required FoliateThemeColors colors,
     required String letter,
-    required bool isActive,
+    required bool isToday,
+    required bool hasRead,
     required Color accentColor,
+    required FoliateThemeColors colors,
   }) {
-    final activeColor = accentColor;
-
-    return Column(
-      children: [
-        Text(
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: hasRead
+            ? accentColor.withValues(alpha: 0.25)
+            : const Color(0xFF1E2027),
+        shape: BoxShape.circle,
+        border: isToday
+            ? Border.all(color: accentColor, width: 2.0)
+            : Border.all(
+                color: hasRead
+                    ? accentColor.withValues(alpha: 0.6)
+                    : colors.border.withValues(alpha: 0.3),
+                width: 1.0,
+              ),
+      ),
+      child: Center(
+        child: Text(
           letter,
           style: TextStyle(
-            fontSize: 11,
-            color: colors.textMuted,
-            fontWeight: FontWeight.w600,
+            fontSize: 12,
+            fontWeight: isToday || hasRead ? FontWeight.bold : FontWeight.w500,
+            color: isToday
+                ? Colors.white
+                : (hasRead ? accentColor : colors.textMuted),
           ),
         ),
-        const SizedBox(height: 4),
-        Container(
-          width: 22,
-          height: 22,
-          decoration: BoxDecoration(
-            color: isActive
-                ? activeColor
-                : colors.border.withValues(alpha: 0.5),
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: isActive
-                ? const Text(
-                    '✓',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
 
-/// Custom painter rendering smooth circular daily progress ring
-class _GoalRingPainter extends CustomPainter {
+/// Custom painter rendering a semicircular arch gauge matching Apple Books.
+/// Arc spans 180 degrees over the top, from PI (9 o'clock) clockwise to 2*PI (3 o'clock).
+class _ArchGaugePainter extends CustomPainter {
   final double fraction;
   final Color trackColor;
   final Color progressColor;
 
-  _GoalRingPainter({
+  _ArchGaugePainter({
     required this.fraction,
     required this.trackColor,
     required this.progressColor,
@@ -533,34 +497,39 @@ class _GoalRingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width / 2) - 3.0;
+    const strokeWidth = 7.5;
+    // Radius of the arch
+    final radius = (size.width / 2) - strokeWidth;
+    // Center is horizontally centered, and vertically at the base of the arc
+    final center = Offset(size.width / 2, size.height - strokeWidth);
 
+    final rect = Rect.fromCircle(center: center, radius: radius);
+
+    // Track arc: 180 degrees over the top
     final trackPaint = Paint()
       ..color = trackColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5;
-
-    canvas.drawCircle(center, radius, trackPaint);
-
-    final sweepAngle = 2 * math.pi * fraction.clamp(0.0, 1.0);
-    final progressPaint = Paint()
-      ..color = progressColor
-      ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..strokeWidth = 3.5;
+      ..strokeWidth = strokeWidth;
 
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,
-      sweepAngle,
-      false,
-      progressPaint,
-    );
+    canvas.drawArc(rect, math.pi, math.pi, false, trackPaint);
+
+    // Progress arc: clockwise from PI
+    final clampedFraction = fraction.clamp(0.0, 1.0);
+    if (clampedFraction > 0) {
+      final sweepAngle = math.pi * clampedFraction;
+      final progressPaint = Paint()
+        ..color = progressColor
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = strokeWidth;
+
+      canvas.drawArc(rect, math.pi, sweepAngle, false, progressPaint);
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _GoalRingPainter oldDelegate) {
+  bool shouldRepaint(covariant _ArchGaugePainter oldDelegate) {
     return oldDelegate.fraction != fraction ||
         oldDelegate.progressColor != progressColor ||
         oldDelegate.trackColor != trackColor;

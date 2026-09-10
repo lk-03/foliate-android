@@ -279,13 +279,11 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
     }
 
     return Container(
-      width: 200,
-      decoration: BoxDecoration(
-        color: colors.surfaceCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.border.withValues(alpha: 0.8)),
+      width: 176,
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
       ),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: InkWell(
         onTap: () => _showBookDetails(context),
         borderRadius: BorderRadius.circular(12),
@@ -490,12 +488,10 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
     final primaryAccent = Theme.of(context).colorScheme.primary;
 
     return Container(
-      decoration: BoxDecoration(
-        color: colors.surfaceCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.border.withValues(alpha: 0.8)),
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
       ),
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(4),
       child: InkWell(
         onTap: () => _showBookDetails(context),
         borderRadius: BorderRadius.circular(12),

@@ -32,11 +32,15 @@ class RecentBookCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: BoxDecoration(
-            color: colors.surfaceCard,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colors.border.withValues(alpha: 0.8)),
+            color: Colors.transparent,
+            border: Border(
+              bottom: BorderSide(
+                color: colors.border.withValues(alpha: 0.25),
+                width: 0.8,
+              ),
+            ),
           ),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
           child: Row(
             children: [
               // Cover Thumbnail

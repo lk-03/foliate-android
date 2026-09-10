@@ -248,12 +248,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   label: Text(g),
                   selected: isSelected,
                   showCheckmark: false,
-                  backgroundColor: colors.surfaceCard,
+                  backgroundColor: colors.inputBackground,
                   selectedColor: primaryAccent.withValues(alpha: 0.18),
                   side: BorderSide(
                     color: isSelected
                         ? primaryAccent
-                        : colors.border,
+                        : colors.border.withValues(alpha: 0.4),
                     width: isSelected ? 1.4 : 1.0,
                   ),
                   labelStyle: TextStyle(
@@ -299,6 +299,10 @@ class _HomeScreenState extends State<HomeScreen> {
         // 6. Section: Reading Insights & Habits Tracker
         ReadingInsightsCard(
           habits: habits,
+          activeBook: currentBook,
+          onKeepReading: () => currentBook != null
+              ? _openBook(currentBook)
+              : widget.onNavigateToLibrary(),
           onDailyGoalChanged: widget.onDailyGoalChanged,
           onYearlyGoalChanged: widget.onYearlyGoalChanged,
         ),
@@ -383,18 +387,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final percent = book.displayPercentage;
 
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: colors.surfaceCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.border.withValues(alpha: 0.8)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      decoration: const BoxDecoration(
+        color: Colors.transparent,
       ),
       child: Row(
         children: [
@@ -529,11 +524,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final primaryAccent = Theme.of(context).colorScheme.primary;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: colors.surfaceCard,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.border.withValues(alpha: 0.8)),
+        border: Border.all(color: colors.border.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -573,11 +568,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildEmptyLibraryPrompt(FoliateThemeColors colors) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       decoration: BoxDecoration(
-        color: colors.surfaceCard,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.border),
+        border: Border.all(color: colors.border.withValues(alpha: 0.25)),
       ),
       child: Center(
         child: Text(

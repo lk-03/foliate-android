@@ -929,6 +929,113 @@ void main() {
     // Verify Explore screen loaded
     expect(find.text('Explore'), findsWidgets);
   });
+
+  testWidgets('ReadingInsightsCard renders unboxed Apple Books Reading Goals overview', (WidgetTester tester) async {
+    final habits = ReadingHabits(
+      dailyGoalMinutes: 30,
+      currentStreak: 5,
+      longestStreak: 12,
+      dailyHistory: {
+        ReadingHabits.formatDate(DateTime.now()): 10,
+      },
+    );
+    final testBook = Book(
+      hash: 'hash-test-1',
+      title: 'Jezebel',
+      author: 'Irene Nemirovsky',
+      filePath: '/path/to/jezebel.epub',
+      percentage: 35.0,
+      addedAt: 123456789,
+    );
+
+    bool keepReadingTapped = false;
+    int? newDailyGoal;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: ReadingInsightsCard(
+              habits: habits,
+              activeBook: testBook,
+              onKeepReading: () => keepReadingTapped = true,
+              onDailyGoalChanged: (goal) => newDailyGoal = goal,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify Reading Goals title & subtitle
+    expect(find.text('Reading Goals'), findsOneWidget);
+    expect(find.textContaining('Read every day'), findsOneWidget);
+
+    // Verify Today's Reading and minutes
+    expect(find.text("Today's Reading"), findsOneWidget);
+    expect(find.text('10'), findsOneWidget);
+    expect(find.textContaining('of your 30-minute goal'), findsOneWidget);
+
+    // Verify Keep Reading button with active book title
+    expect(find.text('Keep Reading'), findsOneWidget);
+    expect(find.text('Jezebel'), findsOneWidget);
+
+    // Tap Keep Reading
+    await tester.tap(find.text('Keep Reading'));
+    expect(keepReadingTapped, isTrue);
+
+    // Verify day letters S M T W T F S
+    expect(find.text('S'), findsWidgets);
+    expect(find.text('M'), findsWidgets);
+    expect(find.text('T'), findsWidgets);
+    expect(find.text('W'), findsWidgets);
+    expect(find.text('F'), findsWidgets);
+
+    // Verify streak and record text
+    expect(find.text('5 Day Streak'), findsOneWidget);
+    expect(find.text('Your record is 12 days.'), findsOneWidget);
+
+    // Verify annual challenge
+    expect(find.textContaining('Challenge'), findsOneWidget);
+  });
+
+  testWidgets('CuratedBookCard and RecentBookCard render unboxed without grey card backgrounds', (WidgetTester tester) async {
+    final curated = CuratedBook.openLibraryGems.first;
+    final testBook = Book(
+      hash: 'hash-test-recent',
+      title: 'Dracula',
+      author: 'Bram Stoker',
+      filePath: '/path/to/dracula.epub',
+      percentage: 42.0,
+      addedAt: 123456789,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 320,
+                  child: CuratedBookCard(book: curated),
+                ),
+                RecentBookCard(book: testBook, onTap: () {}),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(curated.title), findsOneWidget);
+    expect(find.text(curated.author), findsOneWidget);
+    expect(find.text(testBook.title), findsOneWidget);
+    expect(find.text('42% completed'), findsOneWidget);
+  });
 }
 
 
