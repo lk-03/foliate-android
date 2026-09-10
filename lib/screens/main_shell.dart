@@ -328,36 +328,61 @@ class _MainShellState extends State<MainShell> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Stitch signature pill highlight:
-                      // When active, vibrant pill container with crisp white icon inside
-                      // When inactive, transparent container with muted slate icon
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 100),
-                        curve: Curves.easeOut,
-                        width: isSelected ? 56 : 36,
+                      // Stitch signature pill highlight with smooth pop-up & pop-out animation
+                      SizedBox(
+                        width: 56,
                         height: 30,
-                        decoration: BoxDecoration(
-                          color: isSelected ? primaryAccent : Colors.transparent,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Center(
-                          child: Icon(
-                            isSelected ? item.selectedIcon : item.icon,
-                            size: 20,
-                            color: isSelected ? Colors.white : colors.textMuted,
-                          ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            // Smooth pop-up / pop-out pill highlight
+                            AnimatedScale(
+                              scale: isSelected ? 1.0 : 0.0,
+                              duration: Duration(milliseconds: isSelected ? 220 : 160),
+                              curve: isSelected ? Curves.easeOutBack : Curves.easeInCubic,
+                              child: AnimatedOpacity(
+                                opacity: isSelected ? 1.0 : 0.0,
+                                duration: Duration(milliseconds: isSelected ? 180 : 130),
+                                curve: Curves.easeInOut,
+                                child: Container(
+                                  width: 56,
+                                  height: 30,
+                                  decoration: BoxDecoration(
+                                    color: primaryAccent,
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // Icon with smooth scale and color response
+                            AnimatedScale(
+                              scale: isSelected ? 1.0 : 0.92,
+                              duration: Duration(milliseconds: isSelected ? 200 : 150),
+                              curve: isSelected ? Curves.easeOutCubic : Curves.easeInCubic,
+                              child: Icon(
+                                isSelected ? item.selectedIcon : item.icon,
+                                size: 20,
+                                color: isSelected ? Colors.white : colors.textMuted,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 3),
-                      Text(
-                        item.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOut,
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                           color: isSelected ? primaryAccent : colors.textMuted,
                           letterSpacing: -0.1,
+                        ),
+                        child: Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
