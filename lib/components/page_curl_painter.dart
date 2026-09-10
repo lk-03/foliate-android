@@ -25,32 +25,50 @@ class PageCurlOverlay extends StatelessWidget {
     this.enabled = true,
   });
 
-  void _onTapUp(BuildContext context, TapUpDetails details) {
-    if (!enabled) return;
-    final width = MediaQuery.of(context).size.width;
-    final x = details.localPosition.dx;
-    final ratio = x / width;
-
-    if (ratio < 0.28) {
-      onPrevPage();
-    } else if (ratio > 0.72) {
-      onNextPage();
-    } else {
-      onToggleHUD();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     if (!enabled) return child;
+    final width = MediaQuery.of(context).size.width;
+    final edgeWidth = width * 0.28;
+
     return Stack(
       fit: StackFit.expand,
       children: [
         child,
-        Positioned.fill(
+        // Left Edge Strip (Tap to go Prev)
+        Positioned(
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: edgeWidth,
           child: GestureDetector(
             behavior: HitTestBehavior.translucent,
-            onTapUp: (details) => _onTapUp(context, details),
+            onTap: onPrevPage,
+            onLongPress: () {},
+          ),
+        ),
+        // Right Edge Strip (Tap to go Next)
+        Positioned(
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: edgeWidth,
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: onNextPage,
+            onLongPress: () {},
+          ),
+        ),
+        // Center Area (Tap to toggle HUD)
+        Positioned(
+          left: edgeWidth,
+          right: edgeWidth,
+          top: 0,
+          bottom: 0,
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: onToggleHUD,
+            onLongPress: () {},
           ),
         ),
       ],

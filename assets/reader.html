@@ -5115,7 +5115,7 @@ ${doc.querySelector("parsererror").innerText}`);
       return joinIndir(baseCFI, fromRange(range));
     }
     resolveCFI(cfi) {
-      if (this.book.resolveCFI)
+      if (this.book?.resolveCFI)
         return this.book.resolveCFI(cfi);
       else {
         const parts = parse(cfi);
