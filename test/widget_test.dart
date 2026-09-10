@@ -957,7 +957,7 @@ void main() {
     expect(find.text('Explore'), findsWidgets);
   });
 
-  testWidgets('ReadingInsightsCard renders unboxed Apple Books Reading Goals overview', (WidgetTester tester) async {
+  testWidgets('ReadingInsightsCard renders circle tracker and bar-version day streak design', (WidgetTester tester) async {
     final habits = ReadingHabits(
       dailyGoalMinutes: 30,
       currentStreak: 5,
@@ -995,21 +995,24 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Verify Reading Goals title & subtitle
-    expect(find.text('Reading Goals'), findsOneWidget);
-    expect(find.textContaining('Read every day'), findsOneWidget);
+    // Verify Reading Insights header & category
+    expect(find.text('Reading Insights'), findsOneWidget);
+    expect(find.text('READING VELOCITY'), findsOneWidget);
+    expect(find.text('Adjust Goal'), findsOneWidget);
 
-    // Verify Today's Reading and minutes
-    expect(find.text("Today's Reading"), findsOneWidget);
+    // Verify Today's Reading, minutes, and circle tracker
+    expect(find.text("TODAY'S READING"), findsOneWidget);
     expect(find.text('10'), findsOneWidget);
-    expect(find.textContaining('of your 30-minute goal'), findsOneWidget);
+    expect(find.text('MIN'), findsOneWidget);
+    expect(find.textContaining('30m daily goal'), findsOneWidget);
 
-    // Verify Keep Reading button with active book title
-    expect(find.text('Keep Reading'), findsOneWidget);
+    // Verify Resume Chapter button and active book strip
+    expect(find.text('Resume Chapter'), findsOneWidget);
     expect(find.text('Jezebel'), findsOneWidget);
+    expect(find.text('Jump in'), findsOneWidget);
 
-    // Tap Keep Reading
-    await tester.tap(find.text('Keep Reading'));
+    // Tap Resume Chapter
+    await tester.tap(find.text('Resume Chapter'));
     expect(keepReadingTapped, isTrue);
 
     // Verify day letters S M T W T F S
@@ -1020,8 +1023,8 @@ void main() {
     expect(find.text('F'), findsWidgets);
 
     // Verify streak and record text
-    expect(find.text('5 Day Streak'), findsOneWidget);
-    expect(find.text('Your record is 12 days.'), findsOneWidget);
+    expect(find.text('5-day streak active'), findsOneWidget);
+    expect(find.text('12d'), findsOneWidget);
 
     // Verify annual challenge
     expect(find.textContaining('Challenge'), findsOneWidget);
