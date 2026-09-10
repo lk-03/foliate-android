@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../theme/theme.dart';
 
-/// Comprehensive reading insights card combining a circular chronometer gauge
+/// Flat reading insights section combining a circular chronometer gauge
 /// for daily reading goals with a 7-day streak consistency tracker and
 /// annual reading challenge bar.
 class ReadingInsightsCard extends StatelessWidget {
@@ -159,28 +159,12 @@ class ReadingInsightsCard extends StatelessWidget {
     final targetBooks = habits.yearlyGoalBooks;
     final remainingMinutes = habits.dailyGoalMinutes - habits.todayMinutesRead;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      padding: const EdgeInsets.all(18.0),
-      decoration: BoxDecoration(
-        color: const Color(0xFF131722),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: colors.border.withValues(alpha: 0.25),
-          width: 1.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Card Header Row: Category Badge + Title & Adjust Goal Action
+          // 1. Header Row: Category Badge + Title & Adjust Goal Action
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,7 +201,7 @@ class ReadingInsightsCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E2330),
+                      color: colors.inputBackground,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: colors.border.withValues(alpha: 0.35),
@@ -417,7 +401,7 @@ class ReadingInsightsCard extends StatelessWidget {
 
           // 3. Keep Reading Strip (from Bar Version reference)
           if (activeBook != null) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             Material(
               color: Colors.transparent,
               child: InkWell(
@@ -426,10 +410,10 @@ class ReadingInsightsCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF161A24),
+                    color: colors.inputBackground,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: colors.border.withValues(alpha: 0.2),
+                      color: colors.border.withValues(alpha: 0.25),
                     ),
                   ),
                   child: Row(
@@ -484,23 +468,16 @@ class ReadingInsightsCard extends StatelessWidget {
             ),
           ],
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
 
           // 4. Day Streak Section (S M T W T F S with Checkmarks and Streak Flame)
           Material(
             color: Colors.transparent,
             child: InkWell(
               onTap: () => _showDailyGoalDialog(context),
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF151822),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: colors.border.withValues(alpha: 0.2),
-                  ),
-                ),
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
                 child: Column(
                   children: [
                     // Weekday Letters & Indicators
@@ -521,11 +498,6 @@ class ReadingInsightsCard extends StatelessWidget {
                     ),
 
                     const SizedBox(height: 12),
-                    Container(
-                      height: 1,
-                      color: colors.border.withValues(alpha: 0.15),
-                    ),
-                    const SizedBox(height: 10),
 
                     // Streak Flame & Record Summary Row
                     Row(
@@ -585,16 +557,9 @@ class ReadingInsightsCard extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(
               onTap: () => _showYearlyGoalDialog(context),
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF151822),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: colors.border.withValues(alpha: 0.2),
-                  ),
-                ),
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -634,7 +599,7 @@ class ReadingInsightsCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(3),
                       child: Container(
                         height: 5,
-                        color: const Color(0xFF222634),
+                        color: colors.border.withValues(alpha: 0.25),
                         alignment: Alignment.centerLeft,
                         child: FractionallySizedBox(
                           widthFactor: habits.yearlyProgressFraction,
@@ -717,7 +682,7 @@ class ReadingInsightsCard extends StatelessWidget {
                 : Border.all(
                     color: hasRead
                         ? accentColor
-                        : colors.border.withValues(alpha: 0.15),
+                        : colors.border.withValues(alpha: 0.2),
                     width: 1.0,
                   ),
           ),
