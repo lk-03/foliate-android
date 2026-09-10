@@ -99,11 +99,7 @@ class _MainShellState extends State<MainShell> {
     if (index == 3) {
       _reloadAnnotations();
     }
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeInOutCubic,
-    );
+    _pageController.jumpToPage(index);
   }
 
   ReadingHabits _readingHabits = const ReadingHabits();
@@ -190,6 +186,7 @@ class _MainShellState extends State<MainShell> {
         controller: _pageController,
         physics: const BouncingScrollPhysics(),
         onPageChanged: (index) {
+          if (_currentIndex == index) return;
           HapticFeedback.selectionClick();
           setState(() {
             _currentIndex = index;
@@ -335,8 +332,8 @@ class _MainShellState extends State<MainShell> {
                       // When active, vibrant pill container with crisp white icon inside
                       // When inactive, transparent container with muted slate icon
                       AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeOutCubic,
+                        duration: const Duration(milliseconds: 100),
+                        curve: Curves.easeOut,
                         width: isSelected ? 56 : 36,
                         height: 30,
                         decoration: BoxDecoration(
