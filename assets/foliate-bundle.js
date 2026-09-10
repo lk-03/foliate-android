@@ -3017,44 +3017,51 @@ ${doc.querySelector("parsererror").innerText}`);
         return new DOMRect(left, top, right - left, bottom - top);
       };
       getVisibleRange = (doc, start, end, mapRect) => {
-        const acceptNode2 = (node) => {
-          const name = node.localName?.toLowerCase();
-          if (name === "script" || name === "style") return FILTER_REJECT;
-          if (node.nodeType === 1) {
-            const { left, right } = mapRect(node.getBoundingClientRect());
-            if (right < start || left > end) return FILTER_REJECT;
-            if (left >= start && right <= end) return FILTER_ACCEPT;
-          } else {
-            if (!node.nodeValue?.trim()) return FILTER_SKIP;
-            const range2 = doc.createRange();
-            range2.selectNodeContents(node);
-            const { left, right } = mapRect(range2.getBoundingClientRect());
-            if (right >= start && left <= end) return FILTER_ACCEPT;
-          }
-          return FILTER_SKIP;
-        };
-        const walker = doc.createTreeWalker(doc.body, filter2, { acceptNode: acceptNode2 });
-        const nodes = [];
-        for (let node = walker.nextNode(); node; node = walker.nextNode())
-          nodes.push(node);
-        const from = nodes[0] ?? doc.body;
-        const to = nodes[nodes.length - 1] ?? from;
-        const startOffset = from.nodeType === 1 ? 0 : bisectNode(doc, from, (a3, b3) => {
-          const p3 = mapRect(getBoundingClientRect(a3));
-          const q2 = mapRect(getBoundingClientRect(b3));
-          if (p3.right < start && q2.left > start) return 0;
-          return q2.left > start ? -1 : 1;
-        });
-        const endOffset = to.nodeType === 1 ? 0 : bisectNode(doc, to, (a3, b3) => {
-          const p3 = mapRect(getBoundingClientRect(a3));
-          const q2 = mapRect(getBoundingClientRect(b3));
-          if (p3.right < end && q2.left > end) return 0;
-          return q2.left > end ? -1 : 1;
-        });
-        const range = doc.createRange();
-        range.setStart(from, startOffset);
-        range.setEnd(to, endOffset);
-        return range;
+        if (!doc) return null;
+        const root = doc.body ?? doc.documentElement;
+        if (!root || !root.nodeType) return null;
+        try {
+          const acceptNode2 = (node) => {
+            const name = node.localName?.toLowerCase();
+            if (name === "script" || name === "style") return FILTER_REJECT;
+            if (node.nodeType === 1) {
+              const { left, right } = mapRect(node.getBoundingClientRect());
+              if (right < start || left > end) return FILTER_REJECT;
+              if (left >= start && right <= end) return FILTER_ACCEPT;
+            } else {
+              if (!node.nodeValue?.trim()) return FILTER_SKIP;
+              const range2 = doc.createRange();
+              range2.selectNodeContents(node);
+              const { left, right } = mapRect(range2.getBoundingClientRect());
+              if (right >= start && left <= end) return FILTER_ACCEPT;
+            }
+            return FILTER_SKIP;
+          };
+          const walker = doc.createTreeWalker(root, filter2, { acceptNode: acceptNode2 });
+          const nodes = [];
+          for (let node = walker.nextNode(); node; node = walker.nextNode())
+            nodes.push(node);
+          const from = nodes[0] ?? root;
+          const to = nodes[nodes.length - 1] ?? from;
+          const startOffset = from.nodeType === 1 ? 0 : bisectNode(doc, from, (a3, b3) => {
+            const p3 = mapRect(getBoundingClientRect(a3));
+            const q2 = mapRect(getBoundingClientRect(b3));
+            if (p3.right < start && q2.left > start) return 0;
+            return q2.left > start ? -1 : 1;
+          });
+          const endOffset = to.nodeType === 1 ? 0 : bisectNode(doc, to, (a3, b3) => {
+            const p3 = mapRect(getBoundingClientRect(a3));
+            const q2 = mapRect(getBoundingClientRect(b3));
+            if (p3.right < end && q2.left > end) return 0;
+            return q2.left > end ? -1 : 1;
+          });
+          const range = doc.createRange();
+          range.setStart(from, startOffset);
+          range.setEnd(to, endOffset);
+          return range;
+        } catch (e) {
+          return null;
+        }
       };
       selectionIsBackward = (sel) => {
         const range = document.createRange();

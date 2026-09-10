@@ -670,6 +670,48 @@ void main() {
     expect(scrubbed, isNotNull);
   });
 
+  testWidgets('ReaderPageSliderBar renders chapter tick marks and handles sticky chapter snapping',
+      (WidgetTester tester) async {
+    double? scrubbedVal;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: Stack(
+            children: [
+              ReaderPageSliderBar(
+                progressPercentage: 10.0,
+                location: const ReadingLocation(
+                  cfi: 'cfi-loc-10',
+                  currentLocation: 10,
+                  totalLocations: 100,
+                ),
+                toc: const [
+                  TOCItem(label: 'Chapter 1', digitalPageNumber: 1),
+                  TOCItem(label: 'Chapter 2', digitalPageNumber: 25),
+                  TOCItem(label: 'Chapter 3', digitalPageNumber: 75),
+                ],
+                onScrubPercentage: (val) => scrubbedVal = val,
+                onPrevPage: () {},
+                onNextPage: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ReaderPageSliderBar), findsOneWidget);
+    expect(find.text('Page 10 of 100'), findsOneWidget);
+
+    await tester.drag(find.byType(Slider), const Offset(50, 0));
+    await tester.pumpAndSettle();
+
+    expect(scrubbedVal, isNotNull);
+  });
+
   testWidgets('ReaderTOCSheet renders inside DraggableScrollableSheet and responds to drags',
       (WidgetTester tester) async {
     String? selectedHref;

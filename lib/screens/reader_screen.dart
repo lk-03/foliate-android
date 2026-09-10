@@ -999,6 +999,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
             ReaderPageSliderBar(
               progressPercentage: (_currentLocation?.percentage ?? widget.book.percentage),
               location: _currentLocation,
+              toc: _tableOfContents,
               accentColor: themeAccent,
               onScrubPercentage: (val) {
                 _resetInactivityTimer();

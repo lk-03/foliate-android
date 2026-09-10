@@ -92,62 +92,69 @@ const getBoundingClientRect = target => {
 }
 
 const getVisibleRange = (doc, start, end, mapRect) => {
-    // first get all visible nodes
-    const acceptNode = node => {
-        const name = node.localName?.toLowerCase()
-        // ignore all scripts, styles, and their children
-        if (name === 'script' || name === 'style') return FILTER_REJECT
-        if (node.nodeType === 1) {
-            const { left, right } = mapRect(node.getBoundingClientRect())
-            // no need to check child nodes if it's completely out of view
-            if (right < start || left > end) return FILTER_REJECT
-            // elements must be completely in view to be considered visible
-            // because you can't specify offsets for elements
-            if (left >= start && right <= end) return FILTER_ACCEPT
-            // TODO: it should probably allow elements that do not contain text
-            // because they can exceed the whole viewport in both directions
-            // especially in scrolled mode
-        } else {
-            // ignore empty text nodes
-            if (!node.nodeValue?.trim()) return FILTER_SKIP
-            // create range to get rect
-            const range = doc.createRange()
-            range.selectNodeContents(node)
-            const { left, right } = mapRect(range.getBoundingClientRect())
-            // it's visible if any part of it is in view
-            if (right >= start && left <= end) return FILTER_ACCEPT
+    if (!doc) return null
+    const root = doc.body ?? doc.documentElement
+    if (!root || !root.nodeType) return null
+    try {
+        // first get all visible nodes
+        const acceptNode = node => {
+            const name = node.localName?.toLowerCase()
+            // ignore all scripts, styles, and their children
+            if (name === 'script' || name === 'style') return FILTER_REJECT
+            if (node.nodeType === 1) {
+                const { left, right } = mapRect(node.getBoundingClientRect())
+                // no need to check child nodes if it's completely out of view
+                if (right < start || left > end) return FILTER_REJECT
+                // elements must be completely in view to be considered visible
+                // because you can't specify offsets for elements
+                if (left >= start && right <= end) return FILTER_ACCEPT
+                // TODO: it should probably allow elements that do not contain text
+                // because they can exceed the whole viewport in both directions
+                // especially in scrolled mode
+            } else {
+                // ignore empty text nodes
+                if (!node.nodeValue?.trim()) return FILTER_SKIP
+                // create range to get rect
+                const range = doc.createRange()
+                range.selectNodeContents(node)
+                const { left, right } = mapRect(range.getBoundingClientRect())
+                // it's visible if any part of it is in view
+                if (right >= start && left <= end) return FILTER_ACCEPT
+            }
+            return FILTER_SKIP
         }
-        return FILTER_SKIP
+        const walker = doc.createTreeWalker(root, filter, { acceptNode })
+        const nodes = []
+        for (let node = walker.nextNode(); node; node = walker.nextNode())
+            nodes.push(node)
+
+        // we're only interested in the first and last visible nodes
+        const from = nodes[0] ?? root
+        const to = nodes[nodes.length - 1] ?? from
+
+        // find the offset at which visibility changes
+        const startOffset = from.nodeType === 1 ? 0
+            : bisectNode(doc, from, (a, b) => {
+                const p = mapRect(getBoundingClientRect(a))
+                const q = mapRect(getBoundingClientRect(b))
+                if (p.right < start && q.left > start) return 0
+                return q.left > start ? -1 : 1
+            })
+        const endOffset = to.nodeType === 1 ? 0
+            : bisectNode(doc, to, (a, b) => {
+                const p = mapRect(getBoundingClientRect(a))
+                const q = mapRect(getBoundingClientRect(b))
+                if (p.right < end && q.left > end) return 0
+                return q.left > end ? -1 : 1
+            })
+
+        const range = doc.createRange()
+        range.setStart(from, startOffset)
+        range.setEnd(to, endOffset)
+        return range
+    } catch (e) {
+        return null
     }
-    const walker = doc.createTreeWalker(doc.body, filter, { acceptNode })
-    const nodes = []
-    for (let node = walker.nextNode(); node; node = walker.nextNode())
-        nodes.push(node)
-
-    // we're only interested in the first and last visible nodes
-    const from = nodes[0] ?? doc.body
-    const to = nodes[nodes.length - 1] ?? from
-
-    // find the offset at which visibility changes
-    const startOffset = from.nodeType === 1 ? 0
-        : bisectNode(doc, from, (a, b) => {
-            const p = mapRect(getBoundingClientRect(a))
-            const q = mapRect(getBoundingClientRect(b))
-            if (p.right < start && q.left > start) return 0
-            return q.left > start ? -1 : 1
-        })
-    const endOffset = to.nodeType === 1 ? 0
-        : bisectNode(doc, to, (a, b) => {
-            const p = mapRect(getBoundingClientRect(a))
-            const q = mapRect(getBoundingClientRect(b))
-            if (p.right < end && q.left > end) return 0
-            return q.left > end ? -1 : 1
-        })
-
-    const range = doc.createRange()
-    range.setStart(from, startOffset)
-    range.setEnd(to, endOffset)
-    return range
 }
 
 const selectionIsBackward = sel => {

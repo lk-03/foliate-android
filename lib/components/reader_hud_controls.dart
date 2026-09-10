@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/models.dart';
@@ -651,8 +652,100 @@ class ReaderProgressIndicator extends StatelessWidget {
   }
 }
 
+/// Custom slider track shape that renders vertical chapter tick marks along the line.
+/// Matches the Apple Books slider scrub interaction (grows when held, shows chapter tick marks).
+class ChapterSliderTrackShape extends RoundedRectSliderTrackShape {
+  final List<double> chapterPercentages;
+  final bool isDragging;
+  final Color activeColor;
+  final Color inactiveColor;
+  final FoliateThemeColors colors;
+
+  const ChapterSliderTrackShape({
+    required this.chapterPercentages,
+    required this.isDragging,
+    required this.activeColor,
+    required this.inactiveColor,
+    required this.colors,
+  });
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset offset, {
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required Animation<double> enableAnimation,
+    required TextDirection textDirection,
+    required Offset thumbCenter,
+    Offset? secondaryOffset,
+    bool isDiscrete = false,
+    bool isEnabled = false,
+    double additionalActiveTrackHeight = 0,
+  }) {
+    super.paint(
+      context,
+      offset,
+      parentBox: parentBox,
+      sliderTheme: sliderTheme,
+      enableAnimation: enableAnimation,
+      textDirection: textDirection,
+      thumbCenter: thumbCenter,
+      secondaryOffset: secondaryOffset,
+      isDiscrete: isDiscrete,
+      isEnabled: isEnabled,
+      additionalActiveTrackHeight: additionalActiveTrackHeight,
+    );
+
+    if (chapterPercentages.isEmpty) return;
+
+    final trackRect = getPreferredRect(
+      parentBox: parentBox,
+      offset: offset,
+      sliderTheme: sliderTheme,
+      isDiscrete: isDiscrete,
+      isEnabled: isEnabled,
+    );
+
+    final trackWidth = trackRect.width;
+    final trackLeft = trackRect.left;
+    final centerY = trackRect.center.dy;
+
+    // Tick height and width grow when held/dragged, matching reference screenshot
+    final tickHalfHeight = isDragging ? 5.5 : 3.5;
+    final tickWidth = isDragging ? 1.8 : 1.2;
+
+    final inactiveTickPaint = Paint()
+      ..color = colors.textMuted.withValues(alpha: isDragging ? 0.70 : 0.40)
+      ..strokeWidth = tickWidth
+      ..strokeCap = StrokeCap.round;
+
+    final activeTickPaint = Paint()
+      ..color = colors.windowBackground.withValues(alpha: isDragging ? 0.90 : 0.65)
+      ..strokeWidth = tickWidth
+      ..strokeCap = StrokeCap.round;
+
+    for (final pct in chapterPercentages) {
+      if (pct <= 0.0 || pct >= 100.0) continue;
+      final x = trackLeft + (pct / 100.0) * trackWidth;
+
+      // Do not draw tick under the thumb
+      if ((x - thumbCenter.dx).abs() < (isDragging ? 8.0 : 5.0)) continue;
+
+      final isPast = x < thumbCenter.dx;
+      context.canvas.drawLine(
+        Offset(x, centerY - tickHalfHeight),
+        Offset(x, centerY + tickHalfHeight),
+        isPast ? activeTickPaint : inactiveTickPaint,
+      );
+    }
+  }
+}
+
 /// Floating bottom page scrubber slider bar that appears when tapping the reader screen.
-class ReaderPageSliderBar extends StatelessWidget {
+/// Features tactile sticky magnetic snapping to chapter marks, holding size expansion,
+/// and vertical chapter ticks along the track line.
+class ReaderPageSliderBar extends StatefulWidget {
   final double progressPercentage;
   final ValueChanged<double> onScrubPercentage;
   final VoidCallback onPrevPage;
@@ -660,6 +753,7 @@ class ReaderPageSliderBar extends StatelessWidget {
   final ReadingLocation? location;
   final String? pageLabel;
   final Color? accentColor;
+  final List<TOCItem> toc;
 
   const ReaderPageSliderBar({
     super.key,
@@ -670,28 +764,138 @@ class ReaderPageSliderBar extends StatelessWidget {
     this.location,
     this.pageLabel,
     this.accentColor,
+    this.toc = const [],
   });
 
-  String _formatPageLabel() {
-    if (pageLabel != null && pageLabel!.isNotEmpty) return pageLabel!;
-    if (location?.currentLocation != null &&
-        location!.totalLocations != null &&
-        location!.totalLocations! > 0) {
-      return 'Page ${location!.currentLocation} of ${location!.totalLocations}';
+  @override
+  State<ReaderPageSliderBar> createState() => _ReaderPageSliderBarState();
+}
+
+class _ReaderPageSliderBarState extends State<ReaderPageSliderBar> {
+  bool _isDragging = false;
+  double? _currentScrubPct;
+  int? _lastStuckMarkerIndex;
+  Timer? _throttleTimer;
+  double? _pendingScrubValue;
+
+  @override
+  void dispose() {
+    _throttleTimer?.cancel();
+    super.dispose();
+  }
+
+  List<({double percentage, String title, int? pageNumber})> _getChapterMarkers() {
+    final totalLocations = widget.location?.totalLocations ?? 0;
+    final markers = <({double percentage, String title, int? pageNumber})>[];
+
+    void recurse(List<TOCItem> list) {
+      for (final item in list) {
+        final page = item.digitalPageNumber ?? item.pageNumber;
+        if (page != null && totalLocations > 0) {
+          final pct = ((page - 1) / (totalLocations > 1 ? totalLocations - 1 : 1) * 100.0)
+              .clamp(0.0, 100.0);
+          markers.add((percentage: pct, title: item.label, pageNumber: page));
+        }
+        if (item.subitems.isNotEmpty) {
+          recurse(item.subitems);
+        }
+      }
     }
-    final estimatedPage = (progressPercentage * 2.0).clamp(1.0, 200.0).round();
-    if (progressPercentage > 0) {
-      return 'Page $estimatedPage of 200  •  ${progressPercentage.round()}%';
+
+    recurse(widget.toc);
+    markers.sort((a, b) => a.percentage.compareTo(b.percentage));
+
+    final unique = <({double percentage, String title, int? pageNumber})>[];
+    for (final m in markers) {
+      if (unique.isEmpty || (m.percentage - unique.last.percentage).abs() > 0.4) {
+        unique.add(m);
+      }
     }
-    return '${progressPercentage.round()}%';
+    return unique;
+  }
+
+  double _applyStickySnap(double rawVal, List<({double percentage, String title, int? pageNumber})> markers) {
+    if (markers.isEmpty) {
+      _lastStuckMarkerIndex = null;
+      return rawVal;
+    }
+
+    // Gentle magnetic snapping zone of ~1.2%
+    const double snapWindow = 1.2;
+    const double deadZone = 0.5;
+
+    for (int i = 0; i < markers.length; i++) {
+      final m = markers[i];
+      final dist = (rawVal - m.percentage).abs();
+      if (dist <= snapWindow) {
+        if (dist <= deadZone) {
+          if (_lastStuckMarkerIndex != i) {
+            _lastStuckMarkerIndex = i;
+            HapticFeedback.selectionClick();
+          }
+          return m.percentage;
+        } else {
+          final factor = (dist - deadZone) / (snapWindow - deadZone);
+          final pulled = m.percentage +
+              (rawVal - m.percentage).sign *
+                  (deadZone + (snapWindow - deadZone) * (factor * factor));
+          return pulled.clamp(0.0, 100.0);
+        }
+      }
+    }
+    _lastStuckMarkerIndex = null;
+    return rawVal;
+  }
+
+  void _handleThrottledScrub(double val) {
+    _pendingScrubValue = val;
+    if (_throttleTimer?.isActive ?? false) return;
+    _throttleTimer = Timer(const Duration(milliseconds: 60), () {
+      if (_pendingScrubValue != null && mounted) {
+        widget.onScrubPercentage(_pendingScrubValue!);
+      }
+    });
+  }
+
+  String _formatPageLabel(List<({double percentage, String title, int? pageNumber})> markers) {
+    if (_isDragging && _lastStuckMarkerIndex != null && _lastStuckMarkerIndex! < markers.length) {
+      final m = markers[_lastStuckMarkerIndex!];
+      if (m.pageNumber != null) {
+        return '${m.title}  •  Page ${m.pageNumber}';
+      }
+      return '${m.title}  •  ${m.percentage.round()}%';
+    }
+
+    if (_isDragging && _currentScrubPct != null) {
+      final totalLocations = widget.location?.totalLocations ?? 0;
+      if (totalLocations > 0) {
+        final scrubPage = ((_currentScrubPct! / 100.0) * (totalLocations - 1) + 1).round().clamp(1, totalLocations);
+        return 'Page $scrubPage of $totalLocations  •  ${_currentScrubPct!.round()}%';
+      }
+      return '${_currentScrubPct!.round()}%';
+    }
+
+    if (widget.pageLabel != null && widget.pageLabel!.isNotEmpty) return widget.pageLabel!;
+    if (widget.location?.currentLocation != null &&
+        widget.location!.totalLocations != null &&
+        widget.location!.totalLocations! > 0) {
+      return 'Page ${widget.location!.currentLocation} of ${widget.location!.totalLocations}';
+    }
+    final estimatedPage = (widget.progressPercentage * 2.0).clamp(1.0, 200.0).round();
+    if (widget.progressPercentage > 0) {
+      return 'Page $estimatedPage of 200  •  ${widget.progressPercentage.round()}%';
+    }
+    return '${widget.progressPercentage.round()}%';
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
-    final activeColor = accentColor ?? AdwaitaColors.terracottaDark;
-    final pageText = _formatPageLabel();
+    final activeColor = widget.accentColor ?? AdwaitaColors.terracottaDark;
+    final chapterMarkers = _getChapterMarkers();
+    final pageText = _formatPageLabel(chapterMarkers);
+    final displayValue = (_currentScrubPct ?? widget.progressPercentage).clamp(0.0, 100.0);
 
     return Positioned(
       bottom: 16 + MediaQuery.of(context).padding.bottom,
@@ -702,49 +906,62 @@ class ReaderPageSliderBar extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Page Number Badge centered above slider bar
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                color: colors.headerBar.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: colors.border.withValues(alpha: 0.8),
-                  width: 0.8,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+            AnimatedScale(
+              scale: _isDragging ? 1.05 : 1.0,
+              duration: const Duration(milliseconds: 150),
+              curve: Curves.easeOutCubic,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 3.5),
+                decoration: BoxDecoration(
+                  color: colors.headerBar.withValues(alpha: _isDragging ? 0.98 : 0.92),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _isDragging
+                        ? activeColor.withValues(alpha: 0.6)
+                        : colors.border.withValues(alpha: 0.8),
+                    width: _isDragging ? 1.0 : 0.8,
                   ),
-                ],
-              ),
-              child: Text(
-                pageText,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -0.2,
-                  color: colors.textSecondary,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: _isDragging ? 0.35 : 0.2),
+                      blurRadius: _isDragging ? 10 : 6,
+                      offset: Offset(0, _isDragging ? 3 : 2),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  pageText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
+                    color: _isDragging ? colors.textPrimary : colors.textSecondary,
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 5),
-            Container(
-              height: 44,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              curve: Curves.easeOutCubic,
+              height: _isDragging ? 52 : 44,
               padding: const EdgeInsets.symmetric(horizontal: 8),
               decoration: BoxDecoration(
-                color: colors.headerBar.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(22),
+                color: colors.headerBar.withValues(alpha: _isDragging ? 0.98 : 0.92),
+                borderRadius: BorderRadius.circular(_isDragging ? 26 : 22),
                 border: Border.all(
-                  color: colors.border.withValues(alpha: 0.8),
-                  width: 1.0,
+                  color: _isDragging
+                      ? activeColor.withValues(alpha: 0.6)
+                      : colors.border.withValues(alpha: 0.8),
+                  width: _isDragging ? 1.2 : 1.0,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    color: Colors.black.withValues(alpha: _isDragging ? 0.45 : 0.3),
+                    blurRadius: _isDragging ? 16 : 12,
+                    offset: Offset(0, _isDragging ? 6 : 4),
                   ),
                 ],
               ),
@@ -757,26 +974,56 @@ class ReaderPageSliderBar extends StatelessWidget {
                     constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                     onPressed: () {
                       HapticFeedback.selectionClick();
-                      onPrevPage();
+                      widget.onPrevPage();
                     },
                   ),
                   Expanded(
                     child: SliderTheme(
                       data: SliderTheme.of(context).copyWith(
-                        trackHeight: 3,
-                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                        trackHeight: _isDragging ? 6.0 : 3.5,
+                        trackShape: ChapterSliderTrackShape(
+                          chapterPercentages: chapterMarkers.map((m) => m.percentage).toList(),
+                          isDragging: _isDragging,
+                          activeColor: activeColor,
+                          inactiveColor: colors.border,
+                          colors: colors,
+                        ),
+                        thumbShape: RoundSliderThumbShape(
+                          enabledThumbRadius: _isDragging ? 9.0 : 6.0,
+                          elevation: _isDragging ? 4 : 1,
+                        ),
+                        overlayShape: RoundSliderOverlayShape(
+                          overlayRadius: _isDragging ? 18.0 : 14.0,
+                        ),
                         activeTrackColor: activeColor,
                         inactiveTrackColor: colors.border,
                         thumbColor: activeColor,
                       ),
                       child: Slider(
-                        value: progressPercentage.clamp(0.0, 100.0),
+                        value: displayValue,
                         min: 0.0,
                         max: 100.0,
-                        onChanged: (val) {
+                        onChangeStart: (val) {
+                          setState(() {
+                            _isDragging = true;
+                            _currentScrubPct = val;
+                          });
                           HapticFeedback.selectionClick();
-                          onScrubPercentage(val);
+                        },
+                        onChanged: (rawVal) {
+                          final snapped = _applyStickySnap(rawVal, chapterMarkers);
+                          setState(() => _currentScrubPct = snapped);
+                          _handleThrottledScrub(snapped);
+                        },
+                        onChangeEnd: (finalVal) {
+                          final snapped = _applyStickySnap(finalVal, chapterMarkers);
+                          _throttleTimer?.cancel();
+                          setState(() {
+                            _isDragging = false;
+                            _currentScrubPct = null;
+                            _lastStuckMarkerIndex = null;
+                          });
+                          widget.onScrubPercentage(snapped);
                         },
                       ),
                     ),
@@ -788,7 +1035,7 @@ class ReaderPageSliderBar extends StatelessWidget {
                     constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                     onPressed: () {
                       HapticFeedback.selectionClick();
-                      onNextPage();
+                      widget.onNextPage();
                     },
                   ),
                 ],
@@ -814,6 +1061,7 @@ class QuickActionsToolbar extends StatelessWidget {
   final ReadingLocation? location;
   final String? pageLabel;
   final Color? accentColor;
+  final List<TOCItem> toc;
 
   const QuickActionsToolbar({
     super.key,
@@ -828,6 +1076,7 @@ class QuickActionsToolbar extends StatelessWidget {
     this.location,
     this.pageLabel,
     this.accentColor,
+    this.toc = const [],
   });
 
   @override
@@ -840,6 +1089,7 @@ class QuickActionsToolbar extends StatelessWidget {
       location: location,
       pageLabel: pageLabel,
       accentColor: accentColor,
+      toc: toc,
     );
   }
 }

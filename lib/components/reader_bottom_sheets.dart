@@ -560,7 +560,7 @@ class _ReaderThemeCustomizeSheetState extends State<ReaderThemeCustomizeSheet> {
         border: Border.all(color: colors.border),
       ),
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.88,
+        maxHeight: MediaQuery.of(context).size.height * 0.52,
       ),
       child: SafeArea(
         child: Column(
@@ -611,37 +611,36 @@ class _ReaderThemeCustomizeSheetState extends State<ReaderThemeCustomizeSheet> {
                 physics: const BouncingScrollPhysics(
                   parent: AlwaysScrollableScrollPhysics(),
                 ),
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // --- LIVE TEXT PREVIEW BOX (Inspired by Reference Images 3 & 4) ---
+                    // --- COMPACT LIVE TEXT PREVIEW BOX ---
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       decoration: BoxDecoration(
                         color: previewColors.bg,
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color: colors.border.withValues(alpha: 0.8),
                           width: 1.0,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
                           Text(
                             'Aa',
                             style: TextStyle(
-                              fontSize: 26,
+                              fontSize: 22,
                               fontFamily: _currentFlutterFamily,
                               fontWeight: _current.fontWeight >= 600
                                   ? FontWeight.bold
@@ -649,25 +648,31 @@ class _ReaderThemeCustomizeSheetState extends State<ReaderThemeCustomizeSheet> {
                               color: previewColors.text,
                             ),
                           ),
-                          const SizedBox(height: 10),
-                          AnimatedDefaultTextStyle(
-                            duration: const Duration(milliseconds: 180),
-                            style: TextStyle(
-                              fontSize: 14.5,
-                              fontFamily: _currentFlutterFamily,
-                              fontWeight: _current.fontWeight >= 600
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                              height: _current.lineHeight,
-                              color: previewColors.text.withValues(alpha: 0.92),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 180),
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontFamily: _currentFlutterFamily,
+                                fontWeight: _current.fontWeight >= 600
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                height: _current.lineHeight,
+                                color: previewColors.text.withValues(alpha: 0.92),
+                              ),
+                              textAlign: previewTextAlign,
+                              child: Text(
+                                excerptText,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            textAlign: previewTextAlign,
-                            child: Text(excerptText),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 14),
 
                     // --- TEXT SECTION ---
                     _buildSectionHeader('Text'),
