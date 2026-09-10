@@ -439,9 +439,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => AnnotationEditSheet(
         annotation: annotation,
+        bookTitle: widget.book.title,
+        author: widget.book.author,
+        coverUri: widget.book.coverUri,
         onUpdate: (updated) async {
           await StorageService.instance.saveAnnotation(updated);
-          await _bridge.addAnnotation(updated.cfi, updated.color);
+          await _bridge.addAnnotation(updated.cfi, updated.color, note: updated.note);
         },
         onDelete: () async {
           await StorageService.instance
@@ -1036,6 +1039,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
               child: ReaderAnnotationBar(
                 selectedText: _selectedText!,
                 cfi: _selectedCfi,
+                bookTitle: widget.book.title,
+                author: widget.book.author,
+                coverUri: widget.book.coverUri,
                 onSave: (cfi, color, note) async {
                   final annotation = Annotation(
                     id: const Uuid().v4(),
@@ -1047,7 +1053,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                     createdAt: DateTime.now().millisecondsSinceEpoch,
                   );
                   await StorageService.instance.saveAnnotation(annotation);
-                  await _bridge.addAnnotation(cfi, color);
+                  await _bridge.addAnnotation(cfi, color, note: note);
                   if (mounted) {
                     setState(() {
                       _selectedText = null;

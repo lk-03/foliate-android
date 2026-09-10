@@ -4649,6 +4649,38 @@ ${doc.querySelector("parsererror").innerText}`);
       }
       return g3;
     }
+    static highlightWithNote(rects, options = {}) {
+      const gRoot = createSVGElement("g");
+      const highlightGroup = Overlayer.highlight(rects, options);
+      gRoot.append(highlightGroup);
+
+      if (options.note && rects && rects.length > 0) {
+        const first = rects[0];
+        const pinGroup = createSVGElement("g");
+        pinGroup.setAttribute("class", "margin-note-pin");
+
+        const pin = createSVGElement("rect");
+        pin.setAttribute("x", "4");
+        pin.setAttribute("y", first.top);
+        pin.setAttribute("width", "5");
+        pin.setAttribute("height", Math.max(16, first.height));
+        pin.setAttribute("rx", "2.5");
+        pin.setAttribute("fill", options.color || "#FFE066");
+        pin.style.opacity = "0.95";
+        pinGroup.append(pin);
+
+        const dot = createSVGElement("circle");
+        dot.setAttribute("cx", "6.5");
+        dot.setAttribute("cy", first.top + 6);
+        dot.setAttribute("r", "1.5");
+        dot.setAttribute("fill", "#FFFFFF");
+        dot.style.opacity = "1";
+        pinGroup.append(dot);
+
+        gRoot.append(pinGroup);
+      }
+      return gRoot;
+    }
     static outline(rects, options = {}) {
       const { color = "red", width: strokeWidth = 3, radius = 3 } = options;
       const g3 = createSVGElement("g");
@@ -5590,9 +5622,12 @@ ${doc.querySelector("parsererror").innerText}`);
         try {
           const { draw, annotation } = e.detail;
           const color = annotation?.color || '#FFE066';
-          const drawFn = (window.Overlayer && window.Overlayer.highlight) ? window.Overlayer.highlight : undefined;
+          const note = annotation?.note || '';
+          const drawFn = (window.Overlayer && window.Overlayer.highlightWithNote)
+            ? window.Overlayer.highlightWithNote
+            : ((window.Overlayer && window.Overlayer.highlight) ? window.Overlayer.highlight : undefined);
           if (draw && drawFn) {
-            draw(drawFn, { color });
+            draw(drawFn, { color, note });
           }
         } catch (err) {}
       });
@@ -5609,8 +5644,10 @@ ${doc.querySelector("parsererror").innerText}`);
       });
       view.addEventListener('create-overlay', (e) => {
         try {
-          for (const [cfi, color] of activeAnnotations.entries()) {
-            view.addAnnotation({ value: cfi, color });
+          for (const [cfi, data] of activeAnnotations.entries()) {
+            const color = (typeof data === 'object' && data !== null) ? data.color : data;
+            const note = (typeof data === 'object' && data !== null) ? data.note : '';
+            view.addAnnotation({ value: cfi, color, note });
           }
         } catch (err) {}
       });
@@ -6056,11 +6093,12 @@ ${doc.querySelector("parsererror").innerText}`);
       if (view) view.clearSearch();
     };
 
-    window.addAnnotation = (cfi, color) => {
+    window.addAnnotation = (cfi, color, note) => {
       if (view && cfi) {
         const c = color || '#FFE066';
-        activeAnnotations.set(cfi, c);
-        view.addAnnotation({ value: cfi, color: c });
+        const n = note || '';
+        activeAnnotations.set(cfi, { color: c, note: n });
+        view.addAnnotation({ value: cfi, color: c, note: n });
         try {
           const contents = view.renderer?.getContents?.() || [];
           for (const item of contents) {
@@ -6084,8 +6122,9 @@ ${doc.querySelector("parsererror").innerText}`);
       for (const item of list) {
         if (item?.cfi) {
           const c = item.color || '#FFE066';
-          activeAnnotations.set(item.cfi, c);
-          view.addAnnotation({ value: item.cfi, color: c });
+          const n = item.note || '';
+          activeAnnotations.set(item.cfi, { color: c, note: n });
+          view.addAnnotation({ value: item.cfi, color: c, note: n });
         }
       }
     };

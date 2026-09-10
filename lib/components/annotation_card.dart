@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/models.dart';
 import '../theme/theme.dart';
+import 'quote_card_generator_sheet.dart';
 
 /// Card displaying a saved text highlight / note snippet with Libadwaita styling
 class AnnotationCard extends StatelessWidget {
   final Annotation annotation;
   final String? bookTitle;
+  final String? author;
+  final String? coverUri;
   final VoidCallback onTap;
   final VoidCallback? onEdit;
   final VoidCallback? onCopy;
@@ -16,6 +19,8 @@ class AnnotationCard extends StatelessWidget {
     super.key,
     required this.annotation,
     this.bookTitle,
+    this.author,
+    this.coverUri,
     required this.onTap,
     this.onEdit,
     this.onCopy,
@@ -173,6 +178,15 @@ class AnnotationCard extends StatelessWidget {
                             _copyToClipboard(context);
                           }
                           break;
+                        case 'quote_card':
+                          QuoteCardGeneratorSheet.show(
+                            context,
+                            quoteText: annotation.text,
+                            bookTitle: bookTitle,
+                            author: author,
+                            coverUri: coverUri,
+                          );
+                          break;
                         case 'edit':
                           onEdit?.call();
                           break;
@@ -189,6 +203,16 @@ class AnnotationCard extends StatelessWidget {
                             Icon(Icons.copy_rounded, size: 16, color: colors.textPrimary),
                             const SizedBox(width: 8),
                             const Text('Copy Quote', style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'quote_card',
+                        child: Row(
+                          children: [
+                            Icon(Icons.format_quote_rounded, size: 16, color: colors.textPrimary),
+                            const SizedBox(width: 8),
+                            const Text('Share Quote Card', style: TextStyle(fontSize: 13)),
                           ],
                         ),
                       ),

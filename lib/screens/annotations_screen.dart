@@ -764,6 +764,8 @@ class _AnnotationsScreenState extends State<AnnotationsScreen> {
                 return AnnotationCard(
                   annotation: item,
                   bookTitle: title,
+                  author: book?.author,
+                  coverUri: book?.coverUri,
                   onTap: () => _handleAnnotationTap(item, book),
                   onEdit: () => _editAnnotation(item),
                   onDelete: () => _deleteAnnotation(item),

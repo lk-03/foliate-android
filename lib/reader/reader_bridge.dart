@@ -233,10 +233,10 @@ class ReaderBridge {
     await _controller?.runJavaScript('window.clearSearch();');
   }
 
-  /// Renders a permanent color highlight over a CFI range
-  Future<void> addAnnotation(String cfi, String color) async {
+  /// Renders a permanent color highlight and optional margin note over a CFI range
+  Future<void> addAnnotation(String cfi, String color, {String? note}) async {
     await _controller?.runJavaScript(
-      'window.addAnnotation(${jsonEncode(cfi)}, ${jsonEncode(color)});',
+      'window.addAnnotation(${jsonEncode(cfi)}, ${jsonEncode(color)}, ${jsonEncode(note ?? '')});',
     );
   }
 
@@ -248,7 +248,9 @@ class ReaderBridge {
   /// Bulk hydrates saved annotations into the WebView reader engine
   Future<void> loadAnnotations(List<Annotation> annotations) async {
     final payload = jsonEncode(
-      annotations.map((a) => {'cfi': a.cfi, 'color': a.color}).toList(),
+      annotations
+          .map((a) => {'cfi': a.cfi, 'color': a.color, 'note': a.note ?? ''})
+          .toList(),
     );
     await _controller?.runJavaScript(
       'if (window.loadAnnotations) window.loadAnnotations($payload);',

@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/models.dart';
 import '../theme/theme.dart';
+import 'dictionary_lookup_sheet.dart';
+import 'quote_card_generator_sheet.dart';
 import 'reader_hud_controls.dart';
 
 // Reusable UI helpers
@@ -1963,6 +1965,9 @@ class _ReaderSearchSheetState extends State<ReaderSearchSheet> {
 class ReaderAnnotationBar extends StatefulWidget {
   final String selectedText;
   final String? cfi;
+  final String? bookTitle;
+  final String? author;
+  final String? coverUri;
   final void Function(String cfi, String color, String? note) onSave;
   final VoidCallback onDismiss;
 
@@ -1970,6 +1975,9 @@ class ReaderAnnotationBar extends StatefulWidget {
     super.key,
     required this.selectedText,
     required this.cfi,
+    this.bookTitle,
+    this.author,
+    this.coverUri,
     required this.onSave,
     required this.onDismiss,
   });
@@ -1999,6 +2007,8 @@ class _ReaderAnnotationBarState extends State<ReaderAnnotationBar> {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
 
+    final isShortTerm = widget.selectedText.trim().split(RegExp(r'\s+')).length <= 4;
+
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -2018,7 +2028,7 @@ class _ReaderAnnotationBarState extends State<ReaderAnnotationBar> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Selected Quote Preview
+          // Selected Quote Preview & Quick Action Bar
           Row(
             children: [
               Expanded(
@@ -2031,6 +2041,30 @@ class _ReaderAnnotationBarState extends State<ReaderAnnotationBar> {
                     fontStyle: FontStyle.italic,
                   ),
                 ),
+              ),
+              if (isShortTerm)
+                IconButton(
+                  icon: const Icon(Icons.menu_book_rounded, size: 18),
+                  tooltip: 'Define',
+                  onPressed: () {
+                    DictionaryLookupSheet.show(
+                      context,
+                      query: widget.selectedText,
+                    );
+                  },
+                ),
+              IconButton(
+                icon: const Icon(Icons.format_quote_rounded, size: 18),
+                tooltip: 'Quote Card',
+                onPressed: () {
+                  QuoteCardGeneratorSheet.show(
+                    context,
+                    quoteText: widget.selectedText,
+                    bookTitle: widget.bookTitle,
+                    author: widget.author,
+                    coverUri: widget.coverUri,
+                  );
+                },
               ),
               IconButton(
                 icon: const Icon(Icons.copy_rounded, size: 18),
@@ -2129,12 +2163,18 @@ class _ReaderAnnotationBarState extends State<ReaderAnnotationBar> {
 /// Modal bottom sheet to view, edit color/note, or delete an existing highlight
 class AnnotationEditSheet extends StatefulWidget {
   final Annotation annotation;
+  final String? bookTitle;
+  final String? author;
+  final String? coverUri;
   final void Function(Annotation updated) onUpdate;
   final VoidCallback onDelete;
 
   const AnnotationEditSheet({
     super.key,
     required this.annotation,
+    this.bookTitle,
+    this.author,
+    this.coverUri,
     required this.onUpdate,
     required this.onDelete,
   });
@@ -2169,6 +2209,9 @@ class _AnnotationEditSheetState extends State<AnnotationEditSheet> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+
+    final isShortTerm = widget.annotation.text.trim().isNotEmpty &&
+        widget.annotation.text.trim().split(RegExp(r'\s+')).length <= 4;
 
     return Container(
       decoration: BoxDecoration(
@@ -2210,6 +2253,30 @@ class _AnnotationEditSheetState extends State<AnnotationEditSheet> {
                       color: colors.textPrimary,
                     ),
                   ),
+                ),
+                if (isShortTerm)
+                  IconButton(
+                    icon: const Icon(Icons.menu_book_rounded, size: 18),
+                    tooltip: 'Define',
+                    onPressed: () {
+                      DictionaryLookupSheet.show(
+                        context,
+                        query: widget.annotation.text,
+                      );
+                    },
+                  ),
+                IconButton(
+                  icon: const Icon(Icons.format_quote_rounded, size: 18),
+                  tooltip: 'Create Quote Card',
+                  onPressed: () {
+                    QuoteCardGeneratorSheet.show(
+                      context,
+                      quoteText: widget.annotation.text,
+                      bookTitle: widget.bookTitle,
+                      author: widget.author,
+                      coverUri: widget.coverUri,
+                    );
+                  },
                 ),
                 IconButton(
                   icon: const Icon(Icons.copy_rounded, size: 18),
@@ -2308,6 +2375,28 @@ class _AnnotationEditSheetState extends State<AnnotationEditSheet> {
                   note: text.trim().isNotEmpty ? text.trim() : null,
                 );
                 widget.onUpdate(updated);
+              },
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(40),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                side: BorderSide(color: colors.border),
+                foregroundColor: colors.textPrimary,
+              ),
+              icon: const Icon(Icons.format_quote_rounded, size: 18),
+              label: const Text('Share Quote Card'),
+              onPressed: () {
+                QuoteCardGeneratorSheet.show(
+                  context,
+                  quoteText: widget.annotation.text,
+                  bookTitle: widget.bookTitle,
+                  author: widget.author,
+                  coverUri: widget.coverUri,
+                );
               },
             ),
           ],
