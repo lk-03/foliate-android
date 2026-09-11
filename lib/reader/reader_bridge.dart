@@ -14,6 +14,8 @@ typedef OnTOCCallback = void Function(List<TOCItem> toc);
 typedef OnSearchResultCallback = void Function(SearchSection section);
 typedef OnSearchDoneCallback = void Function();
 typedef OnTextSelectedCallback = void Function(String text, String? cfi);
+typedef OnSelectionClearedCallback = void Function();
+typedef OnAnnotationClickedCallback = void Function(String cfi);
 typedef OnTTSTextCallback = void Function(List<String> paragraphs);
 typedef OnToggleControlsCallback = void Function();
 typedef OnReaderErrorCallback = void Function(String error);
@@ -31,6 +33,8 @@ class ReaderBridge {
   OnSearchResultCallback? onSearchResult;
   OnSearchDoneCallback? onSearchDone;
   OnTextSelectedCallback? onTextSelected;
+  OnSelectionClearedCallback? onSelectionCleared;
+  OnAnnotationClickedCallback? onAnnotationClicked;
   OnTTSTextCallback? onTTSText;
   OnToggleControlsCallback? onToggleControls;
   OnReaderErrorCallback? onError;
@@ -107,6 +111,19 @@ class ReaderBridge {
           }
           break;
 
+        case 'SELECTION_CLEARED':
+          onSelectionCleared?.call();
+          break;
+
+        case 'ANNOTATION_CLICKED':
+          if (payload is Map<String, dynamic>) {
+            final cfi = payload['cfi'] as String? ?? '';
+            if (cfi.isNotEmpty) onAnnotationClicked?.call(cfi);
+          } else if (payload is String && payload.isNotEmpty) {
+            onAnnotationClicked?.call(payload);
+          }
+          break;
+
         case 'TTS_TEXT':
           if (payload is Map<String, dynamic>) {
             final paragraphs = (payload['paragraphs'] as List<dynamic>?)
@@ -137,6 +154,9 @@ class ReaderBridge {
 
   ReadingLocation _parseReadingLocation(Map<String, dynamic> data) {
     final locationMap = data['location'] as Map<String, dynamic>?;
+    final chapterMap = data['chapterLocation'] as Map<String, dynamic>?;
+    final sectionData = data['section'];
+    final sectionMap = sectionData is Map<String, dynamic> ? sectionData : null;
     final cfi = (data['cfi'] ?? data['locationCfi'])?.toString() ?? '';
     final fraction = (data['fraction'] as num?)?.toDouble() ?? 0.0;
     final percentage = (data['percentage'] as num?)?.toDouble() ?? (fraction * 100);
@@ -147,9 +167,15 @@ class ReaderBridge {
       percentage: percentage,
       currentLocation: (locationMap?['current'] as num?)?.toInt(),
       totalLocations: (locationMap?['total'] as num?)?.toInt(),
-      currentSection: (data['section'] as num?)?.toInt(),
-      totalSections: (data['totalSections'] as num?)?.toInt(),
+      currentSection: (sectionMap?['current'] as num?)?.toInt() ?? (sectionData as num?)?.toInt(),
+      totalSections: (sectionMap?['total'] as num?)?.toInt() ?? (data['totalSections'] as num?)?.toInt(),
       sectionTitle: data['sectionTitle'] as String?,
+      excerpt: data['excerpt'] as String?,
+      chapterCurrentPage: (chapterMap?['current'] as num?)?.toInt(),
+      chapterTotalPages: (chapterMap?['total'] as num?)?.toInt(),
+      pagesLeftInChapter: (chapterMap?['pagesLeft'] as num?)?.toInt(),
+      timeLeftSectionSeconds: (data['timeLeftSectionSeconds'] as num?)?.toInt(),
+      timeLeftBookSeconds: (data['timeLeftBookSeconds'] as num?)?.toInt(),
     );
   }
 
@@ -219,6 +245,16 @@ class ReaderBridge {
     await _controller?.runJavaScript('window.deleteAnnotation(${jsonEncode(cfi)});');
   }
 
+  /// Bulk hydrates saved annotations into the WebView reader engine
+  Future<void> loadAnnotations(List<Annotation> annotations) async {
+    final payload = jsonEncode(
+      annotations.map((a) => {'cfi': a.cfi, 'color': a.color}).toList(),
+    );
+    await _controller?.runJavaScript(
+      'if (window.loadAnnotations) window.loadAnnotations($payload);',
+    );
+  }
+
   /// Extracts body text of the active chapter for Text-to-Speech narration
   Future<void> getChapterText() async {
     await _controller?.runJavaScript('window.getChapterText();');
@@ -227,5 +263,28 @@ class ReaderBridge {
   /// Probes the WebView to check if it's already booted
   Future<void> checkReady() async {
     await _controller?.runJavaScript('if (window.checkReady) window.checkReady();');
+  }
+
+  /// Returns text of the current visible page or section
+  Future<String?> getCurrentPageText() async {
+    try {
+      final res = await _controller?.runJavaScriptReturningResult(
+        'window.getCurrentPageText ? window.getCurrentPageText() : ""',
+      );
+      if (res is String && res.isNotEmpty && res != '""') {
+        final clean = res.startsWith('"') && res.endsWith('"')
+            ? jsonDecode(res) as String
+            : res;
+        return clean.trim();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Sets page animation mode (curl, slide, scroll, none)
+  Future<void> setPageAnimationMode(PageAnimationMode mode) async {
+    await _controller?.runJavaScript(
+      'if (window.setPageAnimationMode) window.setPageAnimationMode(${jsonEncode(mode.id)});',
+    );
   }
 }

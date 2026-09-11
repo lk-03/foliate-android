@@ -5,9 +5,11 @@ import '../models/models.dart';
 import '../services/services.dart';
 import '../theme/theme.dart';
 import 'annotations_screen.dart';
-import 'favorites_screen.dart';
 import 'home_screen.dart';
 import 'library_screen.dart';
+import 'open_libraries_screen.dart';
+import 'profile_screen.dart';
+import 'reader_screen.dart';
 
 /// Top-level mobile navigation shell hosting the Swipeable PageView,
 /// Bottom Navigation Bar, and HeaderBar.
@@ -40,6 +42,8 @@ class _MainShellState extends State<MainShell> {
   Future<void> _initStorageAndBooks() async {
     await StorageService.instance.preseedSampleBookIfNeeded();
     await _reloadBooks();
+    await _reloadAnnotations();
+    await _reloadHabits();
     _autoScanLinkedFolders();
   }
 
@@ -48,6 +52,24 @@ class _MainShellState extends State<MainShell> {
     if (mounted) {
       setState(() {
         _books = loaded;
+      });
+    }
+  }
+
+  Future<void> _reloadAnnotations() async {
+    final loaded = await StorageService.instance.getAllAnnotations();
+    if (mounted) {
+      setState(() {
+        _annotations = loaded;
+      });
+    }
+  }
+
+  Future<void> _reloadHabits() async {
+    final habits = await StorageService.instance.getReadingHabits();
+    if (mounted) {
+      setState(() {
+        _readingHabits = habits;
       });
     }
   }
@@ -71,6 +93,12 @@ class _MainShellState extends State<MainShell> {
     if (_currentIndex == index) return;
     HapticFeedback.selectionClick();
     setState(() => _currentIndex = index);
+    if (index == 0 || index == 4) {
+      _reloadHabits();
+    }
+    if (index == 3) {
+      _reloadAnnotations();
+    }
     _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 280),
@@ -78,17 +106,8 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  final List<Annotation> _annotations = [
-    const Annotation(
-      id: 'ann-1',
-      bookHash: 'a1b2c3d4e5f601',
-      cfi: 'epubcfi(/6/10!/4/2/2)',
-      text: 'JB was going through, as he put it, his hair phase.',
-      note: 'Key introductory line',
-      color: Annotation.colorYellow,
-      createdAt: 1725458000000,
-    ),
-  ];
+  ReadingHabits _readingHabits = const ReadingHabits();
+  List<Annotation> _annotations = [];
 
   String get _currentTitle {
     switch (_currentIndex) {
@@ -97,9 +116,11 @@ class _MainShellState extends State<MainShell> {
       case 1:
         return 'Library';
       case 2:
-        return 'Favorites';
+        return 'Explore';
       case 3:
-        return 'Notes';
+        return 'Annotations';
+      case 4:
+        return 'Profile';
       default:
         return 'Foliate';
     }
@@ -173,12 +194,30 @@ class _MainShellState extends State<MainShell> {
           setState(() {
             _currentIndex = index;
           });
+          if (index == 0 || index == 4) {
+            _reloadHabits();
+          }
+          if (index == 3) {
+            _reloadAnnotations();
+          }
         },
         children: [
           HomeScreen(
             books: _books,
+            readingHabits: _readingHabits,
             onNavigateToLibrary: () => _navigateToPage(1),
-            onBooksChanged: _reloadBooks,
+            onBooksChanged: () async {
+              await _reloadBooks();
+              await _reloadHabits();
+            },
+            onDailyGoalChanged: (newMins) async {
+              final updated = await StorageService.instance.updateDailyReadingGoal(newMins);
+              setState(() => _readingHabits = updated);
+            },
+            onYearlyGoalChanged: (newTarget) async {
+              final updated = await StorageService.instance.updateYearlyReadingGoal(newTarget);
+              setState(() => _readingHabits = updated);
+            },
           ),
           LibraryScreen(
             books: _books,
@@ -188,10 +227,40 @@ class _MainShellState extends State<MainShell> {
             },
             onBooksChanged: _reloadBooks,
           ),
-          FavoritesScreen(books: _books),
+          const OpenLibrariesScreen(),
           AnnotationsScreen(
             annotations: _annotations,
             booksMap: booksMap,
+            onAnnotationsChanged: _reloadAnnotations,
+            onAnnotationTap: (annotation, book) {
+              if (book != null) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ReaderScreen(
+                      book: book,
+                      initialCfi: annotation.cfi,
+                    ),
+                  ),
+                ).then((_) => _reloadAnnotations());
+              }
+            },
+          ),
+          ProfileScreen(
+            books: _books,
+            readingHabits: _readingHabits,
+            onDailyGoalChanged: (newMins) async {
+              final updated = await StorageService.instance.updateDailyReadingGoal(newMins);
+              setState(() => _readingHabits = updated);
+            },
+            onYearlyGoalChanged: (newTarget) async {
+              final updated = await StorageService.instance.updateYearlyReadingGoal(newTarget);
+              setState(() => _readingHabits = updated);
+            },
+            onRescanStorage: () async {
+              await _autoScanLinkedFolders();
+              await _reloadBooks();
+              await _reloadHabits();
+            },
           ),
         ],
       ),
@@ -222,14 +291,19 @@ class _MainShellState extends State<MainShell> {
               label: 'Library',
             ),
             NavigationDestination(
-              icon: const Icon(Icons.favorite_outline_rounded),
-              selectedIcon: Icon(Icons.favorite_rounded, color: primaryAccent),
-              label: 'Favorites',
+              icon: const Icon(Icons.explore_outlined),
+              selectedIcon: Icon(Icons.explore_rounded, color: primaryAccent),
+              label: 'Explore',
             ),
             NavigationDestination(
               icon: const Icon(Icons.bookmarks_outlined),
               selectedIcon: Icon(Icons.bookmarks_rounded, color: primaryAccent),
-              label: 'Notes',
+              label: 'Annotations',
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.person_outline_rounded),
+              selectedIcon: Icon(Icons.person_rounded, color: primaryAccent),
+              label: 'Profile',
             ),
           ],
         ),

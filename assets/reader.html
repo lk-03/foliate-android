@@ -3393,6 +3393,8 @@ ${doc.querySelector("parsererror").innerText}`);
         :host {
             display: block;
             container-type: size;
+            width: 100%;
+            height: 100%;
         }
         :host, #top {
             box-sizing: border-box;
@@ -3402,81 +3404,40 @@ ${doc.querySelector("parsererror").innerText}`);
             height: 100%;
         }
         #top {
-            --_gap: 7%;
-            --_margin: 48px;
             --_max-inline-size: 720px;
-            --_max-block-size: 1440px;
             --_max-column-count: 2;
             --_max-column-count-portrait: 1;
             --_max-column-count-spread: var(--_max-column-count);
-            --_half-gap: calc(var(--_gap) / 2);
-            --_max-width: calc(var(--_max-inline-size) * var(--_max-column-count-spread));
-            --_max-height: var(--_max-block-size);
-            display: grid;
-            grid-template-columns:
-                minmax(var(--_half-gap), 1fr)
-                var(--_half-gap)
-                minmax(0, calc(var(--_max-width) - var(--_gap)))
-                var(--_half-gap)
-                minmax(var(--_half-gap), 1fr);
-            grid-template-rows:
-                minmax(var(--_margin), 1fr)
-                minmax(0, var(--_max-height))
-                minmax(var(--_margin), 1fr);
-            &.vertical {
+        }
+        @container (orientation: portrait) {
+            #top {
                 --_max-column-count-spread: var(--_max-column-count-portrait);
-                --_max-width: var(--_max-block-size);
-                --_max-height: calc(var(--_max-inline-size) * var(--_max-column-count-spread));
-            }
-            @container (orientation: portrait) {
-                & {
-                    --_max-column-count-spread: var(--_max-column-count-portrait);
-                }
-                &.vertical {
-                    --_max-column-count-spread: var(--_max-column-count);
-                }
             }
         }
         #background {
-            grid-column: 1 / -1;
-            grid-row: 1 / -1;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
         }
         #container {
-            grid-column: 2 / 5;
-            grid-row: 2;
+            position: absolute;
+            top: var(--reader-margin-top, 108px);
+            bottom: var(--reader-margin-bottom, 96px);
+            left: var(--reader-margin-side, 24px);
+            right: var(--reader-margin-side, 24px);
             overflow: hidden;
+            box-sizing: border-box;
         }
         :host([flow="scrolled"]) #container {
-            grid-column: 1 / -1;
-            grid-row: 1 / -1;
             overflow: auto;
         }
-        #header {
-            grid-column: 3 / 4;
-            grid-row: 1;
-        }
-        #footer {
-            grid-column: 3 / 4;
-            grid-row: 3;
-            align-self: end;
-        }
         #header, #footer {
-            display: grid;
-            height: var(--_margin);
-        }
-        :is(#header, #footer) > * {
-            display: flex;
-            align-items: center;
-            min-width: 0;
-        }
-        :is(#header, #footer) > * > * {
-            width: 100%;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-            text-align: center;
-            font-size: .75em;
-            opacity: .6;
+            display: none !important;
         }
         </style>
         <div id="top">
@@ -3606,12 +3567,10 @@ ${doc.querySelector("parsererror").innerText}`);
           const { width, height } = this.#container.getBoundingClientRect();
           const size = vertical ? height : width;
           const style = getComputedStyle(this.#top);
-          const maxInlineSize = parseFloat(style.getPropertyValue("--_max-inline-size"));
-          const maxColumnCount = parseInt(style.getPropertyValue("--_max-column-count-spread"));
-          const margin = parseFloat(style.getPropertyValue("--_margin"));
+          const maxInlineSize = parseFloat(style.getPropertyValue("--_max-inline-size")) || 720;
+          const maxColumnCount = parseInt(style.getPropertyValue("--_max-column-count-spread")) || 1;
+          const margin = 0;
           this.#margin = margin;
-          const g3 = parseFloat(style.getPropertyValue("--_gap")) / 100;
-          const gap = -g3 / (g3 - 1) * size;
           const flow = this.getAttribute("flow");
           if (flow === "scrolled") {
             this.setAttribute("dir", vertical ? "rtl" : "ltr");
@@ -3621,25 +3580,14 @@ ${doc.querySelector("parsererror").innerText}`);
             this.feet = null;
             this.#header.replaceChildren();
             this.#footer.replaceChildren();
-            return { flow, margin, gap, columnWidth: columnWidth2 };
+            return { flow, margin, gap: 0, columnWidth: columnWidth2 };
           }
-          const divisor = Math.min(maxColumnCount, Math.ceil(size / maxInlineSize));
-          const columnWidth = size / divisor - gap;
+          const divisor = Math.min(maxColumnCount, Math.ceil(size / maxInlineSize)) || 1;
+          const gap = divisor > 1 ? 32 : 0;
+          const columnWidth = (size - (divisor - 1) * gap) / divisor;
           this.setAttribute("dir", rtl ? "rtl" : "ltr");
-          const marginalDivisor = vertical ? Math.min(2, Math.ceil(width / maxInlineSize)) : divisor;
-          const marginalStyle = {
-            gridTemplateColumns: `repeat(${marginalDivisor}, 1fr)`,
-            gap: `${gap}px`,
-            direction: this.bookDir === "rtl" ? "rtl" : "ltr"
-          };
-          Object.assign(this.#header.style, marginalStyle);
-          Object.assign(this.#footer.style, marginalStyle);
-          const heads = makeMarginals(marginalDivisor, "head");
-          const feet = makeMarginals(marginalDivisor, "foot");
-          this.heads = heads.map((el) => el.children[0]);
-          this.feet = feet.map((el) => el.children[0]);
-          this.#header.replaceChildren(...heads);
-          this.#footer.replaceChildren(...feet);
+          this.heads = null;
+          this.feet = null;
           return { height, width, margin, gap, columnWidth };
         }
         render() {
@@ -5451,11 +5399,50 @@ ${doc.querySelector("parsererror").innerText}`);
 
       const locationData = { current: currentDisplayPage, total: totalDisplayPages };
 
+      // Chapter-level page metrics from Foliate's paginator
+      const rendererPages = view?.renderer?.pages;
+      const rendererPage = view?.renderer?.page;
+      const sectionPagesTotal = rendererPages && rendererPages > 2 ? rendererPages - 2 : (rendererPages || 1);
+      const sectionPageCurrent = rendererPage ? Math.min(sectionPagesTotal, Math.max(1, rendererPage)) : 1;
+      const pagesLeftInChapter = Math.max(0, sectionPagesTotal - sectionPageCurrent);
+      const chapterLocationData = {
+        current: sectionPageCurrent,
+        total: sectionPagesTotal,
+        pagesLeft: pagesLeftInChapter,
+      };
+      const timeLeftSec = d.time?.section ? Math.round(d.time.section) : null;
+      const timeLeftBook = d.time?.total ? Math.round(d.time.total) : null;
+
+      let excerptText = '';
+      try {
+        if (d.range) {
+          excerptText = d.range.toString();
+        }
+        if (!excerptText && view?.renderer?.getContents) {
+          const contents = view.renderer.getContents() || [];
+          for (const item of contents) {
+            const doc = item?.doc;
+            if (doc?.body) {
+              const text = doc.body.innerText || doc.body.textContent || '';
+              if (text.trim().length > 0) {
+                const clean = text.trim().replace(/\s+/g, ' ');
+                excerptText = clean.length > 350 ? clean.slice(0, 350) + '...' : clean;
+                break;
+              }
+            }
+          }
+        }
+      } catch (err) {}
+
       window.ReactNativeWebView.postMessage(JSON.stringify({
         type: 'RELOCATE',
         payload: {
           ...d,
           location: locationData,
+          chapterLocation: chapterLocationData,
+          timeLeftSectionSeconds: timeLeftSec,
+          timeLeftBookSeconds: timeLeftBook,
+          excerpt: excerptText,
         },
       }));
       window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -5464,6 +5451,9 @@ ${doc.querySelector("parsererror").innerText}`);
           percentage: typeof d.fraction === 'number' ? Math.round(d.fraction * 100) : null,
           fraction: typeof d.fraction === 'number' ? d.fraction : null,
           location: locationData,
+          chapterLocation: chapterLocationData,
+          timeLeftSectionSeconds: timeLeftSec,
+          timeLeftBookSeconds: timeLeftBook,
           locationCfi: d.cfi ?? null,
         },
       }));
@@ -5529,22 +5519,34 @@ ${doc.querySelector("parsererror").innerText}`);
         }
       }, { passive: true });
 
+      let selectionDebounceTimer = null;
       doc.addEventListener('selectionchange', () => {
         try {
+          if (selectionDebounceTimer) clearTimeout(selectionDebounceTimer);
           const sel = doc.defaultView?.getSelection?.();
           if (sel && !sel.isCollapsed) {
             const text = sel.toString().trim();
             if (text.length > 0) {
-              const range = sel.getRangeAt(0);
-              const contents = view?.renderer?.getContents?.() || [];
-              const item = contents.find((x) => x.doc === doc);
-              const index = item ? item.index : 0;
-              const cfi = view?.getCFI ? view.getCFI(index, range) : null;
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'TEXT_SELECTED',
-                payload: { text, cfi },
-              }));
+              selectionDebounceTimer = setTimeout(() => {
+                try {
+                  const currentSel = doc.defaultView?.getSelection?.();
+                  if (!currentSel || currentSel.isCollapsed) return;
+                  const range = currentSel.getRangeAt(0);
+                  const contents = view?.renderer?.getContents?.() || [];
+                  const item = contents.find((x) => x.doc === doc);
+                  const index = item ? item.index : 0;
+                  const cfi = view?.getCFI ? view.getCFI(index, range) : null;
+                  window.ReactNativeWebView.postMessage(JSON.stringify({
+                    type: 'TEXT_SELECTED',
+                    payload: { text, cfi },
+                  }));
+                } catch (e) {}
+              }, 120);
             }
+          } else if (sel && sel.isCollapsed) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'SELECTION_CLEARED',
+            }));
           }
         } catch (e) {}
       });
@@ -5560,6 +5562,8 @@ ${doc.querySelector("parsererror").innerText}`);
       } catch (e) {}
     };
 
+    const activeAnnotations = new Map();
+
     const mountFreshView = () => {
       if (view) {
         try { view.close?.(); } catch (e) { /* nothing to close on first run */ }
@@ -5570,6 +5574,34 @@ ${doc.querySelector("parsererror").innerText}`);
       document.body.appendChild(view);
       view.addEventListener('relocate', onRelocate);
       view.addEventListener('load', (e) => attachDocTapListener(e.detail?.doc));
+      view.addEventListener('draw-annotation', (e) => {
+        try {
+          const { draw, annotation } = e.detail;
+          const color = annotation?.color || '#FFE066';
+          const drawFn = (window.Overlayer && window.Overlayer.highlight) ? window.Overlayer.highlight : undefined;
+          if (draw && drawFn) {
+            draw(drawFn, { color });
+          }
+        } catch (err) {}
+      });
+      view.addEventListener('show-annotation', (e) => {
+        try {
+          const { value } = e.detail;
+          if (value) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'ANNOTATION_CLICKED',
+              payload: { cfi: value },
+            }));
+          }
+        } catch (err) {}
+      });
+      view.addEventListener('create-overlay', (e) => {
+        try {
+          for (const [cfi, color] of activeAnnotations.entries()) {
+            view.addAnnotation({ value: cfi, color });
+          }
+        } catch (err) {}
+      });
       attachDocTapListener(document);
       return view;
     };
@@ -5638,6 +5670,23 @@ ${doc.querySelector("parsererror").innerText}`);
       );
     };
 
+    window.getCurrentPageText = () => {
+      try {
+        const contents = view?.renderer?.getContents?.() || [];
+        for (const item of contents) {
+          const doc = item?.doc;
+          if (doc?.body) {
+            const text = doc.body.innerText || doc.body.textContent || '';
+            if (text.trim().length > 0) {
+              const clean = text.trim().replace(/\s+/g, ' ');
+              return clean.length > 350 ? clean.slice(0, 350) + '...' : clean;
+            }
+          }
+        }
+      } catch (e) {}
+      return '';
+    };
+
     window.applyReaderSettings = (settings) => {
       if (settings) currentReaderSettings = settings;
       if (!settings) return;
@@ -5678,12 +5727,39 @@ ${doc.querySelector("parsererror").innerText}`);
         'black':        { light: { bg: '#000000', fg: '#D1D1D6' }, dark: { bg: '#000000', fg: '#D1D1D6' } }
       };
 
-      const themeKey = (theme || 'default').toLowerCase();
-      const themeConfig = THEMES[themeKey] || THEMES['default'];
-      const isDark = isDarkMode !== undefined ? isDarkMode : true;
-      let { bg, fg } = isDark ? themeConfig.dark : themeConfig.light;
+      let bg = '#FFFFFF';
+      let fg = '#1A1A1A';
 
-      if (invertColors) {
+      if (theme === 'sepia') {
+        bg = isDarkMode ? '#24201C' : '#FBF0D9';
+        fg = isDarkMode ? '#D4C5B0' : '#473621';
+      } else if (theme === 'warm') {
+        bg = isDarkMode ? '#24211E' : '#F6EFE6';
+        fg = isDarkMode ? '#D9CEC2' : '#332B24';
+      } else if (theme === 'gray') {
+        bg = isDarkMode ? '#232425' : '#E8E8E8';
+        fg = isDarkMode ? '#CFD1D3' : '#2A2C2E';
+      } else if (theme === 'nord') {
+        bg = isDarkMode ? '#2E3440' : '#ECEFF4';
+        fg = isDarkMode ? '#D8DEE9' : '#2E3440';
+      } else if (theme === 'gruvbox') {
+        bg = isDarkMode ? '#282828' : '#FBF1C7';
+        fg = isDarkMode ? '#EBDBB2' : '#3C3836';
+      } else if (theme === 'grass') {
+        bg = isDarkMode ? '#1E261E' : '#EAF0E8';
+        fg = isDarkMode ? '#C8D4C8' : '#253525';
+      } else if (theme === 'black') {
+        bg = '#1E1D1B';
+        fg = '#D6D6D6';
+      } else if (theme === 'contrast') {
+        bg = '#000000';
+        fg = '#FFFFFF';
+      } else {
+        bg = isDarkMode ? '#1C1C1E' : '#FFFFFF';
+        fg = isDarkMode ? '#EDEDED' : '#1A1A1A';
+      }
+
+      if (theme !== 'black' && theme !== 'contrast' && isDarkMode && theme === 'default') {
         const tmp = bg;
         bg = fg;
         fg = tmp;
@@ -5694,10 +5770,18 @@ ${doc.querySelector("parsererror").innerText}`);
 
       if (!view || !view.renderer) return;
 
-      if (pageFlipping === 'vertical') {
+      const pageAnim = settings.pageAnimationMode || (pageFlipping === 'vertical' ? 'scroll' : 'slide');
+
+      if (pageAnim === 'scroll' || pageFlipping === 'vertical') {
         view.renderer.setAttribute('flow', 'scrolled');
+        view.renderer.setAttribute('animated', '');
       } else {
         view.renderer.setAttribute('flow', 'paginated');
+        if (pageAnim === 'none' || reduceAnimation) {
+          view.renderer.removeAttribute('animated');
+        } else {
+          view.renderer.setAttribute('animated', '');
+        }
       }
 
       if (twoPagesLandscape) {
@@ -5708,8 +5792,20 @@ ${doc.querySelector("parsererror").innerText}`);
 
       // Font Family: Default to Noto Serif
       let selectedFont = '"Noto Serif", "Linux Libertine", "Libertinus Serif", "Charter", "Georgia", serif';
-      if (fontFamily === 'sans') {
-        selectedFont = 'system-ui, -apple-system, sans-serif';
+      if (fontFamily === 'literata') {
+        selectedFont = '"Literata", serif';
+      } else if (fontFamily === 'ebgaramond') {
+        selectedFont = '"EB Garamond", serif';
+      } else if (fontFamily === 'newsreader') {
+        selectedFont = '"Newsreader", serif';
+      } else if (fontFamily === 'lora') {
+        selectedFont = '"Lora", serif';
+      } else if (fontFamily === 'sourceserif4') {
+        selectedFont = '"Source Serif 4", serif';
+      } else if (fontFamily === 'bitter') {
+        selectedFont = '"Bitter", serif';
+      } else if (fontFamily === 'inter' || fontFamily === 'sans') {
+        selectedFont = '"Inter", system-ui, -apple-system, sans-serif';
       } else if (fontFamily === 'monospace') {
         selectedFont = '"JetBrains Mono", monospace';
       } else if (fontFamily === 'publisher') {
@@ -5723,14 +5819,20 @@ ${doc.querySelector("parsererror").innerText}`);
       const lineCss = lineHeight ? `line-height: ${lineHeight} !important;` : 'line-height: 1.5 !important;';
       const weightCss = fontWeight ? `font-weight: ${fontWeight} !important;` : '';
 
-      // Margins
-      let padH = '16px';
-      if (margin !== undefined) {
-        padH = `${Math.round(margin * 100)}%`;
-      } else if (pageMargins === false) {
-        padH = '8px';
+      // Margins & Safe Area Padding
+      const padTopNum = settings.paddingTop !== undefined ? settings.paddingTop : 108;
+      const padBottomNum = settings.paddingBottom !== undefined ? settings.paddingBottom : 96;
+      const marginVal = (margin !== undefined ? margin : 0.06);
+      const marginSideNum = settings.marginSide !== undefined
+          ? settings.marginSide
+          : Math.round(marginVal * (window.innerWidth || 390));
+
+      const viewEl = document.getElementById('view');
+      if (viewEl) {
+        viewEl.style.setProperty('--reader-margin-top', `${padTopNum}px`);
+        viewEl.style.setProperty('--reader-margin-bottom', `${padBottomNum}px`);
+        viewEl.style.setProperty('--reader-margin-side', `${marginSideNum}px`);
       }
-      const paddingCss = `padding: 12px ${padH} !important;`;
 
       // Text Alignment & Hyphenation
       const isJustify = fullJustification !== false;
@@ -5765,10 +5867,54 @@ ${doc.querySelector("parsererror").innerText}`);
           font-weight: bold;
           font-style: italic;
         }
+        @font-face {
+          font-family: 'Literata';
+          src: url('fonts/Literata.ttf') format('truetype');
+          font-weight: 100 900;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'EB Garamond';
+          src: url('fonts/EBGaramond.ttf') format('truetype');
+          font-weight: 100 900;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'Newsreader';
+          src: url('fonts/Newsreader.ttf') format('truetype');
+          font-weight: 100 900;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'Lora';
+          src: url('fonts/Lora.ttf') format('truetype');
+          font-weight: 100 900;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'Source Serif 4';
+          src: url('fonts/SourceSerif4.ttf') format('truetype');
+          font-weight: 100 900;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'Bitter';
+          src: url('fonts/Bitter.ttf') format('truetype');
+          font-weight: 100 900;
+          font-style: normal;
+        }
+        @font-face {
+          font-family: 'Inter';
+          src: url('fonts/Inter.ttf') format('truetype');
+          font-weight: 100 900;
+          font-style: normal;
+        }
         body {
           background-color: ${bg} !important;
           color: ${fg} !important;
-          ${paddingCss}
+          margin: 0 !important;
+          padding: 0 !important;
+          box-sizing: border-box !important;
           ${fontCss}
           ${sizeCss}
           ${minSizeCss}
@@ -5794,6 +5940,12 @@ ${doc.querySelector("parsererror").innerText}`);
       if (fontSize) {
         buildBookPageMap(fontSize / 16);
       }
+    };
+
+    window.setPageAnimationMode = (mode) => {
+      if (!currentReaderSettings) currentReaderSettings = {};
+      currentReaderSettings.pageAnimationMode = mode;
+      window.applyReaderSettings(currentReaderSettings);
     };
 
     let currentSearchId = 0;
@@ -5837,13 +5989,28 @@ ${doc.querySelector("parsererror").innerText}`);
 
     window.addAnnotation = (cfi, color) => {
       if (view && cfi) {
-        view.addAnnotation({ value: cfi, color });
+        const c = color || '#FFE066';
+        activeAnnotations.set(cfi, c);
+        view.addAnnotation({ value: cfi, color: c });
       }
     };
 
     window.deleteAnnotation = (cfi) => {
       if (view && cfi) {
+        activeAnnotations.delete(cfi);
         view.deleteAnnotation({ value: cfi });
+      }
+    };
+
+    window.loadAnnotations = (list) => {
+      activeAnnotations.clear();
+      if (!view || !Array.isArray(list)) return;
+      for (const item of list) {
+        if (item?.cfi) {
+          const c = item.color || '#FFE066';
+          activeAnnotations.set(item.cfi, c);
+          view.addAnnotation({ value: item.cfi, color: c });
+        }
       }
     };
 

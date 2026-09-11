@@ -63,6 +63,12 @@ class AdwaitaColors {
   /// Libadwaita warning orange
   static const Color libadwaitaOrange = Color(0xFFFF7800);
 
+  /// Warm Terracotta primary editorial accent from Apple Books reference
+  static const Color terracottaAccent = Color(0xFFC2410C);
+
+  /// Burnished Amber for streak flame and habit progress ring
+  static const Color amberStreak = Color(0xFFD97706);
+
   // --- Reader Background Themes ---
   /// Day Theme (Light)
   static const Color readerDayBg = Color(0xFFFFFFFF);
@@ -159,6 +165,58 @@ class AdwaitaColors {
       darkText: Color(0xFFECEFF4),
     ),
   ];
+
+  /// Returns the theme-specific accent color for the reader HUD and controls
+  static Color getThemeAccent(String themeId, bool isDarkMode) {
+    switch (themeId.toLowerCase()) {
+      case 'sepia':
+        return const Color(0xFFC6782E); // Warm amber / terracotta
+      case 'gruvbox':
+        return const Color(0xFFD79921); // Golden warm amber
+      case 'nord':
+        return const Color(0xFF88C0D0); // Frost cyan
+      case 'cherry':
+        return const Color(0xFFD43C6E); // Rose berry
+      case 'grass':
+        return const Color(0xFF26A269); // Forest emerald
+      case 'solarized':
+        return const Color(0xFF2AA198); // Teal cyan
+      case 'sky':
+        return const Color(0xFF3584E4); // Sky blue
+      case 'gray':
+      case 'grey':
+        return isDarkMode ? const Color(0xFF3DB88F) : const Color(0xFF2E6F54);
+      case 'day':
+      case 'light':
+        return const Color(0xFF2EC27E);
+      case 'night':
+      case 'black':
+      case 'default':
+      case 'defaulttheme':
+      default:
+        return const Color(0xFF3DB88F); // Foliate leaf green
+    }
+  }
+
+  /// Returns the background color for a given theme preset
+  static Color getReaderBgColor(String themeId, bool isDarkMode) {
+    for (final theme in foliateThemes) {
+      if (theme.id.toLowerCase() == themeId.toLowerCase()) {
+        return theme.bg(isDarkMode);
+      }
+    }
+    return isDarkMode ? darkWindowBg : lightWindowBg;
+  }
+
+  /// Returns the foreground text color for a given theme preset
+  static Color getReaderFgColor(String themeId, bool isDarkMode) {
+    for (final theme in foliateThemes) {
+      if (theme.id.toLowerCase() == themeId.toLowerCase()) {
+        return theme.text(isDarkMode);
+      }
+    }
+    return isDarkMode ? darkTextPrimary : lightTextPrimary;
+  }
 }
 
 /// Representation of a Foliate theme with light and dark mode color pairs

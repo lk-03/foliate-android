@@ -40,7 +40,7 @@ class RecentBookCard extends StatelessWidget {
           child: Row(
             children: [
               // Cover Thumbnail
-              _buildCover(colors),
+              _buildCover(colors, primaryAccent),
               const SizedBox(width: 14),
 
               // Book Details & Progress
@@ -166,7 +166,7 @@ class RecentBookCard extends StatelessWidget {
     );
   }
 
-  Widget _buildCover(FoliateThemeColors colors) {
+  Widget _buildCover(FoliateThemeColors colors, Color primaryAccent) {
     return Container(
       width: 52,
       height: 74,
@@ -194,10 +194,10 @@ class RecentBookCard extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.menu_book_rounded,
                       size: 22,
-                      color: AdwaitaColors.foliateGreen,
+                      color: primaryAccent,
                     ),
                     const SizedBox(height: 2),
                     Text(
