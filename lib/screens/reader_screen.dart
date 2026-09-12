@@ -1042,6 +1042,15 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 bookTitle: widget.book.title,
                 author: widget.book.author,
                 coverUri: widget.book.coverUri,
+                onBeforeAction: () {
+                  _bridge.clearSelection();
+                  if (mounted) {
+                    setState(() {
+                      _selectedText = null;
+                      _selectedCfi = null;
+                    });
+                  }
+                },
                 onSave: (cfi, color, note) async {
                   final annotation = Annotation(
                     id: const Uuid().v4(),
@@ -1054,6 +1063,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   );
                   await StorageService.instance.saveAnnotation(annotation);
                   await _bridge.addAnnotation(cfi, color, note: note);
+                  await _bridge.clearSelection();
                   if (mounted) {
                     setState(() {
                       _selectedText = null;
@@ -1061,10 +1071,15 @@ class _ReaderScreenState extends State<ReaderScreen> {
                     });
                   }
                 },
-                onDismiss: () => setState(() {
-                  _selectedText = null;
-                  _selectedCfi = null;
-                }),
+                onDismiss: () {
+                  _bridge.clearSelection();
+                  if (mounted) {
+                    setState(() {
+                      _selectedText = null;
+                      _selectedCfi = null;
+                    });
+                  }
+                },
               ),
             ),
 

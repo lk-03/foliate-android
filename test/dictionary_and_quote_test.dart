@@ -4,6 +4,7 @@ import 'package:foliate/components/annotation_card.dart';
 import 'package:foliate/components/dictionary_lookup_sheet.dart';
 import 'package:foliate/components/quote_card_generator_sheet.dart';
 import 'package:foliate/models/models.dart';
+import 'package:foliate/reader/reader_bridge.dart';
 import 'package:foliate/services/dictionary_service.dart';
 import 'package:foliate/theme/adwaita_theme.dart';
 
@@ -57,6 +58,37 @@ void main() {
       final service = DictionaryService.instance;
       service.clearCache();
       expect(service, isNotNull);
+    });
+
+    test('DictionaryEntry and DictionaryMeaning round-trip through JSON correctly', () {
+      final meaning = const DictionaryMeaning(
+        partOfSpeech: 'noun',
+        definitions: ['A block of bread after baking.'],
+        examples: ['A loaf of sourdough.'],
+        synonyms: ['bread'],
+      );
+      final jsonMeaning = meaning.toJson();
+      final parsedMeaning = DictionaryMeaning.fromJson(jsonMeaning);
+      expect(parsedMeaning.partOfSpeech, 'noun');
+      expect(parsedMeaning.definitions.first, 'A block of bread after baking.');
+      expect(parsedMeaning.examples.first, 'A loaf of sourdough.');
+      expect(parsedMeaning.synonyms.first, 'bread');
+
+      final entry = DictionaryEntry(
+        word: 'loaf',
+        meanings: [meaning],
+      );
+      final jsonEntry = entry.toJson();
+      final parsedEntry = DictionaryEntry.fromJson(jsonEntry);
+      expect(parsedEntry.word, 'loaf');
+      expect(parsedEntry.meanings.length, 1);
+      expect(parsedEntry.meanings.first.definitions.first, 'A block of bread after baking.');
+    });
+
+    test('ReaderBridge clearSelection executes without error when controller is null', () async {
+      final bridge = ReaderBridge();
+      // Should not throw even when controller is not attached
+      await expectLater(bridge.clearSelection(), completes);
     });
   });
 

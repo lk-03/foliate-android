@@ -28,7 +28,8 @@
       font-weight: bold;
       font-style: italic;
     }
-    html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: 'Noto Serif', serif; }
+    html, body { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: 'Noto Serif', serif; -webkit-touch-callout: none !important; }
+    * { -webkit-touch-callout: none !important; }
     foliate-view { display: block; width: 100%; height: 100%; }
   </style>
 </head>
@@ -5563,6 +5564,10 @@ ${doc.querySelector("parsererror").innerText}`);
         }
       }, { passive: true });
 
+      doc.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+      }, true);
+
       let selectionDebounceTimer = null;
       doc.addEventListener('selectionchange', () => {
         try {
@@ -6016,6 +6021,7 @@ ${doc.querySelector("parsererror").innerText}`);
           margin: 0 !important;
           padding: 0 !important;
           box-sizing: border-box !important;
+          -webkit-touch-callout: none !important;
           -webkit-user-select: text !important;
           user-select: text !important;
           ${fontCss}
@@ -6028,6 +6034,7 @@ ${doc.querySelector("parsererror").innerText}`);
         p, div, span, li, h1, h2, h3, h4, h5, h6, a, blockquote {
           background-color: ${bg} !important;
           color: ${fg} !important;
+          -webkit-touch-callout: none !important;
           -webkit-user-select: text !important;
           user-select: text !important;
           ${fontCss}
@@ -6036,6 +6043,9 @@ ${doc.querySelector("parsererror").innerText}`);
           ${lineCss}
           ${weightCss}
           ${alignCss}
+        }
+        * {
+          -webkit-touch-callout: none !important;
         }
         ${animCss}
       `;
@@ -6091,6 +6101,24 @@ ${doc.querySelector("parsererror").innerText}`);
 
     window.clearSearch = () => {
       if (view) view.clearSearch();
+    };
+
+    window.clearSelection = () => {
+      try {
+        const contents = view?.renderer?.getContents?.() || [];
+        for (const item of contents) {
+          item.doc?.defaultView?.getSelection?.()?.removeAllRanges?.();
+        }
+        window.getSelection()?.removeAllRanges?.();
+        for (const item of contents) {
+          if (item.doc?.activeElement && item.doc.activeElement.blur) {
+            item.doc.activeElement.blur();
+          }
+        }
+        if (document.activeElement && document.activeElement.blur) {
+          document.activeElement.blur();
+        }
+      } catch (e) {}
     };
 
     window.addAnnotation = (cfi, color, note) => {
@@ -6150,6 +6178,10 @@ ${doc.querySelector("parsererror").innerText}`);
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ERROR', payload: e.message }));
       }
     };
+
+    // Suppress native context menus on long-press
+    window.addEventListener('contextmenu', (e) => e.preventDefault(), true);
+    document.addEventListener('contextmenu', (e) => e.preventDefault(), true);
 
     // Expose ready check for host environment
     window.checkReady = () => {

@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
+import android.view.ActionMode
 import android.view.WindowManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -67,5 +68,24 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    override fun onActionModeStarted(mode: ActionMode?) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && mode?.type == ActionMode.TYPE_FLOATING) {
+            mode.finish()
+            return
+        }
+        super.onActionModeStarted(mode)
+    }
+
+    override fun startActionMode(callback: ActionMode.Callback?, type: Int): ActionMode? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && type == ActionMode.TYPE_FLOATING) {
+            return null
+        }
+        return super.startActionMode(callback, type)
+    }
+
+    override fun startActionMode(callback: ActionMode.Callback?): ActionMode? {
+        return null
     }
 }

@@ -233,6 +233,11 @@ class ReaderBridge {
     await _controller?.runJavaScript('window.clearSearch();');
   }
 
+  /// Clears any active DOM selection in the WebView reader
+  Future<void> clearSelection() async {
+    await _controller?.runJavaScript('if (window.clearSelection) window.clearSelection();');
+  }
+
   /// Renders a permanent color highlight and optional margin note over a CFI range
   Future<void> addAnnotation(String cfi, String color, {String? note}) async {
     await _controller?.runJavaScript(

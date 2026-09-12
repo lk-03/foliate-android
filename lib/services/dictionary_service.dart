@@ -139,29 +139,132 @@ class DictionaryService {
     return text.trim().toLowerCase().replaceAll(RegExp(r'[^a-zA-Z0-9\-]'), '');
   }
 
-  /// Look up English word definitions using Free Dictionary API with local cache.
-  Future<DictionaryEntry?> lookupWord(String rawWord) async {
-    final word = _cleanWord(rawWord);
-    if (word.isEmpty) return null;
+  String _stripHtml(String html) {
+    return html
+        .replaceAll(RegExp(r'<[^>]*>'), '')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&apos;', "'")
+        .replaceAll('&#39;', "'")
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&mdash;', '—')
+        .replaceAll('&ndash;', '–')
+        .replaceAll(RegExp(r'&[a-zA-Z0-9#]+;'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
 
-    if (_memoryCache.containsKey(word)) {
-      return _memoryCache[word];
+  DictionaryEntry? _parseWiktionaryData(String word, Map<String, dynamic> data) {
+    final enList = data['en'];
+    if (enList is! List || enList.isEmpty) return null;
+
+    final Map<String, List<String>> posDefinitions = {};
+    final Map<String, List<String>> posExamples = {};
+
+    for (final item in enList) {
+      if (item is! Map) continue;
+      final pos = (item['partOfSpeech'] as String? ?? 'general').toLowerCase();
+      final defsList = item['definitions'];
+      if (defsList is! List) continue;
+
+      for (final defItem in defsList) {
+        if (defItem is! Map) continue;
+        final rawDef = defItem['definition'] as String?;
+        if (rawDef != null) {
+          final cleanDef = _stripHtml(rawDef);
+          if (cleanDef.isNotEmpty &&
+              !cleanDef.startsWith('↑') &&
+              cleanDef != '.') {
+            posDefinitions.putIfAbsent(pos, () => []).add(cleanDef);
+          }
+        }
+
+        final parsedExamples = defItem['parsedExamples'];
+        if (parsedExamples is List) {
+          for (final exItem in parsedExamples) {
+            if (exItem is Map && exItem['example'] is String) {
+              final cleanEx = _stripHtml(exItem['example'] as String);
+              if (cleanEx.isNotEmpty && !cleanEx.startsWith('↑')) {
+                posExamples.putIfAbsent(pos, () => []).add(cleanEx);
+              }
+            }
+          }
+        } else {
+          final examples = defItem['examples'];
+          if (examples is List) {
+            for (final ex in examples) {
+              if (ex is String) {
+                final cleanEx = _stripHtml(ex);
+                if (cleanEx.isNotEmpty && !cleanEx.startsWith('↑')) {
+                  posExamples.putIfAbsent(pos, () => []).add(cleanEx);
+                }
+              }
+            }
+          }
+        }
+      }
     }
 
+    if (posDefinitions.isEmpty) return null;
+
+    final meanings = posDefinitions.entries.map((e) {
+      return DictionaryMeaning(
+        partOfSpeech: e.key,
+        definitions: e.value,
+        examples: posExamples[e.key] ?? const [],
+      );
+    }).toList();
+
+    return DictionaryEntry(
+      word: word,
+      meanings: meanings,
+    );
+  }
+
+  /// Query Wiktionary REST API for definitions and examples.
+  Future<DictionaryEntry?> _lookupWiktionary(String word) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final cachedJson = prefs.getString('$_prefPrefixDict$word');
-      if (cachedJson != null) {
-        final entry = DictionaryEntry.fromJson(
-            jsonDecode(cachedJson) as Map<String, dynamic>);
-        _memoryCache[word] = entry;
-        return entry;
+      final response = await _dio.get(
+        'https://en.wiktionary.org/api/rest_v1/page/definition/${Uri.encodeComponent(word)}',
+      );
+      if (response.statusCode == 200 && response.data is Map) {
+        final entry = _parseWiktionaryData(word, response.data as Map<String, dynamic>);
+        if (entry != null && entry.meanings.isNotEmpty) {
+          return entry;
+        }
       }
     } catch (_) {}
 
+    // Fallback: if lowercase is different, try with lowercase
+    final lower = word.toLowerCase();
+    if (lower != word) {
+      try {
+        final response = await _dio.get(
+          'https://en.wiktionary.org/api/rest_v1/page/definition/${Uri.encodeComponent(lower)}',
+        );
+        if (response.statusCode == 200 && response.data is Map) {
+          final entry = _parseWiktionaryData(lower, response.data as Map<String, dynamic>);
+          if (entry != null && entry.meanings.isNotEmpty) {
+            return entry;
+          }
+        }
+      } catch (_) {}
+    }
+
+    return null;
+  }
+
+  /// Query Free Dictionary API for phonetic, audio pronunciation, and definitions.
+  Future<DictionaryEntry?> _lookupFreeDictionary(String word) async {
     try {
       final response = await _dio.get(
         'https://api.dictionaryapi.dev/api/v2/entries/en/${Uri.encodeComponent(word)}',
+        options: Options(
+          sendTimeout: const Duration(milliseconds: 2500),
+          receiveTimeout: const Duration(milliseconds: 2500),
+        ),
       );
 
       if (response.statusCode == 200 && response.data is List) {
@@ -228,28 +331,56 @@ class DictionaryService {
             }
           }
 
-          final entry = DictionaryEntry(
+          return DictionaryEntry(
             word: parsedWord,
             phonetic: phonetic,
             audioUrl: audioUrl,
             meanings: meanings,
           );
-
-          _memoryCache[word] = entry;
-          try {
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString(
-                '$_prefPrefixDict$word', jsonEncode(entry.toJson()));
-          } catch (_) {}
-
-          return entry;
         }
       }
     } catch (e) {
-      debugPrint('Dictionary lookup error for $word: $e');
+      debugPrint('Free Dictionary API lookup error for $word: $e');
+    }
+    return null;
+  }
+
+  /// Look up English word definitions using Wiktionary with Free Dictionary API fallback and local cache.
+  Future<DictionaryEntry?> lookupWord(String rawWord) async {
+    final word = _cleanWord(rawWord);
+    if (word.isEmpty) return null;
+
+    if (_memoryCache.containsKey(word)) {
+      return _memoryCache[word];
     }
 
-    return null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString('$_prefPrefixDict$word');
+      if (cachedJson != null) {
+        final entry = DictionaryEntry.fromJson(
+            jsonDecode(cachedJson) as Map<String, dynamic>);
+        _memoryCache[word] = entry;
+        return entry;
+      }
+    } catch (_) {}
+
+    // Wiktionary REST API is primary: reliable, ultra-fast global CDN, 99.99% uptime.
+    DictionaryEntry? entry = await _lookupWiktionary(word);
+
+    // Fall back to Free Dictionary API if Wiktionary did not return an entry.
+    entry ??= await _lookupFreeDictionary(word);
+
+    if (entry != null) {
+      _memoryCache[word] = entry;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+            '$_prefPrefixDict$word', jsonEncode(entry.toJson()));
+      } catch (_) {}
+    }
+
+    return entry;
   }
 
   /// Look up concept, place, or term overview on Wikipedia REST API.

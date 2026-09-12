@@ -1970,16 +1970,18 @@ class ReaderAnnotationBar extends StatefulWidget {
   final String? coverUri;
   final void Function(String cfi, String color, String? note) onSave;
   final VoidCallback onDismiss;
+  final VoidCallback? onBeforeAction;
 
   const ReaderAnnotationBar({
     super.key,
     required this.selectedText,
-    required this.cfi,
+    this.cfi,
     this.bookTitle,
     this.author,
     this.coverUri,
     required this.onSave,
     required this.onDismiss,
+    this.onBeforeAction,
   });
 
   @override
@@ -2047,9 +2049,11 @@ class _ReaderAnnotationBarState extends State<ReaderAnnotationBar> {
                   icon: const Icon(Icons.menu_book_rounded, size: 18),
                   tooltip: 'Define',
                   onPressed: () {
+                    final queryText = widget.selectedText;
+                    widget.onBeforeAction?.call();
                     DictionaryLookupSheet.show(
                       context,
-                      query: widget.selectedText,
+                      query: queryText,
                     );
                   },
                 ),
@@ -2057,12 +2061,17 @@ class _ReaderAnnotationBarState extends State<ReaderAnnotationBar> {
                 icon: const Icon(Icons.format_quote_rounded, size: 18),
                 tooltip: 'Quote Card',
                 onPressed: () {
+                  final quote = widget.selectedText;
+                  final bTitle = widget.bookTitle;
+                  final bAuthor = widget.author;
+                  final bCover = widget.coverUri;
+                  widget.onBeforeAction?.call();
                   QuoteCardGeneratorSheet.show(
                     context,
-                    quoteText: widget.selectedText,
-                    bookTitle: widget.bookTitle,
-                    author: widget.author,
-                    coverUri: widget.coverUri,
+                    quoteText: quote,
+                    bookTitle: bTitle,
+                    author: bAuthor,
+                    coverUri: bCover,
                   );
                 },
               ),
