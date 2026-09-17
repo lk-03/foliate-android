@@ -1,26 +1,113 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/models.dart';
 import '../theme/theme.dart';
+import 'reader_hud_controls.dart';
 
-/// Bottom sheet for Reader Appearance, Typography & Layout settings
-class ReaderAppearanceSheet extends StatefulWidget {
+// Reusable UI helpers
+Widget _buildSectionHeader(String title) {
+  return Padding(
+    padding: const EdgeInsets.only(left: 4, bottom: 8),
+    child: Text(
+      title,
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.bold,
+        color: AdwaitaColors.darkTextSecondary,
+        letterSpacing: -0.1,
+      ),
+    ),
+  );
+}
+
+Widget _buildCard({
+  required List<Widget> children,
+  required FoliateThemeColors colors,
+}) {
+  return Material(
+    color: colors.surfaceCard,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+      side: BorderSide(color: colors.border),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: Column(children: children),
+  );
+}
+
+Widget _buildStepper({
+  required String label,
+  required String valueText,
+  required VoidCallback? onDecrement,
+  required VoidCallback? onIncrement,
+  required FoliateThemeColors colors,
+}) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 14)),
+        Container(
+          decoration: BoxDecoration(
+            color: colors.inputBackground,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: colors.border),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.remove_rounded, size: 18),
+                padding: const EdgeInsets.all(4),
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                onPressed: onDecrement,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  valueText,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_rounded, size: 18),
+                padding: const EdgeInsets.all(4),
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                onPressed: onIncrement,
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Dedicated Bottom Sheet for Reader Layout, Margins, Hyphenation & Flow Mode
+class ReaderLayoutSheet extends StatefulWidget {
   final ReaderSettings settings;
   final ValueChanged<ReaderSettings> onSettingsChanged;
+  final Color? accentColor;
 
-  const ReaderAppearanceSheet({
+  const ReaderLayoutSheet({
     super.key,
     required this.settings,
     required this.onSettingsChanged,
+    this.accentColor,
   });
 
   @override
-  State<ReaderAppearanceSheet> createState() => _ReaderAppearanceSheetState();
+  State<ReaderLayoutSheet> createState() => _ReaderLayoutSheetState();
 }
 
-class _ReaderAppearanceSheetState extends State<ReaderAppearanceSheet> {
+class _ReaderLayoutSheetState extends State<ReaderLayoutSheet> {
   late ReaderSettings _current;
-  int _activeTab = 0; // 0: Font, 1: Layout, 2: Color, 3: Behavior
 
   @override
   void initState() {
@@ -37,15 +124,16 @@ class _ReaderAppearanceSheetState extends State<ReaderAppearanceSheet> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+    final activeColor = widget.accentColor ?? AdwaitaColors.foliateGreen;
 
     return Container(
       decoration: BoxDecoration(
         color: colors.windowBackground,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         border: Border.all(color: colors.border),
       ),
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.78,
+        maxHeight: MediaQuery.of(context).size.height * 0.80,
       ),
       child: SafeArea(
         child: Column(
@@ -62,676 +150,960 @@ class _ReaderAppearanceSheetState extends State<ReaderAppearanceSheet> {
               ),
             ),
 
-            // Libadwaita Tab Switcher Bar
+            // Header Bar
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: BoxDecoration(
-                        color: colors.surfaceCard,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: colors.border),
-                      ),
-                      child: Row(
-                        children: [
-                          _buildTabPill(0, 'Font', Icons.format_size_rounded, colors),
-                          _buildTabPill(1, 'Layout', Icons.auto_stories_rounded, colors),
-                          _buildTabPill(2, 'Color', Icons.palette_rounded, colors),
-                          _buildTabPill(3, 'Behavior', Icons.tune_rounded, colors),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.close_rounded, size: 20),
-                    tooltip: 'Close settings',
+                    tooltip: 'Close layout',
                     onPressed: () => Navigator.of(context).pop(),
                   ),
+                  const Text(
+                    'Layout',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(width: 48),
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
 
-            // Tab Content
+            // Sheet Body
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(
                   parent: AlwaysScrollableScrollPhysics(),
                 ),
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-                child: _buildActiveTab(colors),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTabPill(int index, String label, IconData icon, FoliateThemeColors colors) {
-    final isSelected = _activeTab == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _activeTab = index),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected ? colors.activePill : Colors.transparent,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 15,
-                color: isSelected ? Colors.white : colors.textMuted,
-              ),
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected ? Colors.white : colors.textMuted,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActiveTab(FoliateThemeColors colors) {
-    switch (_activeTab) {
-      case 0:
-        return _buildFontTab(colors);
-      case 1:
-        return _buildLayoutTab(colors);
-      case 2:
-        return _buildColorTab(colors);
-      case 3:
-      default:
-        return _buildBehaviorTab(colors);
-    }
-  }
-
-  // --- TAB 1: FONT ---
-  Widget _buildFontTab(FoliateThemeColors colors) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader('Font Size'),
-        _buildCard(
-          colors: colors,
-          children: [
-            _buildStepper(
-              label: 'Default Font Size',
-              valueText: '${_current.fontSize.round()} pt',
-              onDecrement: _current.fontSize > 10
-                  ? () => _update(_current.copyWith(fontSize: _current.fontSize - 1))
-                  : null,
-              onIncrement: _current.fontSize < 36
-                  ? () => _update(_current.copyWith(fontSize: _current.fontSize + 1))
-                  : null,
-              colors: colors,
-            ),
-            Divider(color: colors.border, height: 1),
-            _buildStepper(
-              label: 'Minimum Font Size',
-              valueText: '${_current.minFontSize.round()} pt',
-              onDecrement: _current.minFontSize > 0
-                  ? () => _update(_current.copyWith(minFontSize: _current.minFontSize - 1))
-                  : null,
-              onIncrement: _current.minFontSize < 20
-                  ? () => _update(_current.copyWith(minFontSize: _current.minFontSize + 1))
-                  : null,
-              colors: colors,
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-
-        _buildSectionHeader('Font Family'),
-        _buildCard(
-          colors: colors,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Default Font',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _buildFontFamilyChip('serif', 'Serif (Noto)', isSerif: true, colors: colors),
-                      _buildFontFamilyChip('sans', 'Sans-Serif', colors: colors),
-                      _buildFontFamilyChip('monospace', 'Monospace', isMono: true, colors: colors),
-                      _buildFontFamilyChip('publisher', 'Publisher', colors: colors),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Divider(color: colors.border, height: 1),
-            SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              title: const Text('Override Publisher Font', style: TextStyle(fontSize: 14)),
-              subtitle: Text(
-                'Enforces selected font across all book chapters',
-                style: TextStyle(fontSize: 12, color: colors.textMuted),
-              ),
-              value: _current.overridePublisherFont,
-              activeThumbColor: AdwaitaColors.foliateGreen,
-              onChanged: (val) => _update(_current.copyWith(overridePublisherFont: val)),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFontFamilyChip(
-    String family,
-    String label, {
-    bool isSerif = false,
-    bool isMono = false,
-    required FoliateThemeColors colors,
-  }) {
-    final isSelected = _current.fontFamily == family;
-    return ChoiceChip(
-      label: Text(
-        label,
-        style: TextStyle(
-          fontSize: 13,
-          fontFamily: isSerif ? 'Noto Serif' : (isMono ? 'monospace' : null),
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
-      ),
-      selected: isSelected,
-      selectedColor: colors.activePill,
-      backgroundColor: colors.inputBackground,
-      side: BorderSide(
-        color: isSelected ? AdwaitaColors.foliateGreen : colors.border,
-        width: isSelected ? 1.5 : 1,
-      ),
-      onSelected: (_) => _update(_current.copyWith(fontFamily: family)),
-    );
-  }
-
-  // --- TAB 2: LAYOUT ---
-  Widget _buildLayoutTab(FoliateThemeColors colors) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader('Paragraph'),
-        _buildCard(
-          colors: colors,
-          children: [
-            _buildStepper(
-              label: 'Line Height',
-              valueText: _current.lineHeight.toStringAsFixed(2),
-              onDecrement: _current.lineHeight > 1.05
-                  ? () => _update(_current.copyWith(
-                        lineHeight: double.parse((_current.lineHeight - 0.05).toStringAsFixed(2)),
-                      ))
-                  : null,
-              onIncrement: _current.lineHeight < 2.40
-                  ? () => _update(_current.copyWith(
-                        lineHeight: double.parse((_current.lineHeight + 0.05).toStringAsFixed(2)),
-                      ))
-                  : null,
-              colors: colors,
-            ),
-            Divider(color: colors.border, height: 1),
-            SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              title: const Text('Full Justification', style: TextStyle(fontSize: 14)),
-              subtitle: Text(
-                'Aligns text flush to both left and right edges',
-                style: TextStyle(fontSize: 12, color: colors.textMuted),
-              ),
-              value: _current.fullJustification,
-              activeThumbColor: AdwaitaColors.foliateGreen,
-              onChanged: (val) => _update(_current.copyWith(
-                fullJustification: val,
-                textAlign: val ? 'justify' : 'left',
-              )),
-            ),
-            Divider(color: colors.border, height: 1),
-            SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              title: const Text('Hyphenation', style: TextStyle(fontSize: 14)),
-              subtitle: Text(
-                'Hyphenates long words at the end of lines',
-                style: TextStyle(fontSize: 12, color: colors.textMuted),
-              ),
-              value: _current.hyphenation,
-              activeThumbColor: AdwaitaColors.foliateGreen,
-              onChanged: (val) => _update(_current.copyWith(hyphenation: val)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-
-        _buildSectionHeader('Page & Flow'),
-        _buildCard(
-          colors: colors,
-          children: [
-            _buildStepper(
-              label: 'Side Margins',
-              valueText: '${(_current.margin * 100).round()}%',
-              onDecrement: _current.margin > 0.02
-                  ? () => _update(_current.copyWith(
-                        margin: double.parse((_current.margin - 0.02).toStringAsFixed(2)),
-                      ))
-                  : null,
-              onIncrement: _current.margin < 0.20
-                  ? () => _update(_current.copyWith(
-                        margin: double.parse((_current.margin + 0.02).toStringAsFixed(2)),
-                      ))
-                  : null,
-              colors: colors,
-            ),
-            Divider(color: colors.border, height: 1),
-            SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              title: const Text('Continuous Scrolled Mode', style: TextStyle(fontSize: 14)),
-              subtitle: Text(
-                'Scroll vertically through chapters instead of turning pages',
-                style: TextStyle(fontSize: 12, color: colors.textMuted),
-              ),
-              value: _current.pageFlipping == 'vertical',
-              activeThumbColor: AdwaitaColors.foliateGreen,
-              onChanged: (val) => _update(_current.copyWith(
-                pageFlipping: val ? 'vertical' : 'horizontal',
-              )),
-            ),
-            Divider(color: colors.border, height: 1),
-            SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              title: const Text('Two Columns (Landscape)', style: TextStyle(fontSize: 14)),
-              subtitle: Text(
-                'Show two side-by-side pages in horizontal orientation',
-                style: TextStyle(fontSize: 12, color: colors.textMuted),
-              ),
-              value: _current.twoPagesLandscape,
-              activeThumbColor: AdwaitaColors.foliateGreen,
-              onChanged: (val) => _update(_current.copyWith(twoPagesLandscape: val)),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // --- TAB 3: COLOR (9 THEMES) ---
-  Widget _buildColorTab(FoliateThemeColors colors) {
-    final themes = AdwaitaColors.foliateThemes;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader('Appearance Mode'),
-        _buildCard(
-          colors: colors,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(10.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildModeTogglePill(
-                      label: 'Light Mode',
-                      icon: Icons.light_mode_rounded,
-                      isDark: false,
-                      colors: colors,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildModeTogglePill(
-                      label: 'Dark Mode',
-                      icon: Icons.dark_mode_rounded,
-                      isDark: true,
-                      colors: colors,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-
-        _buildSectionHeader('Reading Themes (9 Desktop Palettes)'),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 1.6,
-          ),
-          itemCount: themes.length,
-          itemBuilder: (context, index) {
-            final themeInfo = themes[index];
-            final themeMode = ReaderThemeMode.fromString(themeInfo.id);
-            final isSelected = _current.theme == themeMode;
-            final bg = themeInfo.bg(_current.isDarkMode);
-            final fg = themeInfo.text(_current.isDarkMode);
-
-            return GestureDetector(
-              onTap: () => _update(_current.copyWith(theme: themeMode)),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                decoration: BoxDecoration(
-                  color: bg,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isSelected ? AdwaitaColors.foliateGreen : colors.border,
-                    width: isSelected ? 2.5 : 1,
-                  ),
-                  boxShadow: [
-                    if (isSelected)
-                      BoxShadow(
-                        color: AdwaitaColors.foliateGreen.withValues(alpha: 0.3),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                  ],
-                ),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    _buildSectionHeader('Page & Margins'),
+                    _buildCard(
+                      colors: colors,
                       children: [
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: fg, width: 2),
-                            color: isSelected ? fg : Colors.transparent,
-                          ),
+                        _buildStepper(
+                          label: 'Side Margins',
+                          valueText: '${(_current.margin * 100).round()}%',
+                          onDecrement: _current.margin > 0.025
+                              ? () => _update(_current.copyWith(
+                                    margin: double.parse((_current.margin - 0.02).toStringAsFixed(2)),
+                                  ))
+                              : null,
+                          onIncrement: _current.margin < 0.20
+                              ? () => _update(_current.copyWith(
+                                    margin: double.parse((_current.margin + 0.02).toStringAsFixed(2)),
+                                  ))
+                              : null,
+                          colors: colors,
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Aa',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: fg,
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+
+                    _buildSectionHeader('Typography Layout'),
+                    _buildCard(
+                      colors: colors,
+                      children: [
+                        SwitchListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                          title: const Text('Hyphenation', style: TextStyle(fontSize: 14)),
+                          subtitle: Text(
+                            'Hyphenates long words at the end of lines',
+                            style: TextStyle(fontSize: 12, color: colors.textMuted),
+                          ),
+                          value: _current.hyphenation,
+                          activeThumbColor: activeColor,
+                          onChanged: (val) => _update(_current.copyWith(hyphenation: val)),
+                        ),
+                      ],
+                    ),
+                    _buildSectionHeader('Page Animation & Transitions'),
+                    _buildCard(
+                      colors: colors,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Page Turn Style',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: colors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _buildChoiceChip(
+                                    label: 'Slide',
+                                    isSelected: _current.pageAnimationMode == PageAnimationMode.slide ||
+                                        _current.pageAnimationMode == PageAnimationMode.curl,
+                                    onSelected: () => _update(_current.copyWith(
+                                      pageAnimationMode: PageAnimationMode.slide,
+                                      pageFlipping: 'horizontal',
+                                    )),
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
+                                  _buildChoiceChip(
+                                    label: 'Scroll',
+                                    isSelected: _current.pageAnimationMode == PageAnimationMode.scroll ||
+                                        _current.pageFlipping == 'vertical',
+                                    onSelected: () => _update(_current.copyWith(
+                                      pageAnimationMode: PageAnimationMode.scroll,
+                                      pageFlipping: 'vertical',
+                                    )),
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
+                                  _buildChoiceChip(
+                                    label: 'Fast',
+                                    isSelected: _current.pageAnimationMode == PageAnimationMode.none,
+                                    onSelected: () => _update(_current.copyWith(
+                                      pageAnimationMode: PageAnimationMode.none,
+                                      pageFlipping: 'horizontal',
+                                    )),
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      themeInfo.label,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        color: fg,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    const SizedBox(height: 18),
+
+                    _buildSectionHeader('Flow & Columns'),
+                    _buildCard(
+                      colors: colors,
+                      children: [
+                        SwitchListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                          title: const Text('Continuous Scrolled Mode', style: TextStyle(fontSize: 14)),
+                          subtitle: Text(
+                            'Scroll vertically through chapters instead of turning pages',
+                            style: TextStyle(fontSize: 12, color: colors.textMuted),
+                          ),
+                          value: _current.pageFlipping == 'vertical',
+                          activeThumbColor: activeColor,
+                          onChanged: (val) => _update(_current.copyWith(
+                            pageFlipping: val ? 'vertical' : 'horizontal',
+                          )),
+                        ),
+                        Divider(color: colors.border, height: 1),
+                        SwitchListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                          title: const Text('Two Columns (Landscape)', style: TextStyle(fontSize: 14)),
+                          subtitle: Text(
+                            'Show two side-by-side pages in horizontal orientation',
+                            style: TextStyle(fontSize: 12, color: colors.textMuted),
+                          ),
+                          value: _current.twoPagesLandscape,
+                          activeThumbColor: activeColor,
+                          onChanged: (val) => _update(_current.copyWith(twoPagesLandscape: val)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+
+                    _buildSectionHeader('Reading Progress Display'),
+                    _buildCard(
+                      colors: colors,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Display Type', style: TextStyle(fontSize: 14)),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _buildChoiceChip(
+                                    label: 'Pages Left',
+                                    isSelected: _current.progressDisplayType == ProgressDisplayType.pagesLeftInChapter,
+                                    onSelected: () => _update(_current.copyWith(progressDisplayType: ProgressDisplayType.pagesLeftInChapter)),
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
+                                  _buildChoiceChip(
+                                    label: 'Time Left',
+                                    isSelected: _current.progressDisplayType == ProgressDisplayType.timeLeftInChapter,
+                                    onSelected: () => _update(_current.copyWith(progressDisplayType: ProgressDisplayType.timeLeftInChapter)),
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
+                                  _buildChoiceChip(
+                                    label: 'Percentage',
+                                    isSelected: _current.progressDisplayType == ProgressDisplayType.percentage,
+                                    onSelected: () => _update(_current.copyWith(progressDisplayType: ProgressDisplayType.percentage)),
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
+                                  _buildChoiceChip(
+                                    label: 'Page Number',
+                                    isSelected: _current.progressDisplayType == ProgressDisplayType.pageNumber,
+                                    onSelected: () => _update(_current.copyWith(progressDisplayType: ProgressDisplayType.pageNumber)),
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Divider(color: colors.border, height: 1),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Display Location', style: TextStyle(fontSize: 14)),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _buildChoiceChip(
+                                    label: 'Bottom Center',
+                                    isSelected: _current.progressDisplayLocation == ProgressDisplayLocation.bottomCenter,
+                                    onSelected: () => _update(_current.copyWith(progressDisplayLocation: ProgressDisplayLocation.bottomCenter)),
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
+                                  _buildChoiceChip(
+                                    label: 'Top Center',
+                                    isSelected: _current.progressDisplayLocation == ProgressDisplayLocation.topCenter,
+                                    onSelected: () => _update(_current.copyWith(progressDisplayLocation: ProgressDisplayLocation.topCenter)),
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            );
-          },
-        ),
-        const SizedBox(height: 18),
-
-        _buildSectionHeader('Display Adjustments'),
-        _buildCard(
-          colors: colors,
-          children: [
-            SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              title: const Text('Invert Colors in Dark Mode', style: TextStyle(fontSize: 14)),
-              subtitle: Text(
-                'Inverts illustrations and document styling',
-                style: TextStyle(fontSize: 12, color: colors.textMuted),
-              ),
-              value: _current.invertColors,
-              activeThumbColor: AdwaitaColors.foliateGreen,
-              onChanged: (val) => _update(_current.copyWith(invertColors: val)),
             ),
           ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildModeTogglePill({
+  Widget _buildChoiceChip({
     required String label,
-    required IconData icon,
-    required bool isDark,
+    required bool isSelected,
+    required VoidCallback onSelected,
     required FoliateThemeColors colors,
+    required Color activeColor,
   }) {
-    final isSelected = _current.isDarkMode == isDark;
-    return GestureDetector(
-      onTap: () => _update(_current.copyWith(isDarkMode: isDark)),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? colors.activePill : colors.inputBackground,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? AdwaitaColors.foliateGreen : colors.border,
-            width: isSelected ? 1.5 : 1,
-          ),
+    return ChoiceChip(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? Colors.white : colors.textMuted,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+      ),
+      selected: isSelected,
+      selectedColor: activeColor,
+      backgroundColor: colors.inputBackground,
+      side: BorderSide(
+        color: isSelected ? activeColor : colors.border,
+        width: 1,
+      ),
+      onSelected: (_) => onSelected(),
+    );
+  }
+}
+
+/// Detailed Bottom Sheet for Typography & Theme Customization with Live Text Preview
+class ReaderThemeCustomizeSheet extends StatefulWidget {
+  final ReaderSettings settings;
+  final ValueChanged<ReaderSettings> onSettingsChanged;
+  final String? sampleExcerpt;
+  final Color? accentColor;
+
+  const ReaderThemeCustomizeSheet({
+    super.key,
+    required this.settings,
+    required this.onSettingsChanged,
+    this.sampleExcerpt,
+    this.accentColor,
+  });
+
+  @override
+  State<ReaderThemeCustomizeSheet> createState() => _ReaderThemeCustomizeSheetState();
+}
+
+class _ReaderThemeCustomizeSheetState extends State<ReaderThemeCustomizeSheet> {
+  late ReaderSettings _current;
+  bool _isFontListExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.settings;
+  }
+
+  void _update(ReaderSettings newSettings) {
+    setState(() => _current = newSettings);
+    widget.onSettingsChanged(newSettings);
+  }
+
+  static const List<({String id, String label, String? flutterFamily})> _availableFonts = [
+    (id: 'publisher', label: 'Original', flutterFamily: null),
+    (id: 'serif', label: 'Noto Serif', flutterFamily: 'Noto Serif'),
+    (id: 'literata', label: 'Literata', flutterFamily: 'Literata'),
+    (id: 'ebgaramond', label: 'EB Garamond', flutterFamily: 'EB Garamond'),
+    (id: 'newsreader', label: 'Newsreader', flutterFamily: 'Newsreader'),
+    (id: 'lora', label: 'Lora', flutterFamily: 'Lora'),
+    (id: 'sourceserif4', label: 'Source Serif 4', flutterFamily: 'Source Serif 4'),
+    (id: 'bitter', label: 'Bitter', flutterFamily: 'Bitter'),
+    (id: 'sans', label: 'Inter', flutterFamily: 'Inter'),
+    (id: 'monospace', label: 'Monospace', flutterFamily: 'monospace'),
+  ];
+
+  String get _currentFontLabel {
+    for (final f in _availableFonts) {
+      if (f.id == _current.fontFamily) return f.label;
+    }
+    return 'Noto Serif';
+  }
+
+  String? get _currentFlutterFamily {
+    for (final f in _availableFonts) {
+      if (f.id == _current.fontFamily) return f.flutterFamily;
+    }
+    return 'Noto Serif';
+  }
+
+  ({Color bg, Color text}) get _themePreviewColors {
+    for (final opt in kReaderThemeOptions) {
+      if (opt.mode == _current.theme) {
+        return (bg: opt.bg, text: opt.text);
+      }
+    }
+    if (_current.isDarkMode) {
+      return (bg: const Color(0xFF1E1D1B), text: const Color(0xFFEDEDED));
+    }
+    return (bg: const Color(0xFFFFFFFF), text: const Color(0xFF1A1A1A));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<FoliateThemeColors>() ??
+        FoliateThemeColors.dark;
+    final activeColor = widget.accentColor ?? AdwaitaColors.foliateGreen;
+    final previewColors = _themePreviewColors;
+
+    final previewTextAlign = _current.fullJustification
+        ? TextAlign.justify
+        : (_current.textAlign == 'center'
+            ? TextAlign.center
+            : (_current.textAlign == 'right' ? TextAlign.right : TextAlign.left));
+
+    final excerptText = widget.sampleExcerpt ??
+        'He sighed. \u201cBel, you have known your whole life that you cannot remain in Tyre.\u201d \u201cI am not a child,\u201d I hissed, heat rising in my cheeks...';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.windowBackground,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border.all(color: colors.border),
+      ),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.88,
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 16,
-              color: isSelected ? Colors.white : colors.textMuted,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? Colors.white : AdwaitaColors.darkTextPrimary,
+            // Top Drag Handle
+            Container(
+              width: 38,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: colors.border,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  // --- TAB 4: BEHAVIOR ---
-  Widget _buildBehaviorTab(FoliateThemeColors colors) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader('Animation & Motion'),
-        _buildCard(
-          colors: colors,
-          children: [
-            SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              title: const Text('Reduce Animation', style: TextStyle(fontSize: 14)),
-              subtitle: Text(
-                'Instant page turns with no sliding or fading transitions',
-                style: TextStyle(fontSize: 12, color: colors.textMuted),
-              ),
-              value: _current.reduceAnimation,
-              activeThumbColor: AdwaitaColors.foliateGreen,
-              onChanged: (val) => _update(_current.copyWith(reduceAnimation: val)),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // --- REUSABLE UI HELPERS ---
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.bold,
-          color: AdwaitaColors.darkTextSecondary,
-          letterSpacing: -0.1,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCard({
-    required List<Widget> children,
-    required FoliateThemeColors colors,
-  }) {
-    return Material(
-      color: colors.surfaceCard,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: colors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(children: children),
-    );
-  }
-
-  Widget _buildStepper({
-    required String label,
-    required String valueText,
-    required VoidCallback? onDecrement,
-    required VoidCallback? onIncrement,
-    required FoliateThemeColors colors,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 14)),
-          Container(
-            decoration: BoxDecoration(
-              color: colors.inputBackground,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: colors.border),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.remove_rounded, size: 18),
-                  padding: const EdgeInsets.all(4),
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                  onPressed: onDecrement,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Text(
-                    valueText,
-                    style: const TextStyle(
-                      fontSize: 13,
+            // Navigation Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    tooltip: 'Close',
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  const Text(
+                    'Customize Theme',
+                    style: TextStyle(
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      fontFamily: 'monospace',
+                      letterSpacing: -0.2,
                     ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  padding: const EdgeInsets.all(4),
-                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                  onPressed: onIncrement,
-                ),
-              ],
+                  IconButton(
+                    icon: const Icon(Icons.check_rounded, size: 22),
+                    tooltip: 'Done',
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
             ),
+
+            // Scrollable Content
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // --- LIVE TEXT PREVIEW BOX (Inspired by Reference Images 3 & 4) ---
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                      decoration: BoxDecoration(
+                        color: previewColors.bg,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: colors.border.withValues(alpha: 0.8),
+                          width: 1.0,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Aa',
+                            style: TextStyle(
+                              fontSize: 26,
+                              fontFamily: _currentFlutterFamily,
+                              fontWeight: _current.fontWeight >= 600
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: previewColors.text,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          AnimatedDefaultTextStyle(
+                            duration: const Duration(milliseconds: 180),
+                            style: TextStyle(
+                              fontSize: 14.5,
+                              fontFamily: _currentFlutterFamily,
+                              fontWeight: _current.fontWeight >= 600
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              height: _current.lineHeight,
+                              color: previewColors.text.withValues(alpha: 0.92),
+                            ),
+                            textAlign: previewTextAlign,
+                            child: Text(excerptText),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // --- TEXT SECTION ---
+                    _buildSectionHeader('Text'),
+                    _buildCard(
+                      colors: colors,
+                      children: [
+                        // Font Family Selector Tile
+                        ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                          leading: const Text(
+                            'Aa',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          title: const Text('Font', style: TextStyle(fontSize: 14)),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _currentFontLabel,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colors.textMuted,
+                                  fontFamily: _currentFlutterFamily,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                _isFontListExpanded
+                                    ? Icons.keyboard_arrow_up_rounded
+                                    : Icons.keyboard_arrow_right_rounded,
+                                size: 20,
+                                color: colors.textMuted,
+                              ),
+                            ],
+                          ),
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _isFontListExpanded = !_isFontListExpanded);
+                          },
+                        ),
+
+                        // Expanded Font List (Matching Reference Image 4)
+                        if (_isFontListExpanded) ...[
+                          Divider(color: colors.border, height: 1),
+                          Container(
+                            color: colors.surfaceCard.withValues(alpha: 0.5),
+                            child: Column(
+                              children: _availableFonts.map((f) {
+                                final isSelected = f.id == _current.fontFamily;
+                                return InkWell(
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    _update(_current.copyWith(fontFamily: f.id));
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          f.label,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontFamily: f.flutterFamily,
+                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                            color: isSelected ? activeColor : colors.textPrimary,
+                                          ),
+                                        ),
+                                        if (isSelected)
+                                          Icon(
+                                            Icons.check_rounded,
+                                            size: 18,
+                                            color: activeColor,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ],
+
+                        Divider(color: colors.border, height: 1),
+                        SwitchListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                          title: const Text('Override Publisher Font', style: TextStyle(fontSize: 14)),
+                          subtitle: Text(
+                            'Enforces selected font across all book chapters',
+                            style: TextStyle(fontSize: 12, color: colors.textMuted),
+                          ),
+                          value: _current.overridePublisherFont,
+                          activeThumbColor: activeColor,
+                          onChanged: (val) => _update(_current.copyWith(overridePublisherFont: val)),
+                        ),
+                        Divider(color: colors.border, height: 1),
+                        SwitchListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                          title: const Text('Bold Text', style: TextStyle(fontSize: 14)),
+                          value: _current.fontWeight >= 600,
+                          activeThumbColor: activeColor,
+                          onChanged: (val) => _update(_current.copyWith(fontWeight: val ? 700 : 400)),
+                        ),
+                        Divider(color: colors.border, height: 1),
+
+                        // Line Spacing (Moved from menu)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Line Spacing', style: TextStyle(fontSize: 14)),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [1.2, 1.4, 1.6, 1.8, 2.0].map((lh) {
+                                  final isLh = (_current.lineHeight - lh).abs() < 0.08;
+                                  return GestureDetector(
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      _update(_current.copyWith(lineHeight: lh));
+                                    },
+                                    child: Container(
+                                      margin: const EdgeInsets.only(left: 4),
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: isLh ? activeColor : colors.inputBackground,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: isLh ? activeColor : colors.border,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '${lh}x',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: isLh ? FontWeight.bold : FontWeight.w500,
+                                          color: isLh ? Colors.white : colors.textMuted,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Divider(color: colors.border, height: 1),
+
+                        // Text Alignment (Moved from menu)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Alignment', style: TextStyle(fontSize: 14)),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _buildAlignIconButton(
+                                    icon: Icons.format_align_justify_rounded,
+                                    tooltip: 'Full Justification',
+                                    isSelected: _current.fullJustification,
+                                    onTap: () => _update(_current.copyWith(
+                                      fullJustification: true,
+                                      textAlign: 'justify',
+                                    )),
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  _buildAlignIconButton(
+                                    icon: Icons.format_align_left_rounded,
+                                    tooltip: 'Left Align',
+                                    isSelected: !_current.fullJustification && _current.textAlign != 'center',
+                                    onTap: () => _update(_current.copyWith(
+                                      fullJustification: false,
+                                      textAlign: 'left',
+                                    )),
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  _buildAlignIconButton(
+                                    icon: Icons.format_align_center_rounded,
+                                    tooltip: 'Center Align',
+                                    isSelected: !_current.fullJustification && _current.textAlign == 'center',
+                                    onTap: () => _update(_current.copyWith(
+                                      fullJustification: false,
+                                      textAlign: 'center',
+                                    )),
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Reset Theme Button
+                    Center(
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.refresh_rounded, size: 18, color: Colors.redAccent),
+                        label: const Text(
+                          'Reset Typography',
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        onPressed: () {
+                          HapticFeedback.mediumImpact();
+                          _update(_current.copyWith(
+                            fontFamily: 'serif',
+                            lineHeight: 1.50,
+                            fullJustification: true,
+                            fontWeight: 400,
+                            overridePublisherFont: true,
+                            textAlign: 'justify',
+                          ));
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAlignIconButton({
+    required IconData icon,
+    required String tooltip,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required FoliateThemeColors colors,
+    required Color activeColor,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor.withValues(alpha: 0.18) : colors.inputBackground,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? activeColor : colors.border,
+            width: isSelected ? 1.5 : 1.0,
           ),
-        ],
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: isSelected ? activeColor : colors.textMuted,
+        ),
       ),
     );
   }
 }
 
-/// Slide-up Hierarchical Table of Contents Sheet
-class ReaderTOCSheet extends StatelessWidget {
+/// Slide-up Hierarchical Table of Contents & Bookmarks Sheet
+class ReaderTOCSheet extends StatefulWidget {
   final List<TOCItem> toc;
+  final List<Bookmark> bookmarks;
   final ValueChanged<String> onChapterSelected;
+  final ValueChanged<Bookmark>? onDeleteBookmark;
 
   const ReaderTOCSheet({
     super.key,
     required this.toc,
+    this.bookmarks = const [],
     required this.onChapterSelected,
+    this.onDeleteBookmark,
   });
+
+  @override
+  State<ReaderTOCSheet> createState() => _ReaderTOCSheetState();
+}
+
+class _ReaderTOCSheetState extends State<ReaderTOCSheet> {
+  int _selectedTab = 0; // 0: Contents, 1: Bookmarks
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surfaceCard,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        border: Border.all(color: colors.border),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: colors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const Text(
-              'Table of Contents',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: toc.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No chapters found',
-                        style: TextStyle(color: colors.textMuted),
-                      ),
-                    )
-                  : ListView(
-                      children: _buildTOCList(toc, colors, context),
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.35,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (context, scrollController) {
+        return Container(
+          decoration: BoxDecoration(
+            color: colors.surfaceCard,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            border: Border.all(color: colors.border),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Material(
+            color: Colors.transparent,
+            child: SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: colors.border,
+                      borderRadius: BorderRadius.circular(2),
                     ),
+                  ),
+                ),
+
+                // Segmented Header Bar
+                Row(
+                  children: [
+                    _buildTabButton('Contents', 0, colors),
+                    const SizedBox(width: 8),
+                    _buildTabButton('Bookmarks (${widget.bookmarks.length})', 1, colors),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                Expanded(
+                  child: _selectedTab == 0
+                      ? (widget.toc.isEmpty
+                          ? Center(
+                              child: Text(
+                                'No chapters found',
+                                style: TextStyle(color: colors.textMuted),
+                              ),
+                            )
+                          : ListView(
+                              controller: scrollController,
+                              children: _buildTOCList(widget.toc, colors, context),
+                            ))
+                      : (widget.bookmarks.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.bookmark_border_rounded,
+                                      size: 40,
+                                      color: colors.textMuted,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    const Text(
+                                      'No Bookmarks Yet',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      'Tap the top-right ribbon while reading to bookmark any page.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: colors.textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              controller: scrollController,
+                              itemCount: widget.bookmarks.length,
+                              separatorBuilder: (_, _) => Divider(color: colors.border, height: 1),
+                          itemBuilder: (context, index) {
+                            final b = widget.bookmarks[index];
+                            return ListTile(
+                              leading: const Icon(
+                                Icons.bookmark_rounded,
+                                color: Color(0xFFE01B24),
+                                size: 22,
+                              ),
+                              title: Text(
+                                b.chapterTitle ?? 'Page ${b.pageNumber ?? 1}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${b.percentage.round()}% through book',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: colors.textMuted,
+                                ),
+                              ),
+                              trailing: widget.onDeleteBookmark != null
+                                  ? IconButton(
+                                      icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                                      tooltip: 'Delete Bookmark',
+                                      onPressed: () {
+                                        widget.onDeleteBookmark!(b);
+                                        setState(() {});
+                                      },
+                                    )
+                                  : null,
+                              onTap: () {
+                                widget.onChapterSelected(b.cfi);
+                                Navigator.of(context).pop();
+                              },
+                            );
+                          },
+                        )),
             ),
           ],
+        ),
+      ),
+    ),
+  );
+},
+);
+  }
+
+  Widget _buildTabButton(String title, int tabIndex, FoliateThemeColors colors) {
+    final isSelected = _selectedTab == tabIndex;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _selectedTab = tabIndex);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? colors.activePill : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? Theme.of(context).colorScheme.primary : colors.border,
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            color: isSelected ? colors.textPrimary : colors.textMuted,
+          ),
         ),
       ),
     );
@@ -756,7 +1128,7 @@ class ReaderTOCSheet extends StatelessWidget {
           ),
           onTap: () {
             if (item.href != null) {
-              onChapterSelected(item.href!);
+              widget.onChapterSelected(item.href!);
               Navigator.of(context).pop();
             }
           },
@@ -858,6 +1230,7 @@ class _ReaderSearchSheetState extends State<ReaderSearchSheet> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+    final primaryAccent = Theme.of(context).colorScheme.primary;
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.80,
@@ -918,12 +1291,12 @@ class _ReaderSearchSheetState extends State<ReaderSearchSheet> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: _matchCase
-                                      ? AdwaitaColors.foliateGreen.withValues(alpha: 0.2)
+                                      ? primaryAccent.withValues(alpha: 0.2)
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(6),
                                   border: Border.all(
                                     color: _matchCase
-                                        ? AdwaitaColors.foliateGreen
+                                        ? primaryAccent
                                         : colors.border,
                                     width: 1.2,
                                   ),
@@ -934,7 +1307,7 @@ class _ReaderSearchSheetState extends State<ReaderSearchSheet> {
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                     color: _matchCase
-                                        ? AdwaitaColors.foliateGreen
+                                        ? primaryAccent
                                         : colors.textMuted,
                                   ),
                                 ),
@@ -1002,7 +1375,7 @@ class _ReaderSearchSheetState extends State<ReaderSearchSheet> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: isSearching ? AdwaitaColors.foliateGreen : colors.textMuted,
+                          color: isSearching ? primaryAccent : colors.textMuted,
                         ),
                       ),
                     );
@@ -1118,7 +1491,7 @@ class _ReaderSearchSheetState extends State<ReaderSearchSheet> {
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
-                                          color: AdwaitaColors.foliateGreen,
+                                          color: primaryAccent,
                                         ),
                                       ),
                                     ),
@@ -1188,19 +1561,19 @@ class _ReaderSearchSheetState extends State<ReaderSearchSheet> {
               margin: const EdgeInsets.symmetric(horizontal: 1),
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
-                color: AdwaitaColors.foliateGreen.withValues(alpha: 0.25),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.25),
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(
-                  color: AdwaitaColors.foliateGreen.withValues(alpha: 0.6),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6),
                   width: 1,
                 ),
               ),
               child: Text(
                 excerpt.match,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
-                  color: AdwaitaColors.foliateGreen,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
             ),
@@ -1287,6 +1660,16 @@ class _ReaderAnnotationBarState extends State<ReaderAnnotationBar> {
                 ),
               ),
               IconButton(
+                icon: const Icon(Icons.copy_rounded, size: 18),
+                tooltip: 'Copy',
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: widget.selectedText));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Quote copied to clipboard')),
+                  );
+                },
+              ),
+              IconButton(
                 icon: const Icon(Icons.close_rounded, size: 18),
                 onPressed: widget.onDismiss,
               ),
@@ -1327,7 +1710,7 @@ class _ReaderAnnotationBarState extends State<ReaderAnnotationBar> {
               ),
               FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: AdwaitaColors.foliateGreen,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 ),
                 onPressed: () {
@@ -1365,6 +1748,197 @@ class _ReaderAnnotationBarState extends State<ReaderAnnotationBar> {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Modal bottom sheet to view, edit color/note, or delete an existing highlight
+class AnnotationEditSheet extends StatefulWidget {
+  final Annotation annotation;
+  final void Function(Annotation updated) onUpdate;
+  final VoidCallback onDelete;
+
+  const AnnotationEditSheet({
+    super.key,
+    required this.annotation,
+    required this.onUpdate,
+    required this.onDelete,
+  });
+
+  @override
+  State<AnnotationEditSheet> createState() => _AnnotationEditSheetState();
+}
+
+class _AnnotationEditSheetState extends State<AnnotationEditSheet> {
+  late String _currentColor;
+  late final TextEditingController _noteController;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentColor = widget.annotation.color;
+    _noteController = TextEditingController(text: widget.annotation.note ?? '');
+  }
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  Color _parseHex(String hex) {
+    final clean = hex.replaceAll('#', '');
+    return Color(int.parse('FF$clean', radix: 16));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<FoliateThemeColors>() ??
+        FoliateThemeColors.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surfaceCard,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        border: Border.all(color: colors.border),
+      ),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 12,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Grab handle
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: colors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Highlight',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.copy_rounded, size: 18),
+                  tooltip: 'Copy',
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: widget.annotation.text));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Quote copied to clipboard')),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline_rounded,
+                    size: 20,
+                    color: AdwaitaColors.libadwaitaRed,
+                  ),
+                  tooltip: 'Delete',
+                  onPressed: () {
+                    widget.onDelete();
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colors.inputBackground,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: colors.border),
+              ),
+              child: Text(
+                '“${widget.annotation.text}”',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Color selection row
+            Row(
+              children: [
+                for (final colorHex in Annotation.defaultColors)
+                  GestureDetector(
+                    onTap: () {
+                      setState(() => _currentColor = colorHex);
+                      final updated = widget.annotation.copyWith(
+                        color: colorHex,
+                        note: _noteController.text.trim().isNotEmpty
+                            ? _noteController.text.trim()
+                            : null,
+                      );
+                      widget.onUpdate(updated);
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 10),
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: _parseHex(colorHex),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _currentColor == colorHex
+                              ? Colors.white
+                              : Colors.transparent,
+                          width: 2.5,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            TextField(
+              controller: _noteController,
+              decoration: InputDecoration(
+                hintText: 'Add an optional note...',
+                filled: true,
+                fillColor: colors.inputBackground,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: colors.border),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+              onChanged: (text) {
+                final updated = widget.annotation.copyWith(
+                  color: _currentColor,
+                  note: text.trim().isNotEmpty ? text.trim() : null,
+                );
+                widget.onUpdate(updated);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

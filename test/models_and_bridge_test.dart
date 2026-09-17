@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:foliate/models/models.dart';
 import 'package:foliate/reader/reader.dart';
@@ -54,6 +55,29 @@ void main() {
       expect(restored.color, equals(Annotation.colorYellow));
     });
 
+    test('Bookmark model serialization round-trip', () {
+      const bookmark = Bookmark(
+        id: 'bm-123',
+        bookHash: 'book-abc',
+        cfi: 'epubcfi(/6/14!/4/2/10)',
+        chapterTitle: 'Chapter 2: The Carpet-Bag',
+        percentage: 12.5,
+        pageNumber: 34,
+        createdAt: 1725460000000,
+      );
+
+      final jsonString = bookmark.toJson();
+      final restored = Bookmark.fromJson(jsonString);
+
+      expect(restored.id, equals(bookmark.id));
+      expect(restored.bookHash, equals(bookmark.bookHash));
+      expect(restored.cfi, equals(bookmark.cfi));
+      expect(restored.chapterTitle, equals('Chapter 2: The Carpet-Bag'));
+      expect(restored.percentage, equals(12.5));
+      expect(restored.pageNumber, equals(34));
+      expect(restored.createdAt, equals(1725460000000));
+    });
+
     test('ReaderSettings model serialization round-trip', () {
       const settings = ReaderSettings(
         theme: ReaderThemeMode.gruvbox,
@@ -73,6 +97,10 @@ void main() {
         twoPagesLandscape: false,
         reduceAnimation: true,
         invertColors: false,
+        paddingTop: 112.0,
+        paddingBottom: 98.0,
+        marginSide: 28.0,
+        pageAnimationMode: PageAnimationMode.slide,
       );
 
       final jsonString = settings.toJson();
@@ -93,6 +121,18 @@ void main() {
       expect(restored.textAlign, equals('justify'));
       expect(restored.reduceAnimation, isTrue);
       expect(restored.invertColors, isFalse);
+      expect(restored.paddingTop, equals(112.0));
+      expect(restored.paddingBottom, equals(98.0));
+      expect(restored.marginSide, equals(28.0));
+      expect(restored.pageAnimationMode, equals(PageAnimationMode.slide));
+
+      // Verify all page animation modes can be deserialized
+      for (final anim in ['slide', 'scroll', 'none', 'curl', 'curlShader']) {
+        expect(PageAnimationMode.fromString(anim).name, isNotEmpty);
+      }
+      expect(PageAnimationMode.fromString('slide'), equals(PageAnimationMode.slide));
+      expect(PageAnimationMode.fromString('scroll'), equals(PageAnimationMode.scroll));
+      expect(PageAnimationMode.fromString('none'), equals(PageAnimationMode.none));
 
       // Verify all 9 themes can be deserialized
       for (final mode in [
@@ -111,8 +151,12 @@ void main() {
         totalLocations: 1206,
         currentSection: 5,
         totalSections: 57,
+        chapterCurrentPage: 3,
+        chapterTotalPages: 8,
+        pagesLeftInChapter: 5,
         timeLeftSectionSeconds: 1260, // 21 mins
         timeLeftBookSeconds: 67320, // 18.7 hrs
+        excerpt: 'By 6:45, dinner is almost ready.',
       );
 
       expect(loc.formattedTimeLeftSection, equals('21 mins'));
@@ -120,6 +164,17 @@ void main() {
       expect(loc.percentage, equals(5.0));
       expect(loc.currentLocation, equals(11));
       expect(loc.totalLocations, equals(1206));
+      expect(loc.chapterCurrentPage, equals(3));
+      expect(loc.chapterTotalPages, equals(8));
+      expect(loc.pagesLeftInChapter, equals(5));
+      expect(loc.excerpt, equals('By 6:45, dinner is almost ready.'));
+
+      final map = loc.toMap();
+      final roundTrip = ReadingLocation.fromMap(map);
+      expect(roundTrip.excerpt, equals('By 6:45, dinner is almost ready.'));
+      expect(roundTrip.chapterCurrentPage, equals(3));
+      expect(roundTrip.chapterTotalPages, equals(8));
+      expect(roundTrip.pagesLeftInChapter, equals(5));
     });
 
     test('TOCItem hierarchy serialization round-trip', () {
@@ -180,9 +235,11 @@ void main() {
           'cfi': 'epubcfi(/6/4[chap01]!/4/2/1)',
           'fraction': 0.15,
           'percentage': 15.0,
-          'section': 2,
-          'totalSections': 20,
+          'section': {'current': 2, 'total': 20},
           'location': {'current': 45, 'total': 300},
+          'chapterLocation': {'current': 4, 'total': 10, 'pagesLeft': 6},
+          'timeLeftSectionSeconds': 420,
+          'timeLeftBookSeconds': 5400,
         },
       }));
 
@@ -192,6 +249,13 @@ void main() {
       expect(receivedLoc!.percentage, equals(15.0));
       expect(receivedLoc!.currentLocation, equals(45));
       expect(receivedLoc!.totalLocations, equals(300));
+      expect(receivedLoc!.currentSection, equals(2));
+      expect(receivedLoc!.totalSections, equals(20));
+      expect(receivedLoc!.chapterCurrentPage, equals(4));
+      expect(receivedLoc!.chapterTotalPages, equals(10));
+      expect(receivedLoc!.pagesLeftInChapter, equals(6));
+      expect(receivedLoc!.timeLeftSectionSeconds, equals(420));
+      expect(receivedLoc!.timeLeftBookSeconds, equals(5400));
     });
 
     test('Dispatches TOC_READY event', () {
@@ -239,6 +303,33 @@ void main() {
 
       expect(selectedText, equals('A quote to highlight'));
       expect(selectedCfi, equals('epubcfi(/6/4!/4/2/8)'));
+    });
+
+    test('Dispatches ANNOTATION_CLICKED event', () {
+      final bridge = ReaderBridge();
+      String? clickedCfi;
+      bridge.onAnnotationClicked = (cfi) => clickedCfi = cfi;
+
+      bridge.handleMessage(json.encode({
+        'type': 'ANNOTATION_CLICKED',
+        'payload': {
+          'cfi': 'epubcfi(/6/4!/4/2/8)',
+        },
+      }));
+
+      expect(clickedCfi, equals('epubcfi(/6/4!/4/2/8)'));
+    });
+
+    test('Dispatches SELECTION_CLEARED event', () {
+      final bridge = ReaderBridge();
+      bool cleared = false;
+      bridge.onSelectionCleared = () => cleared = true;
+
+      bridge.handleMessage(json.encode({
+        'type': 'SELECTION_CLEARED',
+      }));
+
+      expect(cleared, isTrue);
     });
 
     test('Dispatches TTS_TEXT event', () {
@@ -396,5 +487,165 @@ void main() {
       expect(searchDoneCalled, isTrue);
     });
   });
+
+  group('Annotations Storage CRUD Tests (Phase 4)', () {
+    test('Saves, retrieves, and deletes annotations per book', () async {
+      SharedPreferences.setMockInitialValues({});
+      final storage = StorageService.instance;
+
+      const bookHash1 = 'book-hash-111';
+      const bookHash2 = 'book-hash-222';
+
+      const ann1 = Annotation(
+        id: 'ann-1',
+        bookHash: bookHash1,
+        cfi: 'cfi-1',
+        text: 'First highlight',
+        note: 'My note',
+        color: Annotation.colorGreen,
+        createdAt: 1000,
+      );
+
+      const ann2 = Annotation(
+        id: 'ann-2',
+        bookHash: bookHash1,
+        cfi: 'cfi-2',
+        text: 'Second highlight',
+        color: Annotation.colorPink,
+        createdAt: 2000,
+      );
+
+      const ann3 = Annotation(
+        id: 'ann-3',
+        bookHash: bookHash2,
+        cfi: 'cfi-3',
+        text: 'Other book highlight',
+        color: Annotation.colorYellow,
+        createdAt: 3000,
+      );
+
+      await storage.saveAnnotation(ann1);
+      await storage.saveAnnotation(ann2);
+      await storage.saveAnnotation(ann3);
+
+      final book1Annotations = await storage.getAnnotations(bookHash1);
+      final book2Annotations = await storage.getAnnotations(bookHash2);
+
+      expect(book1Annotations.length, equals(2));
+      expect(book2Annotations.length, equals(1));
+      expect(book1Annotations.map((a) => a.id), containsAll(['ann-1', 'ann-2']));
+      expect(book2Annotations.first.id, equals('ann-3'));
+
+      final allAnnotations = await storage.getAllAnnotations();
+      expect(allAnnotations.length, equals(3));
+      expect(allAnnotations.first.id, equals('ann-3'));
+
+      // Delete one annotation
+      await storage.deleteAnnotation(bookHash1, 'cfi-1');
+      final afterDelete = await storage.getAnnotations(bookHash1);
+      expect(afterDelete.length, equals(1));
+      expect(afterDelete.first.id, equals('ann-2'));
+
+      // Update existing annotation
+      final updatedAnn2 = ann2.copyWith(note: 'Updated note', color: Annotation.colorBlue);
+      await storage.saveAnnotation(updatedAnn2);
+      final afterUpdate = await storage.getAnnotations(bookHash1);
+      expect(afterUpdate.length, equals(1));
+      expect(afterUpdate.first.note, equals('Updated note'));
+      expect(afterUpdate.first.color, equals(Annotation.colorBlue));
+    });
+  });
+
+  group('Bookmarks Storage CRUD Tests (Phase 4)', () {
+    test('Saves, retrieves, checks, and deletes bookmarks per book', () async {
+      SharedPreferences.setMockInitialValues({});
+      final storage = StorageService.instance;
+
+      const bookHash = 'book-hash-999';
+      const bm1 = Bookmark(
+        id: 'bm-1',
+        bookHash: bookHash,
+        cfi: 'epubcfi(/6/4!/4/2/10)',
+        chapterTitle: 'Chapter 1: Loomings',
+        percentage: 5.0,
+        pageNumber: 12,
+        createdAt: 1000,
+      );
+
+      const bm2 = Bookmark(
+        id: 'bm-2',
+        bookHash: bookHash,
+        cfi: 'epubcfi(/6/6!/4/2/20)',
+        chapterTitle: 'Chapter 2: The Carpet-Bag',
+        percentage: 12.0,
+        pageNumber: 25,
+        createdAt: 2000,
+      );
+
+      expect(await storage.isBookmarked(bookHash, bm1.cfi), isFalse);
+
+      await storage.saveBookmark(bm1);
+      await storage.saveBookmark(bm2);
+
+      expect(await storage.isBookmarked(bookHash, bm1.cfi), isTrue);
+      expect(await storage.isBookmarked(bookHash, bm2.cfi), isTrue);
+      expect(await storage.isBookmarked(bookHash, 'nonexistent-cfi'), isFalse);
+
+      final bookmarks = await storage.getBookmarks(bookHash);
+      expect(bookmarks.length, equals(2));
+      expect(bookmarks.map((b) => b.id), containsAll(['bm-1', 'bm-2']));
+
+      await storage.deleteBookmark(bookHash, bm1.cfi);
+      expect(await storage.isBookmarked(bookHash, bm1.cfi), isFalse);
+
+      final afterDelete = await storage.getBookmarks(bookHash);
+      expect(afterDelete.length, equals(1));
+      expect(afterDelete.first.id, equals('bm-2'));
+    });
+  });
+
+  group('Reading Progress Display & HUD Customization Tests', () {
+    test('ProgressDisplayType and ProgressDisplayLocation serialization and cycling', () {
+      const sDefault = ReaderSettings();
+      expect(sDefault.progressDisplayType, equals(ProgressDisplayType.pagesLeftInChapter));
+      expect(sDefault.progressDisplayLocation, equals(ProgressDisplayLocation.bottomCenter));
+      expect(sDefault.quickActionsBar, isFalse);
+
+      // Test next cycling
+      expect(ProgressDisplayType.pagesLeftInChapter.next(), equals(ProgressDisplayType.timeLeftInChapter));
+      expect(ProgressDisplayType.timeLeftInChapter.next(), equals(ProgressDisplayType.timeLeftInBook));
+      expect(ProgressDisplayType.timeLeftInBook.next(), equals(ProgressDisplayType.pageNumber));
+      expect(ProgressDisplayType.pageNumber.next(), equals(ProgressDisplayType.percentage));
+      expect(ProgressDisplayType.percentage.next(), equals(ProgressDisplayType.pagesLeftInChapter));
+
+      // Test copyWith and serialization round-trip
+      final custom = sDefault.copyWith(
+        progressDisplayType: ProgressDisplayType.timeLeftInBook,
+        progressDisplayLocation: ProgressDisplayLocation.topCenter,
+        quickActionsBar: true,
+      );
+
+      final map = custom.toMap();
+      expect(map['progressDisplayType'], equals('timeLeftInBook'));
+      expect(map['progressDisplayLocation'], equals('topCenter'));
+      expect(map['quickActionsBar'], isTrue);
+
+      final restored = ReaderSettings.fromMap(map);
+      expect(restored.progressDisplayType, equals(ProgressDisplayType.timeLeftInBook));
+      expect(restored.progressDisplayLocation, equals(ProgressDisplayLocation.topCenter));
+      expect(restored.quickActionsBar, isTrue);
+      expect(restored, equals(custom));
+    });
+
+    test('Theme accents are correctly mapped across reader themes', () {
+      expect(AdwaitaColors.getThemeAccent('sepia', false), equals(const Color(0xFFC6782E)));
+      expect(AdwaitaColors.getThemeAccent('gruvbox', true), equals(const Color(0xFFD79921)));
+      expect(AdwaitaColors.getThemeAccent('nord', true), equals(const Color(0xFF88C0D0)));
+      expect(AdwaitaColors.getThemeAccent('cherry', false), equals(const Color(0xFFD43C6E)));
+      expect(AdwaitaColors.getThemeAccent('default', true), equals(const Color(0xFF3DB88F)));
+    });
+  });
 }
+
+
 

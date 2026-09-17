@@ -77,3 +77,24 @@ flutter:
         - asset: assets/fonts/NotoSerif-BoldItalic.ttf
           weight: 700
           style: italic
+    - family: Literata
+      fonts:
+        - asset: assets/fonts/Literata.ttf
+    - family: EB Garamond
+      fonts:
+        - asset: assets/fonts/EBGaramond.ttf
+    - family: Newsreader
+      fonts:
+        - asset: assets/fonts/Newsreader.ttf
+    - family: Lora
+      fonts:
+        - asset: assets/fonts/Lora.ttf
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf
+    - family: Source Serif 4
+      fonts:
+        - asset: assets/fonts/SourceSerif4.ttf
+    - family: Bitter
+      fonts:
+        - asset: assets/fonts/Bitter.ttf

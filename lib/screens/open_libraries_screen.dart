@@ -58,11 +58,11 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
           borderRadius: BorderRadius.circular(14),
           side: BorderSide(color: colors.border),
         ),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.rss_feed_rounded, color: AdwaitaColors.foliateGreen, size: 22),
-            SizedBox(width: 10),
-            Text(
+            Icon(Icons.rss_feed_rounded, color: Theme.of(context).colorScheme.primary, size: 22),
+            const SizedBox(width: 10),
+            const Text(
               'Add OPDS Catalog',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
@@ -116,7 +116,7 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AdwaitaColors.foliateGreen,
+              backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
@@ -187,14 +187,14 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AdwaitaColors.foliateGreen.withValues(alpha: 0.15),
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             catalog.tag,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
-                              color: AdwaitaColors.foliateGreen,
+                              color: Theme.of(context).colorScheme.primary,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -259,7 +259,7 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
                   Expanded(
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AdwaitaColors.foliateGreen,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -287,9 +287,10 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
   }
 
   Widget _getCatalogIcon(String catalogId) {
+    final primaryAccent = Theme.of(context).colorScheme.primary;
     switch (catalogId) {
       case 'gutenberg':
-        return const Icon(Icons.auto_stories_rounded, color: AdwaitaColors.foliateGreen, size: 24);
+        return Icon(Icons.auto_stories_rounded, color: primaryAccent, size: 24);
       case 'standard_ebooks':
         return const Icon(Icons.local_library_rounded, color: AdwaitaColors.libadwaitaBlue, size: 24);
       case 'internet_archive':
@@ -297,7 +298,7 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
       case 'feedbooks':
         return const Icon(Icons.rss_feed_rounded, color: Color(0xFFC061CB), size: 24);
       default:
-        return const Icon(Icons.public_rounded, color: AdwaitaColors.foliateGreen, size: 24);
+        return Icon(Icons.public_rounded, color: primaryAccent, size: 24);
     }
   }
 
@@ -305,6 +306,7 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
+    final primaryAccent = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -361,7 +363,7 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
                       ),
                       TextButton.icon(
                         style: TextButton.styleFrom(
-                          foregroundColor: AdwaitaColors.foliateGreen,
+                          foregroundColor: primaryAccent,
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         ),
                         icon: const Icon(Icons.add_rounded, size: 18),
@@ -448,15 +450,15 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
                                                 vertical: 2,
                                               ),
                                               decoration: BoxDecoration(
-                                                color: AdwaitaColors.foliateGreen
+                                                color: primaryAccent
                                                     .withValues(alpha: 0.15),
                                                 borderRadius: BorderRadius.circular(4),
                                               ),
                                               child: Text(
                                                 catalog.tag,
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 10,
-                                                  color: AdwaitaColors.foliateGreen,
+                                                  color: primaryAccent,
                                                   fontWeight: FontWeight.w600,
                                                 ),
                                               ),

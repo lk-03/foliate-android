@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/models.dart';
 import '../theme/theme.dart';
 
-/// Card displaying a saved text highlight / note snippet
+/// Card displaying a saved text highlight / note snippet with Libadwaita styling
 class AnnotationCard extends StatelessWidget {
   final Annotation annotation;
   final String? bookTitle;
   final VoidCallback onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onCopy;
   final VoidCallback? onDelete;
 
   const AnnotationCard({
@@ -14,6 +17,8 @@ class AnnotationCard extends StatelessWidget {
     required this.annotation,
     this.bookTitle,
     required this.onTap,
+    this.onEdit,
+    this.onCopy,
     this.onDelete,
   });
 
@@ -33,6 +38,17 @@ class AnnotationCard extends StatelessWidget {
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+  }
+
+  void _copyToClipboard(BuildContext context) {
+    Clipboard.setData(ClipboardData(text: annotation.text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Quote copied to clipboard'),
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -94,24 +110,33 @@ class AnnotationCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(color: colors.border),
                   ),
-                  child: Text(
-                    annotation.note!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: colors.textMuted,
-                    ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.edit_note_rounded, size: 16, color: colors.textMuted),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          annotation.note!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
 
               const SizedBox(height: 12),
-              // Footer: Book Title & Date
+              // Footer: Book Title, Date, and Actions Menu
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.bookmark_rounded,
                     size: 14,
-                    color: AdwaitaColors.foliateGreen,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
@@ -132,15 +157,65 @@ class AnnotationCard extends StatelessWidget {
                       color: colors.textMuted,
                     ),
                   ),
-                  if (onDelete != null) ...[
-                    const SizedBox(width: 4),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded, size: 16),
-                      visualDensity: VisualDensity.compact,
-                      tooltip: 'Delete',
-                      onPressed: onDelete,
-                    ),
-                  ],
+                  // Three-Dot Context Menu
+                  PopupMenuButton<String>(
+                    icon: Icon(Icons.more_vert_rounded, size: 18, color: colors.textMuted),
+                    tooltip: 'More options',
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    color: colors.surfaceCard,
+                    onSelected: (action) {
+                      switch (action) {
+                        case 'copy':
+                          if (onCopy != null) {
+                            onCopy!();
+                          } else {
+                            _copyToClipboard(context);
+                          }
+                          break;
+                        case 'edit':
+                          onEdit?.call();
+                          break;
+                        case 'delete':
+                          onDelete?.call();
+                          break;
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'copy',
+                        child: Row(
+                          children: [
+                            Icon(Icons.copy_rounded, size: 16, color: colors.textPrimary),
+                            const SizedBox(width: 8),
+                            const Text('Copy Quote', style: TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                      if (onEdit != null)
+                        PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit_outlined, size: 16, color: colors.textPrimary),
+                              const SizedBox(width: 8),
+                              const Text('Edit Note', style: TextStyle(fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                      if (onDelete != null)
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_outline_rounded, size: 16, color: Colors.redAccent),
+                              const SizedBox(width: 8),
+                              const Text('Delete', style: TextStyle(fontSize: 13, color: Colors.redAccent)),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ),
             ],

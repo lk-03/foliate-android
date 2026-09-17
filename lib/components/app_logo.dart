@@ -29,7 +29,7 @@ class AppLogo extends StatelessWidget {
         FoliateThemeColors.dark;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final resolvedAccent = accentColor ?? AdwaitaColors.foliateGreen;
+    final resolvedAccent = accentColor ?? Theme.of(context).colorScheme.primary;
     final resolvedPage = pageColor ?? const Color(0xFFFAF7F0);
 
     // Default black gradient background (guaranteed in light mode and default)
