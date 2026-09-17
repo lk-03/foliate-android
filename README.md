@@ -1,5 +1,7 @@
 # Foliate Android
 
+[![CI](https://github.com/lk-03/foliate-android/actions/workflows/ci.yml/badge.svg)](https://github.com/lk-03/foliate-android/actions/workflows/ci.yml)
+
 A modern, distraction-free e-book reader application for Android, adapted from the Foliate desktop ecosystem. Built with Flutter, GNOME Libadwaita design standards, and an offline-bundled `foliate-js` reader engine.
 
 ---
@@ -82,6 +84,22 @@ Run static analysis:
 ```bash
 flutter analyze
 ```
+
+---
+
+## CI/CD Workflows
+
+Continuous Integration and Delivery are automated with GitHub Actions:
+
+* **CI (`ci.yml`)**: Triggered on every pull request and push to `main`.
+  * Runs static analysis (`flutter analyze`)
+  * Executes unit and widget test suite (`flutter test --coverage`)
+  * Verifies Android compilation (`flutter build apk --debug`) with Gradle & Flutter caching.
+* **Release (`release.yml`)**: Triggered when a version tag (`v*.*.*`) is pushed or manually dispatched.
+  * Builds universal release APK
+  * Builds split-per-ABI APKs (`arm64-v8a`, `armeabi-v7a`, `x86_64`)
+  * Builds release Android App Bundle (`.aab`)
+  * Automatically publishes a GitHub Release with versioned downloadable assets.
 
 ---
 
