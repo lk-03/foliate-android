@@ -92,7 +92,6 @@ flutter analyze
 Continuous Integration and Delivery are automated with GitHub Actions:
 
 * **CI (`ci.yml`)**: Triggered on every pull request and push to `main`.
-  * Checks formatting (`dart format --output=none --set-exit-if-changed .`)
   * Runs static analysis (`flutter analyze`)
   * Executes unit and widget test suite (`flutter test --coverage`)
   * Verifies Android compilation (`flutter build apk --debug`) with Gradle & Flutter caching.
