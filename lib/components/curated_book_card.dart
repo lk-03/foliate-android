@@ -19,6 +19,20 @@ class CuratedBookCard extends StatefulWidget {
   State<CuratedBookCard> createState() => _CuratedBookCardState();
 }
 
+class _CoverTheme {
+  final List<Color> gradient;
+  final Color accent;
+  final IconData emblem;
+  final String category;
+
+  const _CoverTheme({
+    required this.gradient,
+    required this.accent,
+    required this.emblem,
+    required this.category,
+  });
+}
+
 class _CuratedBookCardState extends State<CuratedBookCard> {
   bool _isSaved = false;
 
@@ -268,6 +282,307 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
     );
   }
 
+  _CoverTheme _getCoverTheme(CuratedBook book) {
+    switch (book.id) {
+      case 'gem-frankenstein':
+        return const _CoverTheme(
+          gradient: [Color(0xFF0B2014), Color(0xFF183B2B)],
+          accent: Color(0xFF86EFAC),
+          emblem: Icons.bolt_rounded,
+          category: 'GOTHIC CLASSIC',
+        );
+      case 'gem-pride-prejudice':
+        return const _CoverTheme(
+          gradient: [Color(0xFF38141C), Color(0xFF56212D)],
+          accent: Color(0xFFFDE047),
+          emblem: Icons.auto_stories_rounded,
+          category: 'REGENCY CLASSIC',
+        );
+      case 'gem-dorian-gray':
+        return const _CoverTheme(
+          gradient: [Color(0xFF1D0E26), Color(0xFF351743)],
+          accent: Color(0xFFFBBF24),
+          emblem: Icons.portrait_rounded,
+          category: 'VICTORIAN PARABLE',
+        );
+      case 'gem-metamorphosis':
+        return const _CoverTheme(
+          gradient: [Color(0xFF261A0F), Color(0xFF3F2B19)],
+          accent: Color(0xFFFDBA74),
+          emblem: Icons.psychology_outlined,
+          category: 'EXISTENTIAL NOVELLA',
+        );
+      case 'gem-moby-dick':
+        return const _CoverTheme(
+          gradient: [Color(0xFF09192E), Color(0xFF132C4D)],
+          accent: Color(0xFF93C5FD),
+          emblem: Icons.sailing_rounded,
+          category: 'NAUTICAL EPIC',
+        );
+      case 'hor-solarpunk':
+        return const _CoverTheme(
+          gradient: [Color(0xFF13281B), Color(0xFF21422C)],
+          accent: Color(0xFFA3E635),
+          emblem: Icons.park_rounded,
+          category: 'COZY SOLARPUNK',
+        );
+      case 'hor-philosophy':
+        return const _CoverTheme(
+          gradient: [Color(0xFF221F1C), Color(0xFF3B3631)],
+          accent: Color(0xFFFDBA74),
+          emblem: Icons.public_rounded,
+          category: 'UTOPIAN FICTION',
+        );
+      case 'hor-nonfiction':
+        return const _CoverTheme(
+          gradient: [Color(0xFF330F15), Color(0xFF4C1820)],
+          accent: Color(0xFFFDE68A),
+          emblem: Icons.account_balance_rounded,
+          category: 'STOIC PHILOSOPHY',
+        );
+      case 'hor-magical-realism':
+        return const _CoverTheme(
+          gradient: [Color(0xFF1B122E), Color(0xFF2F1F4F)],
+          accent: Color(0xFFD8B4FE),
+          emblem: Icons.flare_rounded,
+          category: 'MAGICAL REALISM',
+        );
+      case 'hor-classic-scifi':
+        return const _CoverTheme(
+          gradient: [Color(0xFF0C1F30), Color(0xFF173857)],
+          accent: Color(0xFF7DD3FC),
+          emblem: Icons.ac_unit_rounded,
+          category: 'CLASSIC SCI-FI',
+        );
+      default:
+        return const _CoverTheme(
+          gradient: [Color(0xFF1A2332), Color(0xFF2B3A52)],
+          accent: Color(0xFFE2E8F0),
+          emblem: Icons.menu_book_rounded,
+          category: 'OPEN LIBRARY',
+        );
+    }
+  }
+
+  Widget _buildCoverArtwork(
+    FoliateThemeColors colors, {
+    required bool isCompact,
+  }) {
+    final theme = _getCoverTheme(widget.book);
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: theme.gradient,
+        ),
+        borderRadius: BorderRadius.circular(isCompact ? 8 : 10),
+        border: Border.all(
+          color: theme.accent.withValues(alpha: 0.25),
+          width: 0.8,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background ambient circular glow
+          Positioned(
+            right: -25,
+            bottom: -25,
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: theme.accent.withValues(alpha: 0.06),
+                  width: 18,
+                ),
+              ),
+            ),
+          ),
+
+          // Left 3D Spine Crease & Shadow
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 7,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.6),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 7,
+            top: 0,
+            bottom: 0,
+            width: 0.8,
+            child: Container(
+              color: Colors.white.withValues(alpha: 0.08),
+            ),
+          ),
+
+          // Classical Inner Decorative Border
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: isCompact ? 8 : 10,
+              vertical: isCompact ? 7 : 8,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: theme.accent.withValues(alpha: 0.32),
+                  width: 0.8,
+                ),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              padding: EdgeInsets.symmetric(
+                horizontal: isCompact ? 6 : 8,
+                vertical: isCompact ? 5 : 6,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Top Publisher / Category Label
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 0.8,
+                        color: theme.accent.withValues(alpha: 0.4),
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          theme.category,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: isCompact ? 6.5 : 7.0,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.1,
+                            color: theme.accent.withValues(alpha: 0.9),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Container(
+                        width: 8,
+                        height: 0.8,
+                        color: theme.accent.withValues(alpha: 0.4),
+                      ),
+                    ],
+                  ),
+
+                  // Center: Thematic Emblem & Serif Title
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(isCompact ? 4 : 5),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: theme.accent.withValues(alpha: 0.12),
+                            ),
+                            child: Icon(
+                              theme.emblem,
+                              size: isCompact ? 16 : 19,
+                              color: theme.accent,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            widget.book.title.toUpperCase(),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: 'Noto Serif',
+                              fontSize: isCompact ? 9.5 : 11.0,
+                              fontWeight: FontWeight.bold,
+                              height: 1.15,
+                              color: Colors.white,
+                              letterSpacing: -0.1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Bottom: Author Attribution
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 18,
+                        height: 0.8,
+                        color: theme.accent.withValues(alpha: 0.35),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.book.author.toUpperCase(),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: isCompact ? 6.5 : 7.5,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.8,
+                          color: theme.accent.withValues(alpha: 0.85),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Tag Pill Badge in Top Right
+          Positioned(
+            top: 5,
+            right: 5,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.65),
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: theme.accent.withValues(alpha: 0.35),
+                  width: 0.5,
+                ),
+              ),
+              child: Text(
+                widget.book.tag.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 7.0,
+                  fontWeight: FontWeight.bold,
+                  color: theme.accent,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
@@ -290,82 +605,11 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cover Box (fixed height 135)
+            // Cover Box (fixed height 140)
             SizedBox(
-              height: 135,
+              height: 140,
               width: double.infinity,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: colors.inputBackground,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: colors.border),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            colors.surfaceCard,
-                            colors.inputBackground,
-                          ],
-                        ),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          Icons.menu_book_rounded,
-                          size: 36,
-                          color: primaryAccent,
-                        ),
-                      ),
-                    ),
-                    // Left Spine Crease
-                    Positioned(
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: 6,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            colors: [
-                              Colors.black.withValues(alpha: 0.4),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Tag Pill
-                    Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.65),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          widget.book.tag.toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              child: _buildCoverArtwork(colors, isCompact: false),
             ),
 
             const SizedBox(height: 8),
@@ -500,75 +744,7 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
           children: [
             // Cover Box (Expanded to fill grid space)
             Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: colors.inputBackground,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: colors.border),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            colors.surfaceCard,
-                            colors.inputBackground,
-                          ],
-                        ),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          Icons.menu_book_rounded,
-                          size: 32,
-                          color: primaryAccent,
-                        ),
-                      ),
-                    ),
-                    // Left spine crease
-                    Positioned(
-                      left: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: 5,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.black.withValues(alpha: 0.4),
-                              Colors.transparent,
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Tag Badge
-                    Positioned(
-                      top: 6,
-                      left: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          widget.book.tag.toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 8,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              child: _buildCoverArtwork(colors, isCompact: true),
             ),
             const SizedBox(height: 8),
             Text(
