@@ -57,3 +57,5 @@ app.*.map.json
 # Stitch reference artifacts
 stitch_android_book_reader_ui*/
 stitch_android_book_reader_ui*.zip
+stitch/
+.misc/
