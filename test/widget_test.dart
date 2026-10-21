@@ -5,6 +5,8 @@ import 'package:foliate/main.dart';
 import 'package:foliate/models/models.dart';
 import 'package:foliate/components/components.dart';
 import 'package:foliate/screens/annotations_screen.dart';
+import 'package:foliate/screens/home_screen.dart';
+import 'package:foliate/theme/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -1171,6 +1173,42 @@ void main() {
     expect(find.text(curated.author), findsOneWidget);
     expect(find.text(testBook.title), findsOneWidget);
     expect(find.text('42% completed'), findsOneWidget);
+  });
+
+  testWidgets('HomeScreen renders Explore Horizons as horizontal carousel with See More card', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    bool explored = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark().copyWith(
+          extensions: [FoliateThemeColors.dark],
+        ),
+        home: Scaffold(
+          body: HomeScreen(
+            books: const [],
+            onNavigateToLibrary: () {},
+            onNavigateToExplore: () => explored = true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Explore Horizons'), findsOneWidget);
+    expect(find.text('See More'), findsOneWidget);
+    expect(find.text('Explore All'), findsOneWidget);
+
+    await tester.tap(find.text('See More'));
+    await tester.pumpAndSettle();
+
+    expect(explored, isTrue);
   });
 
   testWidgets('YearlyBooksReadSection renders navigation, finished books, and empty states', (WidgetTester tester) async {
