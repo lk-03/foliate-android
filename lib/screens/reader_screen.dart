@@ -61,6 +61,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
   final TtsService _ttsService = TtsService();
   bool _isTtsActive = false;
 
+  // Desktop Side Panel & Shortcuts State (Phase 6)
+  ReaderSidePanelType _activeSidePanel = ReaderSidePanelType.none;
+  List<Bookmark> _bookmarks = const [];
+  List<Annotation> _annotations = const [];
+
   @override
   void initState() {
     super.initState();
@@ -327,10 +332,14 @@ class _ReaderScreenState extends State<ReaderScreen> {
     final effectiveBottom = (bottomSafe + 64.0).clamp(80.0, 140.0);
     final effectiveSide = (screenWidth * base.margin).clamp(28.0, 72.0);
 
+    final isWide = screenWidth >= 850;
+    final shouldTwoPage = base.twoPagesLandscape || (isWide && screenWidth > mediaQuery.size.height);
+
     return base.copyWith(
       paddingTop: effectiveTop,
       paddingBottom: effectiveBottom,
       marginSide: effectiveSide,
+      twoPagesLandscape: shouldTwoPage,
     );
   }
 
@@ -354,6 +363,56 @@ class _ReaderScreenState extends State<ReaderScreen> {
     }
   }
 
+  Future<void> _reloadAnnotations() async {
+    final loaded = await StorageService.instance.getAnnotations(widget.book.hash);
+    if (mounted) {
+      setState(() => _annotations = loaded);
+    }
+  }
+
+  Future<void> _reloadBookmarks() async {
+    final loaded = await StorageService.instance.getBookmarks(widget.book.hash);
+    if (mounted) {
+      setState(() => _bookmarks = loaded);
+    }
+  }
+
+  void _openTOC() {
+    if (MediaQuery.of(context).size.width >= 850) {
+      setState(() {
+        _activeSidePanel = _activeSidePanel == ReaderSidePanelType.toc
+            ? ReaderSidePanelType.none
+            : ReaderSidePanelType.toc;
+      });
+    } else {
+      _showTOCSheet();
+    }
+  }
+
+  void _openSearch() {
+    if (MediaQuery.of(context).size.width >= 850) {
+      setState(() {
+        _activeSidePanel = _activeSidePanel == ReaderSidePanelType.search
+            ? ReaderSidePanelType.none
+            : ReaderSidePanelType.search;
+      });
+    } else {
+      _showSearchSheet();
+    }
+  }
+
+  void _openAppearance() {
+    if (MediaQuery.of(context).size.width >= 850) {
+      setState(() {
+        _activeSidePanel = _activeSidePanel == ReaderSidePanelType.appearance
+            ? ReaderSidePanelType.none
+            : ReaderSidePanelType.appearance;
+      });
+    } else {
+      _showThemeCustomizeSheet();
+    }
+  }
+
   Future<void> _loadBook() async {
     final savedSettings =
         await StorageService.instance.getBookSettings(widget.book.hash);
@@ -372,6 +431,14 @@ class _ReaderScreenState extends State<ReaderScreen> {
     }
     final annotations =
         await StorageService.instance.getAnnotations(widget.book.hash);
+    final bookmarks =
+        await StorageService.instance.getBookmarks(widget.book.hash);
+    if (mounted) {
+      setState(() {
+        _annotations = annotations;
+        _bookmarks = bookmarks;
+      });
+    }
     if (annotations.isNotEmpty) {
       await _bridge.loadAnnotations(annotations);
     }
@@ -397,7 +464,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
     if (isCurrently) {
       await StorageService.instance.deleteBookmark(widget.book.hash, cfi);
-      if (mounted) setState(() => _isBookmarked = false);
+      if (mounted) {
+        setState(() => _isBookmarked = false);
+        _reloadBookmarks();
+      }
     } else {
       final bookmark = Bookmark(
         id: const Uuid().v4(),
@@ -409,7 +479,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
         createdAt: DateTime.now().millisecondsSinceEpoch,
       );
       await StorageService.instance.saveBookmark(bookmark);
-      if (mounted) setState(() => _isBookmarked = true);
+      if (mounted) {
+        setState(() => _isBookmarked = true);
+        _reloadBookmarks();
+      }
     }
   }
 
@@ -501,11 +574,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
         onUpdate: (updated) async {
           await StorageService.instance.saveAnnotation(updated);
           await _bridge.addAnnotation(updated.cfi, updated.color, note: updated.note);
+          _reloadAnnotations();
         },
         onDelete: () async {
           await StorageService.instance
               .deleteAnnotation(widget.book.hash, cfi);
           await _bridge.deleteAnnotation(cfi);
+          _reloadAnnotations();
         },
       ),
     ).then((_) => _resetInactivityTimer());
@@ -650,11 +725,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
               },
               onOpenTOC: () {
                 Navigator.of(ctx).pop();
-                _showTOCSheet();
+                _openTOC();
               },
               onOpenSearch: () {
                 Navigator.of(ctx).pop();
-                _showSearchSheet();
+                _openSearch();
               },
               onStartTTS: () {
                 Navigator.of(ctx).pop();
@@ -666,11 +741,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
               },
               onOpenThemeCustomize: () {
                 Navigator.of(ctx).pop();
-                _showThemeCustomizeSheet();
+                _openAppearance();
               },
               onOpenAppearance: () {
                 Navigator.of(ctx).pop();
-                _showLayoutSheet();
+                _openAppearance();
               },
               isOrientationLocked: _isOrientationLocked,
               onToggleOrientation: () {
@@ -783,7 +858,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   void _onSelectSearchMatch(SearchResultItem match, int globalIndex) {
-    Navigator.of(context).pop();
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
     setState(() {
       _currentSearchMatchIndex = globalIndex;
       _isSearchActive = true;
@@ -912,30 +989,94 @@ class _ReaderScreenState extends State<ReaderScreen> {
       _settings.isDarkMode,
     );
 
-    return Scaffold(
-      backgroundColor: readerBg,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Underlying Foliate WebView with Page-Turn Animation & Gesture Overlay
-          Positioned.fill(
-            child: PageCurlOverlay(
-              enabled: true,
-              settings: _settings,
-              backgroundColor: readerBg,
-              textColor: readerFg,
-              onNextPage: () {
-                _resetInactivityTimer();
-                _bridge.goNext();
-              },
-              onPrevPage: () {
-                _resetInactivityTimer();
-                _bridge.goPrev();
-              },
-              onToggleHUD: () {
-                _toggleControls();
-              },
-              child: ReaderWebView(bridge: _bridge),
+    final isWide = MediaQuery.of(context).size.width >= 850;
+    final showSidePanel = isWide && _activeSidePanel != ReaderSidePanelType.none;
+
+    final readerStack = Stack(
+      fit: StackFit.expand,
+      children: [
+        // Underlying Foliate WebView with Page-Turn Animation & Gesture Overlay
+        Positioned.fill(
+          child: PageCurlOverlay(
+            enabled: true,
+            settings: _settings,
+            backgroundColor: readerBg,
+            textColor: readerFg,
+            onNextPage: () {
+              _resetInactivityTimer();
+              _bridge.goNext();
+            },
+            onPrevPage: () {
+              _resetInactivityTimer();
+              _bridge.goPrev();
+            },
+            onToggleHUD: () {
+              _toggleControls();
+            },
+            child: ReaderWebView(bridge: _bridge),
+          ),
+        ),
+
+        // Desktop Reader Header Controls (when isWide && _showControls && !_isSearchActive)
+        if (isWide && _showControls && !_isSearchActive)
+          Positioned(
+            top: 12 + MediaQuery.of(context).padding.top,
+            left: 16,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    Icons.menu_book_rounded,
+                    color: _activeSidePanel == ReaderSidePanelType.toc
+                        ? themeAccent
+                        : readerFg.withValues(alpha: 0.75),
+                    size: 22,
+                  ),
+                  tooltip: 'Table of Contents (Ctrl+T)',
+                  onPressed: _openTOC,
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.search_rounded,
+                    color: _activeSidePanel == ReaderSidePanelType.search
+                        ? themeAccent
+                        : readerFg.withValues(alpha: 0.75),
+                    size: 22,
+                  ),
+                  tooltip: 'Search (Ctrl+F)',
+                  onPressed: _openSearch,
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.palette_outlined,
+                    color: _activeSidePanel == ReaderSidePanelType.appearance
+                        ? themeAccent
+                        : readerFg.withValues(alpha: 0.75),
+                    size: 22,
+                  ),
+                  tooltip: 'Appearance & Layout (Ctrl+A)',
+                  onPressed: _openAppearance,
+                ),
+                IconButton(
+                  icon: Icon(
+                    Icons.bookmarks_outlined,
+                    color: _activeSidePanel == ReaderSidePanelType.annotations
+                        ? themeAccent
+                        : readerFg.withValues(alpha: 0.75),
+                    size: 22,
+                  ),
+                  tooltip: 'Annotations & Bookmarks (Ctrl+B)',
+                  onPressed: () {
+                    setState(() {
+                      _activeSidePanel =
+                          _activeSidePanel == ReaderSidePanelType.annotations
+                              ? ReaderSidePanelType.none
+                              : ReaderSidePanelType.annotations;
+                    });
+                  },
+                ),
+              ],
             ),
           ),
 
@@ -1157,6 +1298,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       _selectedText = null;
                       _selectedCfi = null;
                     });
+                    _reloadAnnotations();
                   }
                 },
                 onDismiss: () {
@@ -1197,6 +1339,135 @@ class _ReaderScreenState extends State<ReaderScreen> {
               ),
             ),
         ],
+      );
+
+    final body = showSidePanel
+        ? Row(
+            children: [
+              Expanded(child: readerStack),
+              ReaderSidebarPanel(
+                panelType: _activeSidePanel,
+                book: widget.book,
+                toc: _tableOfContents,
+                currentLocation: _currentLocation,
+                onChapterSelected: (href) {
+                  _resetInactivityTimer();
+                  _bridge.goToHref(href);
+                },
+                searchSectionsNotifier: _searchSectionsNotifier,
+                isSearchingNotifier: _isSearchingNotifier,
+                totalMatchesNotifier: _totalMatchesNotifier,
+                onSearch: _performSearch,
+                onClearSearch: _clearSearch,
+                onSelectSearchMatch: _onSelectSearchMatch,
+                settings: _settings,
+                onSettingsChanged: _applySettings,
+                bookmarks: _bookmarks,
+                onSelectBookmark: (b) {
+                  _resetInactivityTimer();
+                  _bridge.goToHref(b.cfi);
+                },
+                onDeleteBookmark: (b) async {
+                  await StorageService.instance.deleteBookmark(widget.book.hash, b.cfi);
+                  _reloadBookmarks();
+                  _checkBookmarkStatus();
+                },
+                annotations: _annotations,
+                onSelectAnnotation: (ann) {
+                  _resetInactivityTimer();
+                  _bridge.goToHref(ann.cfi);
+                },
+                onDeleteAnnotation: (ann) async {
+                  await StorageService.instance.deleteAnnotation(widget.book.hash, ann.cfi);
+                  await _bridge.deleteAnnotation(ann.cfi);
+                  _reloadAnnotations();
+                },
+                onClose: () {
+                  setState(() => _activeSidePanel = ReaderSidePanelType.none);
+                },
+              ),
+            ],
+          )
+        : readerStack;
+
+    return Shortcuts(
+      shortcuts: FoliateShortcuts.readerShortcuts,
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          PageForwardIntent: CallbackAction<PageForwardIntent>(
+            onInvoke: (_) {
+              _resetInactivityTimer();
+              _bridge.goNext();
+              return null;
+            },
+          ),
+          PageBackwardIntent: CallbackAction<PageBackwardIntent>(
+            onInvoke: (_) {
+              _resetInactivityTimer();
+              _bridge.goPrev();
+              return null;
+            },
+          ),
+          OpenSearchIntent: CallbackAction<OpenSearchIntent>(
+            onInvoke: (_) {
+              _openSearch();
+              return null;
+            },
+          ),
+          OpenTOCIntent: CallbackAction<OpenTOCIntent>(
+            onInvoke: (_) {
+              _openTOC();
+              return null;
+            },
+          ),
+          ToggleBookmarkIntent: CallbackAction<ToggleBookmarkIntent>(
+            onInvoke: (_) {
+              _toggleBookmark();
+              return null;
+            },
+          ),
+          OpenAppearanceIntent: CallbackAction<OpenAppearanceIntent>(
+            onInvoke: (_) {
+              _openAppearance();
+              return null;
+            },
+          ),
+          IncreaseFontSizeIntent: CallbackAction<IncreaseFontSizeIntent>(
+            onInvoke: (_) {
+              final nextSize = (_settings.fontSize + 1.0).clamp(10.0, 48.0);
+              _applySettings(_settings.copyWith(fontSize: nextSize));
+              return null;
+            },
+          ),
+          DecreaseFontSizeIntent: CallbackAction<DecreaseFontSizeIntent>(
+            onInvoke: (_) {
+              final nextSize = (_settings.fontSize - 1.0).clamp(10.0, 48.0);
+              _applySettings(_settings.copyWith(fontSize: nextSize));
+              return null;
+            },
+          ),
+          DismissOrEscapeIntent: CallbackAction<DismissOrEscapeIntent>(
+            onInvoke: (_) {
+              if (_activeSidePanel != ReaderSidePanelType.none) {
+                setState(() => _activeSidePanel = ReaderSidePanelType.none);
+              } else if (_isSearchActive) {
+                _exitSearch();
+              } else if (_showControls) {
+                setState(() => _showControls = false);
+              } else {
+                Navigator.of(context).pop();
+              }
+              return null;
+            },
+          ),
+        },
+        child: Focus(
+          autofocus: true,
+          child: Scaffold(
+            backgroundColor: readerBg,
+            body: body,
+          ),
+        ),
       ),
     );
   }

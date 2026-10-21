@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Foliate
+Comment=A modern eBook reader for Linux and mobile
+Exec=foliate %U
+Icon=org.gnome.Foliate
+Terminal=false
+Type=Application
+Categories=Office;Viewer;Literature;
+MimeType=application/epub+zip;application/x-mobipocket-ebook;application/vnd.amazon.mobi;application/x-fictionbook+xml;
+StartupNotify=true
+StartupWMClass=foliate
+Keywords=ebook;book;reader;epub;mobi;kindle;

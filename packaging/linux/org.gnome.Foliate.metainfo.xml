@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.gnome.Foliate</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Foliate</name>
+  <summary>A modern eBook reader</summary>
+  <description>
+    <p>
+      Foliate is a modern eBook reader built with Flutter and foliate-js.
+      It features responsive layouts adapting between mobile and desktop, two-page book spreads,
+      custom themes with Adwaita styling, fast in-book text search, text-to-speech narration,
+      OPDS public catalog integration, and extensive keyboard shortcut navigation.
+    </p>
+  </description>
+  <launchable type="desktop-id">org.gnome.Foliate.desktop</launchable>
+  <url type="homepage">https://github.com/lk-03/foliate-android</url>
+  <url type="bugtracker">https://github.com/lk-03/foliate-android/issues</url>
+  <provides>
+    <mediatype>application/epub+zip</mediatype>
+    <mediatype>application/x-mobipocket-ebook</mediatype>
+    <mediatype>application/vnd.amazon.mobi</mediatype>
+  </provides>
+  <releases>
+    <release version="1.0.0" date="2026-10-21">
+      <description>
+        <p>Initial release with mobile and desktop adaptive support, OPDS public catalogs, in-book search, and TTS narration.</p>
+      </description>
+    </release>
+  </releases>
+  <content_rating type="oars-1.1" />
+</component>

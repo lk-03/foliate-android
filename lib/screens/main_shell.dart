@@ -99,7 +99,9 @@ class _MainShellState extends State<MainShell> {
     if (index == 3) {
       _reloadAnnotations();
     }
-    _pageController.jumpToPage(index);
+    if (_pageController.hasClients) {
+      _pageController.jumpToPage(index);
+    }
   }
 
   ReadingHabits _readingHabits = const ReadingHabits();
@@ -122,148 +124,346 @@ class _MainShellState extends State<MainShell> {
     }
   }
 
+  List<Widget> _buildPages(Map<String, Book> booksMap) {
+    return [
+      HomeScreen(
+        books: _books,
+        readingHabits: _readingHabits,
+        onNavigateToLibrary: () => _navigateToPage(1),
+        onBooksChanged: () async {
+          await _reloadBooks();
+          await _reloadHabits();
+        },
+        onDailyGoalChanged: (newMins) async {
+          final updated = await StorageService.instance.updateDailyReadingGoal(newMins);
+          setState(() => _readingHabits = updated);
+        },
+        onYearlyGoalChanged: (newTarget) async {
+          final updated = await StorageService.instance.updateYearlyReadingGoal(newTarget);
+          setState(() => _readingHabits = updated);
+        },
+      ),
+      LibraryScreen(
+        books: _books,
+        onRefresh: () async {
+          await _autoScanLinkedFolders();
+          await _reloadBooks();
+        },
+        onBooksChanged: _reloadBooks,
+      ),
+      const OpenLibrariesScreen(),
+      AnnotationsScreen(
+        annotations: _annotations,
+        booksMap: booksMap,
+        onAnnotationsChanged: _reloadAnnotations,
+        onAnnotationTap: (annotation, book) {
+          if (book != null) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ReaderScreen(
+                  book: book,
+                  initialCfi: annotation.cfi,
+                ),
+              ),
+            ).then((_) => _reloadAnnotations());
+          }
+        },
+      ),
+      ProfileScreen(
+        books: _books,
+        readingHabits: _readingHabits,
+        onDailyGoalChanged: (newMins) async {
+          final updated = await StorageService.instance.updateDailyReadingGoal(newMins);
+          setState(() => _readingHabits = updated);
+        },
+        onYearlyGoalChanged: (newTarget) async {
+          final updated = await StorageService.instance.updateYearlyReadingGoal(newTarget);
+          setState(() => _readingHabits = updated);
+        },
+        onRescanStorage: () async {
+          await _autoScanLinkedFolders();
+          await _reloadBooks();
+          await _reloadHabits();
+        },
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
         FoliateThemeColors.dark;
     final primaryAccent = Theme.of(context).colorScheme.primary;
     final booksMap = {for (final b in _books) b.hash: b};
+    final pages = _buildPages(booksMap);
+    final isWide = MediaQuery.of(context).size.width >= 850;
 
-    return Scaffold(
-      backgroundColor: colors.windowBackground,
-      // Clean Android Top App Bar
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(54),
-        child: Container(
-          decoration: BoxDecoration(
-            color: colors.headerBar,
-            border: Border(bottom: BorderSide(color: colors.border)),
+    return Shortcuts(
+      shortcuts: FoliateShortcuts.shellShortcuts,
+      child: Actions(
+        actions: {
+          NavigateShellTabIntent: CallbackAction<NavigateShellTabIntent>(
+            onInvoke: (intent) => _navigateToPage(intent.tabIndex),
           ),
-          child: SafeArea(
-            bottom: false,
-            child: Row(
-              children: [
-                const SizedBox(width: 16),
-                AppLogo(
-                  size: 28,
-                  accentColor: primaryAccent,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  _currentTitle,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.palette_outlined, size: 22),
-                  tooltip: 'App Theme & Accent',
-                  onPressed: () => AppThemeSheet.show(context),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.settings_outlined, size: 22),
-                  tooltip: 'Settings & Storage',
-                  onPressed: () => SettingsSheet.show(
-                    context,
-                    onRescan: () async {
-                      await _autoScanLinkedFolders();
-                      await _reloadBooks();
-                    },
-                  ),
-                ),
-                const SizedBox(width: 4),
-              ],
-            ),
-          ),
-        ),
-      ),
-
-      // Instagram-Style Swipeable PageView Body
-      body: PageView(
-        controller: _pageController,
-        physics: const BouncingScrollPhysics(),
-        onPageChanged: (index) {
-          if (_currentIndex == index) return;
-          HapticFeedback.selectionClick();
-          setState(() {
-            _currentIndex = index;
-          });
-          if (index == 0 || index == 4) {
-            _reloadHabits();
-          }
-          if (index == 3) {
-            _reloadAnnotations();
-          }
         },
-        children: [
-          HomeScreen(
-            books: _books,
-            readingHabits: _readingHabits,
-            onNavigateToLibrary: () => _navigateToPage(1),
-            onBooksChanged: () async {
-              await _reloadBooks();
-              await _reloadHabits();
-            },
-            onDailyGoalChanged: (newMins) async {
-              final updated = await StorageService.instance.updateDailyReadingGoal(newMins);
-              setState(() => _readingHabits = updated);
-            },
-            onYearlyGoalChanged: (newTarget) async {
-              final updated = await StorageService.instance.updateYearlyReadingGoal(newTarget);
-              setState(() => _readingHabits = updated);
-            },
-          ),
-          LibraryScreen(
-            books: _books,
-            onRefresh: () async {
-              await _autoScanLinkedFolders();
-              await _reloadBooks();
-            },
-            onBooksChanged: _reloadBooks,
-          ),
-          const OpenLibrariesScreen(),
-          AnnotationsScreen(
-            annotations: _annotations,
-            booksMap: booksMap,
-            onAnnotationsChanged: _reloadAnnotations,
-            onAnnotationTap: (annotation, book) {
-              if (book != null) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ReaderScreen(
-                      book: book,
-                      initialCfi: annotation.cfi,
+        child: Focus(
+          autofocus: true,
+          child: isWide
+              ? Scaffold(
+                  backgroundColor: colors.windowBackground,
+                  body: Row(
+                    children: [
+                      // Desktop Libadwaita Navigation Sidebar
+                      _buildDesktopSidebar(colors, primaryAccent),
+                      VerticalDivider(
+                        width: 1,
+                        thickness: 1,
+                        color: colors.border,
+                      ),
+                      // Main Content Area
+                      Expanded(
+                        child: Scaffold(
+                          backgroundColor: colors.windowBackground,
+                          appBar: PreferredSize(
+                            preferredSize: const Size.fromHeight(54),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: colors.headerBar,
+                                border: Border(bottom: BorderSide(color: colors.border)),
+                              ),
+                              child: SafeArea(
+                                bottom: false,
+                                child: Row(
+                                  children: [
+                                    const SizedBox(width: 20),
+                                    Text(
+                                      _currentTitle,
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: -0.2,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    IconButton(
+                                      icon: const Icon(Icons.palette_outlined, size: 22),
+                                      tooltip: 'App Theme & Accent',
+                                      onPressed: () => AppThemeSheet.show(context),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.settings_outlined, size: 22),
+                                      tooltip: 'Settings & Storage',
+                                      onPressed: () => SettingsSheet.show(
+                                        context,
+                                        onRescan: () async {
+                                          await _autoScanLinkedFolders();
+                                          await _reloadBooks();
+                                        },
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          body: pages[_currentIndex],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : Scaffold(
+                  backgroundColor: colors.windowBackground,
+                  // Mobile Top App Bar
+                  appBar: PreferredSize(
+                    preferredSize: const Size.fromHeight(54),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: colors.headerBar,
+                        border: Border(bottom: BorderSide(color: colors.border)),
+                      ),
+                      child: SafeArea(
+                        bottom: false,
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 16),
+                            AppLogo(
+                              size: 28,
+                              accentColor: primaryAccent,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              _currentTitle,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(Icons.palette_outlined, size: 22),
+                              tooltip: 'App Theme & Accent',
+                              onPressed: () => AppThemeSheet.show(context),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.settings_outlined, size: 22),
+                              tooltip: 'Settings & Storage',
+                              onPressed: () => SettingsSheet.show(
+                                context,
+                                onRescan: () async {
+                                  await _autoScanLinkedFolders();
+                                  await _reloadBooks();
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ).then((_) => _reloadAnnotations());
-              }
-            },
-          ),
-          ProfileScreen(
-            books: _books,
-            readingHabits: _readingHabits,
-            onDailyGoalChanged: (newMins) async {
-              final updated = await StorageService.instance.updateDailyReadingGoal(newMins);
-              setState(() => _readingHabits = updated);
-            },
-            onYearlyGoalChanged: (newTarget) async {
-              final updated = await StorageService.instance.updateYearlyReadingGoal(newTarget);
-              setState(() => _readingHabits = updated);
-            },
-            onRescanStorage: () async {
-              await _autoScanLinkedFolders();
-              await _reloadBooks();
-              await _reloadHabits();
-            },
-          ),
-        ],
-      ),
 
-      // Stitch Signature Bottom Navigation Bar with Pure Black Background and Vibrant Pill Highlight
-      bottomNavigationBar: _buildStitchBottomBar(colors, primaryAccent),
+                  // Swipeable PageView Body
+                  body: PageView(
+                    controller: _pageController,
+                    physics: const BouncingScrollPhysics(),
+                    onPageChanged: (index) {
+                      if (_currentIndex == index) return;
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        _currentIndex = index;
+                      });
+                      if (index == 0 || index == 4) {
+                        _reloadHabits();
+                      }
+                      if (index == 3) {
+                        _reloadAnnotations();
+                      }
+                    },
+                    children: pages,
+                  ),
+
+                  // Stitch Signature Bottom Navigation Bar
+                  bottomNavigationBar: _buildStitchBottomBar(colors, primaryAccent),
+                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopSidebar(FoliateThemeColors colors, Color primaryAccent) {
+    final navItems = [
+      (index: 0, label: 'Home', icon: Icons.home_outlined, selectedIcon: Icons.home_rounded),
+      (index: 1, label: 'Library', icon: Icons.auto_stories_outlined, selectedIcon: Icons.auto_stories_rounded),
+      (index: 2, label: 'Explore', icon: Icons.explore_outlined, selectedIcon: Icons.explore_rounded),
+      (index: 3, label: 'Annotations', icon: Icons.bookmarks_outlined, selectedIcon: Icons.bookmarks_rounded),
+      (index: 4, label: 'Profile', icon: Icons.person_outline_rounded, selectedIcon: Icons.person_rounded),
+    ];
+
+    return Container(
+      width: 220,
+      color: colors.headerBar,
+      child: SafeArea(
+        right: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header / Brand
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+              child: Row(
+                children: [
+                  AppLogo(size: 30, accentColor: primaryAccent),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Foliate',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Navigation Items
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                children: navItems.map((item) {
+                  final isSelected = _currentIndex == item.index;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Material(
+                      color: isSelected
+                          ? primaryAccent.withValues(alpha: 0.16)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => _navigateToPage(item.index),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          child: Row(
+                            children: [
+                              Icon(
+                                isSelected ? item.selectedIcon : item.icon,
+                                size: 20,
+                                color: isSelected ? primaryAccent : colors.textMuted,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                item.label,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                  color: isSelected ? primaryAccent : colors.textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
+            // Bottom Theme & Settings Tiles
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                children: [
+                  ListTile(
+                    dense: true,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    leading: const Icon(Icons.palette_outlined, size: 20),
+                    title: const Text('Theme', style: TextStyle(fontSize: 13)),
+                    onTap: () => AppThemeSheet.show(context),
+                  ),
+                  ListTile(
+                    dense: true,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    leading: const Icon(Icons.settings_outlined, size: 20),
+                    title: const Text('Settings', style: TextStyle(fontSize: 13)),
+                    onTap: () => SettingsSheet.show(
+                      context,
+                      onRescan: () async {
+                        await _autoScanLinkedFolders();
+                        await _reloadBooks();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

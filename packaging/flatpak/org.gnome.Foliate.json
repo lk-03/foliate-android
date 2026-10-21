@@ -1,0 +1,34 @@
+{
+  "app-id": "org.gnome.Foliate",
+  "runtime": "org.gnome.Platform",
+  "runtime-version": "46",
+  "sdk": "org.gnome.Sdk",
+  "command": "foliate",
+  "finish-args": [
+    "--share=ipc",
+    "--socket=fallback-x11",
+    "--socket=wayland",
+    "--socket=pulseaudio",
+    "--share=network",
+    "--device=dri",
+    "--filesystem=xdg-documents:ro",
+    "--filesystem=xdg-download:ro"
+  ],
+  "modules": [
+    {
+      "name": "foliate",
+      "buildsystem": "simple",
+      "build-commands": [
+        "install -D -m 755 foliate /app/bin/foliate",
+        "install -D -m 644 packaging/linux/org.gnome.Foliate.desktop /app/share/applications/org.gnome.Foliate.desktop",
+        "install -D -m 644 packaging/linux/org.gnome.Foliate.metainfo.xml /app/share/metainfo/org.gnome.Foliate.metainfo.xml"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "."
+        }
+      ]
+    }
+  ]
+}
