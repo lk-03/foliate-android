@@ -66,9 +66,18 @@ class _ReaderScreenState extends State<ReaderScreen> {
   List<Bookmark> _bookmarks = const [];
   List<Annotation> _annotations = const [];
 
+  // Desktop Native Reader Fallback & Watchdog State
+  Timer? _watchdogTimer;
+  String? _engineError;
+  bool _isFallbackMode = false;
+  List<EpubChapter> _fallbackChapters = const [];
+  int _fallbackChapterIndex = 0;
+  final ScrollController _fallbackScrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
+    _startWatchdogTimer();
     _setupBridgeListeners();
     _setupTtsListeners();
     _resetInactivityTimer();
@@ -143,6 +152,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   @override
   void dispose() {
+    _watchdogTimer?.cancel();
+    _fallbackScrollController.dispose();
     _ttsService.dispose();
     _bridge.clearTtsHighlight();
     _readingHeartbeatTimer?.cancel();
@@ -219,10 +230,135 @@ class _ReaderScreenState extends State<ReaderScreen> {
     }
   }
 
+  void _startWatchdogTimer() {
+    _watchdogTimer?.cancel();
+    _watchdogTimer = Timer(const Duration(seconds: 7), () {
+      if (mounted && !_isReady && _engineError == null) {
+        _onEngineFailed(
+          'Reader initialization timed out. The system WebView did not respond.',
+        );
+      }
+    });
+  }
+
+  Future<void> _onEngineFailed(String error) async {
+    _watchdogTimer?.cancel();
+    if (!mounted) return;
+
+    // Check if we can extract chapters from EPUB bytes for pure Dart reading
+    try {
+      final bytes = await StorageService.instance.getBookBytes(widget.book);
+      if (bytes != null && bytes.isNotEmpty) {
+        final chapters = EpubService.extractChapters(bytes);
+        if (chapters.isNotEmpty && mounted) {
+          setState(() {
+            _isFallbackMode = true;
+            _fallbackChapters = chapters;
+            _fallbackChapterIndex = 0;
+            _isReady = true;
+            _engineError = null;
+            _tableOfContents = chapters
+                .map((c) => TOCItem(label: c.title, href: c.id))
+                .toList();
+            _currentLocation = ReadingLocation(
+              cfi: chapters.first.id,
+              fraction: 0.0,
+              percentage: widget.book.percentage,
+              currentSection: 1,
+              totalSections: chapters.length,
+              sectionTitle: chapters.first.title,
+            );
+          });
+          return;
+        }
+      }
+    } catch (_) {}
+
+    if (mounted) {
+      setState(() {
+        _engineError = error;
+      });
+    }
+  }
+
+  void _goToFallbackChapter(int index) {
+    if (index < 0 || index >= _fallbackChapters.length) return;
+    setState(() {
+      _fallbackChapterIndex = index;
+      final ch = _fallbackChapters[index];
+      final pct = ((index + 1) / _fallbackChapters.length) * 100.0;
+      _currentLocation = ReadingLocation(
+        cfi: ch.id,
+        fraction: (index + 1) / _fallbackChapters.length,
+        percentage: pct,
+        currentSection: index + 1,
+        totalSections: _fallbackChapters.length,
+        sectionTitle: ch.title,
+      );
+    });
+    if (_fallbackScrollController.hasClients) {
+      _fallbackScrollController.jumpTo(0.0);
+    }
+    StorageService.instance.updateBookProgress(
+      widget.book.hash,
+      percentage: ((index + 1) / _fallbackChapters.length) * 100.0,
+      cfi: _fallbackChapters[index].id,
+    );
+  }
+
+  void _fallbackPrevChapter() {
+    if (_fallbackChapterIndex > 0) {
+      _goToFallbackChapter(_fallbackChapterIndex - 1);
+    }
+  }
+
+  void _fallbackNextChapter() {
+    if (_fallbackChapterIndex < _fallbackChapters.length - 1) {
+      _goToFallbackChapter(_fallbackChapterIndex + 1);
+    }
+  }
+
+  void _navigateToHref(String href) {
+    if (_isFallbackMode) {
+      final index = _fallbackChapters.indexWhere(
+        (c) =>
+            c.id == href ||
+            c.href == href ||
+            href.contains(c.href) ||
+            href.contains(c.id),
+      );
+      if (index >= 0) {
+        _goToFallbackChapter(index);
+      }
+      return;
+    }
+    _bridge.goToHref(href);
+  }
+
+  void _goNext() {
+    if (_isFallbackMode) {
+      _fallbackNextChapter();
+    } else {
+      _bridge.goNext();
+    }
+  }
+
+  void _goPrev() {
+    if (_isFallbackMode) {
+      _fallbackPrevChapter();
+    } else {
+      _bridge.goPrev();
+    }
+  }
+
   void _setupBridgeListeners() {
     _bridge.onReady = () {
+      _watchdogTimer?.cancel();
       if (mounted) {
-        setState(() => _isReady = true);
+        setState(() {
+          _isReady = true;
+          _engineError = null;
+        });
         _loadBook();
       }
     };
@@ -312,12 +448,17 @@ class _ReaderScreenState extends State<ReaderScreen> {
     };
 
     _bridge.onError = (error) {
-      if (mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         _isSearchingNotifier.value = false;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Reader error: $error')),
-        );
-      }
+        if (!_isReady) {
+          _onEngineFailed(error);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Reader error: $error')),
+          );
+        }
+      });
     };
   }
 
@@ -422,13 +563,17 @@ class _ReaderScreenState extends State<ReaderScreen> {
       await _bridge.applyReaderSettings(effective);
     }
     final bytes = await StorageService.instance.getBookBytes(widget.book);
-    final targetCfi = widget.initialCfi ?? widget.book.cfi;
-    if (bytes != null && bytes.isNotEmpty) {
-      final base64String = base64Encode(bytes);
-      await _bridge.openBook(base64String, initialCfi: targetCfi);
-    } else if (targetCfi != null) {
-      await _bridge.goToHref(targetCfi);
+    if (bytes == null || bytes.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _engineError = 'Book file could not be found at path: ${widget.book.filePath ?? 'internal storage'}';
+        });
+      }
+      return;
     }
+    final targetCfi = widget.initialCfi ?? widget.book.cfi;
+    final base64String = base64Encode(bytes);
+    await _bridge.openBook(base64String, initialCfi: targetCfi);
     final annotations =
         await StorageService.instance.getAnnotations(widget.book.hash);
     final bookmarks =
@@ -661,7 +806,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
         onPageNumberSourceChanged: (source) {
           _applySettings(_settings.copyWith(pageNumberSource: source));
         },
-        onChapterSelected: (href) => _bridge.goToHref(href),
+        onChapterSelected: (href) => _navigateToHref(href),
         onDeleteBookmark: (b) async {
           await StorageService.instance.deleteBookmark(widget.book.hash, b.cfi);
           _checkBookmarkStatus();
@@ -995,26 +1140,28 @@ class _ReaderScreenState extends State<ReaderScreen> {
     final readerStack = Stack(
       fit: StackFit.expand,
       children: [
-        // Underlying Foliate WebView with Page-Turn Animation & Gesture Overlay
+        // Underlying Reader View: Native pure-Dart fallback on desktop or Foliate WebView
         Positioned.fill(
-          child: PageCurlOverlay(
-            enabled: true,
-            settings: _settings,
-            backgroundColor: readerBg,
-            textColor: readerFg,
-            onNextPage: () {
-              _resetInactivityTimer();
-              _bridge.goNext();
-            },
-            onPrevPage: () {
-              _resetInactivityTimer();
-              _bridge.goPrev();
-            },
-            onToggleHUD: () {
-              _toggleControls();
-            },
-            child: ReaderWebView(bridge: _bridge),
-          ),
+          child: _isFallbackMode
+              ? _buildFallbackReaderBody(readerBg, readerFg, themeAccent)
+              : PageCurlOverlay(
+                  enabled: true,
+                  settings: _settings,
+                  backgroundColor: readerBg,
+                  textColor: readerFg,
+                  onNextPage: () {
+                    _resetInactivityTimer();
+                    _goNext();
+                  },
+                  onPrevPage: () {
+                    _resetInactivityTimer();
+                    _goPrev();
+                  },
+                  onToggleHUD: () {
+                    _toggleControls();
+                  },
+                  child: ReaderWebView(bridge: _bridge),
+                ),
         ),
 
         // Desktop Reader Header Controls (when isWide && _showControls && !_isSearchActive)
@@ -1212,11 +1359,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
               },
               onPrevPage: () {
                 _resetInactivityTimer();
-                _bridge.goPrev();
+                _goPrev();
               },
               onNextPage: () {
                 _resetInactivityTimer();
-                _bridge.goNext();
+                _goNext();
               },
             ),
 
@@ -1313,8 +1460,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
               ),
             ),
 
+          // Engine Error View
+          if (_engineError != null)
+            _buildEngineErrorView(colors, readerBg, readerFg, themeAccent),
+
           // Full-screen Loading Overlay
-          if (!_isReady)
+          if (!_isReady && _engineError == null)
             Container(
               color: readerBg,
               child: Center(
@@ -1352,7 +1503,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 currentLocation: _currentLocation,
                 onChapterSelected: (href) {
                   _resetInactivityTimer();
-                  _bridge.goToHref(href);
+                  _navigateToHref(href);
                 },
                 searchSectionsNotifier: _searchSectionsNotifier,
                 isSearchingNotifier: _isSearchingNotifier,
@@ -1397,14 +1548,14 @@ class _ReaderScreenState extends State<ReaderScreen> {
           PageForwardIntent: CallbackAction<PageForwardIntent>(
             onInvoke: (_) {
               _resetInactivityTimer();
-              _bridge.goNext();
+              _goNext();
               return null;
             },
           ),
           PageBackwardIntent: CallbackAction<PageBackwardIntent>(
             onInvoke: (_) {
               _resetInactivityTimer();
-              _bridge.goPrev();
+              _goPrev();
               return null;
             },
           ),
@@ -1466,6 +1617,268 @@ class _ReaderScreenState extends State<ReaderScreen> {
           child: Scaffold(
             backgroundColor: readerBg,
             body: body,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFallbackReaderBody(
+    Color readerBg,
+    Color readerFg,
+    Color themeAccent,
+  ) {
+    if (_fallbackChapters.isEmpty) {
+      return Center(
+        child: Text(
+          'No readable text found in this book.',
+          style: TextStyle(color: readerFg),
+        ),
+      );
+    }
+
+    final currentChapter = _fallbackChapters[_fallbackChapterIndex];
+    final fontFamily = _settings.fontFamily;
+    final fontSize = _settings.fontSize;
+    final lineHeight = _settings.lineHeight;
+
+    TextAlign align;
+    switch (_settings.textAlign.toLowerCase()) {
+      case 'left':
+        align = TextAlign.left;
+        break;
+      case 'center':
+        align = TextAlign.center;
+        break;
+      case 'right':
+        align = TextAlign.right;
+        break;
+      case 'justify':
+      default:
+        align = TextAlign.justify;
+        break;
+    }
+
+    final horizontalPadding = (_settings.margin * 300.0).clamp(20.0, 120.0);
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _toggleControls,
+      child: Container(
+        color: readerBg,
+        child: SafeArea(
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        currentChapter.title,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: readerFg.withValues(alpha: 0.6),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: themeAccent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'Desktop Native Reader',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: themeAccent,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: _fallbackScrollController,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontalPadding,
+                    vertical: 24.0,
+                  ),
+                  child: SelectionArea(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          currentChapter.title,
+                          style: TextStyle(
+                            fontFamily: fontFamily,
+                            fontSize: fontSize * 1.35,
+                            fontWeight: FontWeight.bold,
+                            color: readerFg,
+                            height: 1.3,
+                          ),
+                          textAlign: align,
+                        ),
+                        const SizedBox(height: 24),
+                        ...currentChapter.paragraphs.map(
+                          (paragraph) => Padding(
+                            padding: const EdgeInsets.only(bottom: 16.0),
+                            child: Text(
+                              paragraph,
+                              textAlign: align,
+                              style: TextStyle(
+                                fontFamily: fontFamily,
+                                fontSize: fontSize,
+                                height: lineHeight,
+                                color: readerFg,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 48),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            TextButton.icon(
+                              onPressed: _fallbackChapterIndex > 0
+                                  ? _fallbackPrevChapter
+                                  : null,
+                              icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                              label: const Text('Previous Chapter'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: themeAccent,
+                                disabledForegroundColor:
+                                    readerFg.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            Text(
+                              '${_fallbackChapterIndex + 1} of ${_fallbackChapters.length}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: readerFg.withValues(alpha: 0.7),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: _fallbackChapterIndex <
+                                      _fallbackChapters.length - 1
+                                  ? _fallbackNextChapter
+                                  : null,
+                              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                              label: const Text('Next Chapter'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: themeAccent,
+                                disabledForegroundColor:
+                                    readerFg.withValues(alpha: 0.3),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEngineErrorView(
+    FoliateThemeColors colors,
+    Color readerBg,
+    Color readerFg,
+    Color themeAccent,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      color: readerBg,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Card(
+              color: scheme.surface,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: scheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: scheme.error.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.error_outline_rounded,
+                        color: scheme.error,
+                        size: 30,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Unable to Open Book',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _engineError ?? 'Unknown reader error.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: scheme.onSurfaceVariant,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('Close'),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.tonal(
+                          onPressed: () {
+                            setState(() {
+                              _engineError = null;
+                              _isReady = false;
+                            });
+                            _startWatchdogTimer();
+                            _loadBook();
+                          },
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),

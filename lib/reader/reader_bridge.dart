@@ -40,6 +40,7 @@ class ReaderBridge {
   OnReaderErrorCallback? onError;
 
   bool get isReady => _isWebViewReady;
+  bool get hasActiveController => _controller != null;
 
   /// Attach the WebViewController to this bridge
   void attachController(WebViewController controller) {
