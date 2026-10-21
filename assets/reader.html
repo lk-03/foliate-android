@@ -6047,6 +6047,12 @@ ${doc.querySelector("parsererror").innerText}`);
         * {
           -webkit-touch-callout: none !important;
         }
+        .foliate-tts-active, p.foliate-tts-active, div.foliate-tts-active, li.foliate-tts-active, blockquote.foliate-tts-active, h1.foliate-tts-active, h2.foliate-tts-active, h3.foliate-tts-active, h4.foliate-tts-active, h5.foliate-tts-active, h6.foliate-tts-active {
+          background-color: rgba(229, 165, 10, 0.35) !important;
+          border-radius: 4px !important;
+          outline: 2px solid rgba(229, 165, 10, 0.5) !important;
+          transition: background-color 0.2s ease !important;
+        }
         ${animCss}
       `;
 
@@ -6157,17 +6163,34 @@ ${doc.querySelector("parsererror").innerText}`);
       }
     };
 
+    let ttsElements = [];
+
     window.getChapterText = () => {
       if (!view || !view.renderer) return;
       try {
         const contents = view.renderer.getContents();
         const doc = contents[0]?.doc;
         if (doc && doc.body) {
-          const text = doc.body.innerText || doc.body.textContent || '';
-          const paragraphs = text
-            .split(/\n\s*\n|\n/)
-            .map((p) => p.trim())
-            .filter((p) => p.length > 0);
+          ttsElements = [];
+          const paragraphs = [];
+          const nodes = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, blockquote, li');
+          if (nodes && nodes.length > 0) {
+            nodes.forEach((node) => {
+              const text = (node.innerText || node.textContent || '').trim();
+              if (text.length > 0) {
+                ttsElements.push(node);
+                paragraphs.push(text);
+              }
+            });
+          }
+          if (paragraphs.length === 0) {
+            const rawText = doc.body.innerText || doc.body.textContent || '';
+            const rawLines = rawText
+              .split(/\n\s*\n|\n/)
+              .map((p) => p.trim())
+              .filter((p) => p.length > 0);
+            paragraphs.push(...rawLines);
+          }
 
           window.ReactNativeWebView.postMessage(JSON.stringify({
             type: 'TTS_TEXT',
@@ -6177,6 +6200,33 @@ ${doc.querySelector("parsererror").innerText}`);
       } catch (e) {
         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ERROR', payload: e.message }));
       }
+    };
+
+    window.highlightTtsParagraph = (index) => {
+      try {
+        window.clearTtsHighlight();
+        if (ttsElements && ttsElements[index]) {
+          const el = ttsElements[index];
+          el.classList.add('foliate-tts-active');
+          if (el.scrollIntoView) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+          }
+        }
+      } catch (e) {}
+    };
+
+    window.clearTtsHighlight = () => {
+      try {
+        const contents = view?.renderer?.getContents?.() || [];
+        for (const item of contents) {
+          const doc = item?.doc;
+          if (doc) {
+            doc.querySelectorAll('.foliate-tts-active').forEach((el) => {
+              el.classList.remove('foliate-tts-active');
+            });
+          }
+        }
+      } catch (e) {}
     };
 
     // Suppress native context menus on long-press

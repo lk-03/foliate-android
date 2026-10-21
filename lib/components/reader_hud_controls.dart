@@ -1217,6 +1217,7 @@ class FloatingReaderMenu extends StatefulWidget {
   final ValueChanged<double>? onBrightnessChanged;
   final bool isStayAwake;
   final VoidCallback? onToggleStayAwake;
+  final VoidCallback? onStartTTS;
 
   const FloatingReaderMenu({
     super.key,
@@ -1229,6 +1230,7 @@ class FloatingReaderMenu extends StatefulWidget {
     this.onOpenAppearance,
     this.onOpenLayout,
     this.onOpenThemeCustomize,
+    this.onStartTTS,
     required this.isOrientationLocked,
     required this.onToggleOrientation,
     this.currentTheme = ReaderThemeMode.defaultTheme,
@@ -1385,6 +1387,14 @@ class _FloatingReaderMenuState extends State<FloatingReaderMenu> {
                                   colors: colors,
                                   activeColor: activeColor,
                                 ),
+                                if (widget.onStartTTS != null)
+                                  _buildActionButton(
+                                    icon: Icons.headphones_rounded,
+                                    label: 'Listen',
+                                    onTap: widget.onStartTTS!,
+                                    colors: colors,
+                                    activeColor: activeColor,
+                                  ),
                                 _buildActionButton(
                                   icon: Icons.auto_stories_rounded,
                                   label: 'Layout',

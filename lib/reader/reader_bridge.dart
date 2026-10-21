@@ -267,6 +267,16 @@ class ReaderBridge {
     await _controller?.runJavaScript('window.getChapterText();');
   }
 
+  /// Highlights a specific paragraph in the active chapter for TTS narration
+  Future<void> highlightTtsParagraph(int index) async {
+    await _controller?.runJavaScript('if (window.highlightTtsParagraph) window.highlightTtsParagraph($index);');
+  }
+
+  /// Clears any active TTS paragraph highlight from the reader DOM
+  Future<void> clearTtsHighlight() async {
+    await _controller?.runJavaScript('if (window.clearTtsHighlight) window.clearTtsHighlight();');
+  }
+
   /// Probes the WebView to check if it's already booted
   Future<void> checkReady() async {
     await _controller?.runJavaScript('if (window.checkReady) window.checkReady();');

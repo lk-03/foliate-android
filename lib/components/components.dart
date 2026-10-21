@@ -12,5 +12,6 @@ export 'curated_book_card.dart';
 export 'reading_insights_card.dart';
 export 'book_completion_sheet.dart';
 export 'yearly_books_read_section.dart';
+export 'tts_floating_bar.dart';
 
 

@@ -57,10 +57,15 @@ class _ReaderScreenState extends State<ReaderScreen> {
   Timer? _readingHeartbeatTimer;
   bool _hasShownCompletionCeremony = false;
 
+  // TTS State (Phase 4)
+  final TtsService _ttsService = TtsService();
+  bool _isTtsActive = false;
+
   @override
   void initState() {
     super.initState();
     _setupBridgeListeners();
+    _setupTtsListeners();
     _resetInactivityTimer();
     _loadInitialSettings();
     _startReadingTrackerTimer();
@@ -133,6 +138,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   @override
   void dispose() {
+    _ttsService.dispose();
+    _bridge.clearTtsHighlight();
     _readingHeartbeatTimer?.cancel();
     _flushReadingTime();
     _hideControlsTimer?.cancel();
@@ -142,6 +149,49 @@ class _ReaderScreenState extends State<ReaderScreen> {
     SystemChrome.setPreferredOrientations([]);
     ScreenAwakeService.instance.setKeepScreenOn(false);
     super.dispose();
+  }
+
+  void _setupTtsListeners() {
+    _ttsService.onParagraphChanged = (index, text) {
+      if (mounted) {
+        setState(() {});
+        _bridge.highlightTtsParagraph(index);
+      }
+    };
+
+    _ttsService.onStateChanged = (state) {
+      if (mounted) setState(() {});
+    };
+
+    _ttsService.onChapterFinished = () {
+      if (mounted && _isTtsActive) {
+        _bridge.goNext().then((_) {
+          Future.delayed(const Duration(milliseconds: 600), () {
+            if (mounted && _isTtsActive) {
+              _bridge.getChapterText();
+            }
+          });
+        });
+      }
+    };
+  }
+
+  void _startTts() {
+    setState(() {
+      _isTtsActive = true;
+      _showControls = false;
+    });
+    _bridge.getChapterText();
+  }
+
+  void _stopTts() {
+    _ttsService.stop();
+    _bridge.clearTtsHighlight();
+    if (mounted) {
+      setState(() {
+        _isTtsActive = false;
+      });
+    }
   }
 
   void _resetInactivityTimer() {
@@ -243,6 +293,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
     _bridge.onAnnotationClicked = (cfi) {
       if (mounted) {
         _showAnnotationEditSheet(cfi);
+      }
+    };
+
+    _bridge.onTTSText = (paragraphs) {
+      if (mounted && _isTtsActive) {
+        _ttsService.startNarration(paragraphs: paragraphs);
       }
     };
 
@@ -600,6 +656,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 Navigator.of(ctx).pop();
                 _showSearchSheet();
               },
+              onStartTTS: () {
+                Navigator.of(ctx).pop();
+                _startTts();
+              },
               onOpenLayout: () {
                 Navigator.of(ctx).pop();
                 _showLayoutSheet();
@@ -914,7 +974,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
             ),
 
           // Minimal Reading Page Number (Bottom Center when controls are hidden - Reference Image 1)
-          if (!_showControls && !_isSearchActive)
+          if (!_showControls && !_isSearchActive && !_isTtsActive)
             Positioned(
               bottom: 12 + MediaQuery.of(context).padding.bottom,
               left: 0,
@@ -975,7 +1035,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
             ),
 
           // Bottom Center Page Metric (when controls are visible - Reference Image 2: "74 of 709")
-          if (_showControls && !_isSearchActive)
+          if (_showControls && !_isSearchActive && !_isTtsActive)
             Positioned(
               bottom: 16 + MediaQuery.of(context).padding.bottom,
               left: 64,
@@ -999,7 +1059,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
             ),
 
           // Floating Bottom Page Scrubber Slider (when enabled in settings)
-          if (_showControls && !_isSearchActive && _settings.showPageSlider)
+          if (_showControls && !_isSearchActive && _settings.showPageSlider && !_isTtsActive)
             ReaderPageSliderBar(
               progressPercentage: (_currentLocation?.percentage ?? widget.book.percentage),
               location: _currentLocation,
@@ -1020,13 +1080,41 @@ class _ReaderScreenState extends State<ReaderScreen> {
             ),
 
           // Floating Action Capsule (Bottom Right)
-          if (_showControls && !_isSearchActive && _selectedText == null)
+          if (_showControls && !_isSearchActive && _selectedText == null && !_isTtsActive)
             Positioned(
               bottom: 12 + MediaQuery.of(context).padding.bottom,
               right: 18,
               child: FloatingReaderCapsule(
                 accentColor: themeAccent,
                 onTap: _showReaderMenuSheet,
+              ),
+            ),
+
+          // Floating Audio Control Bar (TTS Narration)
+          if (_isTtsActive)
+            Positioned(
+              bottom: 12 + MediaQuery.of(context).padding.bottom,
+              left: 12,
+              right: 12,
+              child: TtsFloatingBar(
+                state: _ttsService.state,
+                currentIndex: _ttsService.currentIndex,
+                totalParagraphs: _ttsService.totalParagraphs,
+                speechRate: _ttsService.speechRate,
+                chapterTitle: _currentLocation?.sectionTitle,
+                accentColor: themeAccent,
+                isDarkMode: _settings.isDarkMode,
+                onPlayPause: () {
+                  if (_ttsService.isPlaying) {
+                    _ttsService.pause();
+                  } else {
+                    _ttsService.play();
+                  }
+                },
+                onPrevious: () => _ttsService.previousParagraph(),
+                onNext: () => _ttsService.nextParagraph(),
+                onCycleSpeed: () => _ttsService.cycleSpeechRate(),
+                onClose: _stopTts,
               ),
             ),
 
