@@ -14,6 +14,7 @@ class StorageService {
   static const String _firstLaunchPrefKey = 'foliate_first_launch_done';
   static const String _readingHabitsPrefKey = 'foliate_reading_habits';
   static const String _accountCreationYearPrefKey = 'foliate_account_creation_year';
+  static const String _customCatalogsPrefKey = 'foliate_custom_catalogs';
 
   static StorageService? _instance;
   static StorageService get instance => _instance ??= StorageService._();
@@ -522,6 +523,45 @@ class StorageService {
     final updated = current.copyWith(yearlyGoalBooks: targetBooks);
     await saveReadingHabits(updated);
     return updated;
+  }
+
+  /// Loads custom user-added OPDS catalogs from SharedPreferences.
+  Future<List<Catalog>> getCustomCatalogs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rawList = prefs.getStringList(_customCatalogsPrefKey) ?? [];
+    return rawList
+        .map((str) {
+          try {
+            return Catalog.fromJson(jsonDecode(str) as Map<String, dynamic>);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<Catalog>()
+        .toList();
+  }
+
+  /// Saves a custom OPDS catalog to SharedPreferences.
+  Future<void> saveCustomCatalog(Catalog catalog) async {
+    final prefs = await SharedPreferences.getInstance();
+    final current = await getCustomCatalogs();
+    final index = current.indexWhere((c) => c.id == catalog.id);
+    if (index >= 0) {
+      current[index] = catalog;
+    } else {
+      current.add(catalog);
+    }
+    final rawList = current.map((c) => jsonEncode(c.toJson())).toList();
+    await prefs.setStringList(_customCatalogsPrefKey, rawList);
+  }
+
+  /// Removes a custom OPDS catalog from SharedPreferences by its ID.
+  Future<void> removeCustomCatalog(String catalogId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final current = await getCustomCatalogs();
+    current.removeWhere((c) => c.id == catalogId);
+    final rawList = current.map((c) => jsonEncode(c.toJson())).toList();
+    await prefs.setStringList(_customCatalogsPrefKey, rawList);
   }
 }
 

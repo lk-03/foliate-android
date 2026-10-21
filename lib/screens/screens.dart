@@ -5,3 +5,4 @@ export 'library_screen.dart';
 export 'main_shell.dart';
 export 'open_libraries_screen.dart';
 export 'reader_screen.dart';
+export 'catalog_browser_screen.dart';

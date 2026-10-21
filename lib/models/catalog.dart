@@ -32,7 +32,7 @@ class Catalog {
       id: 'standard_ebooks',
       name: 'Standard Ebooks',
       description: 'Free, beautifully typeset editions of public domain books',
-      url: 'https://standardebooks.org/opds/all-books',
+      url: 'https://standardebooks.org/feeds/atom/new-releases',
       tag: 'Typeset Classics',
     ),
     Catalog(

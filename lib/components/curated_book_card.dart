@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/curated_book.dart';
+import '../screens/catalog_browser_screen.dart';
 import '../theme/theme.dart';
 
 /// Card component for Open Library Gems and Explore Horizons sections.
@@ -248,6 +249,38 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
                               ),
                             );
                           }
+                        },
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Find & Download on Open Library
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: primaryAccent,
+                          side: BorderSide(color: primaryAccent.withValues(alpha: 0.5)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                        icon: const Icon(Icons.public_rounded, size: 18),
+                        label: const Text(
+                          'Find on Open Library',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => CatalogBrowserScreen(
+                                openLibraryQuery: widget.book.title,
+                              ),
+                            ),
+                          );
                         },
                       ),
                     ),

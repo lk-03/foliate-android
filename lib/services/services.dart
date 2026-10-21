@@ -5,3 +5,5 @@ export 'storage_permission_service.dart';
 export 'screen_awake_service.dart';
 export 'dictionary_service.dart';
 export 'tts_service.dart';
+export 'opds_service.dart';
+export 'download_service.dart';

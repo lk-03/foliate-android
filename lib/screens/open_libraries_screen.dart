@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
+import '../services/services.dart';
 import '../theme/theme.dart';
+import 'catalog_browser_screen.dart';
 
 /// Dedicated Open Libraries & OPDS Catalogs Screen
 class OpenLibrariesScreen extends StatefulWidget {
@@ -24,11 +26,26 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
   void initState() {
     super.initState();
     _catalogs = List<Catalog>.from(widget.catalogs ?? Catalog.defaultCatalogs);
+    if (widget.catalogs == null) {
+      _loadCustomCatalogs();
+    }
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text.trim().toLowerCase();
       });
     });
+  }
+
+  Future<void> _loadCustomCatalogs() async {
+    final custom = await StorageService.instance.getCustomCatalogs();
+    if (mounted) {
+      setState(() {
+        _catalogs = [
+          ...Catalog.defaultCatalogs,
+          ...custom,
+        ];
+      });
+    }
   }
 
   @override
@@ -120,24 +137,30 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            onPressed: () {
+            onPressed: () async {
               final name = nameController.text.trim();
               final url = urlController.text.trim();
               if (name.isNotEmpty && url.isNotEmpty) {
-                setState(() {
-                  _catalogs.add(Catalog(
-                    id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
-                    name: name,
-                    description: 'Custom OPDS catalog feed',
-                    url: url,
-                    tag: 'Custom OPDS',
-                    isCustom: true,
-                  ));
-                });
-                Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Added catalog "$name"')),
+                final nav = Navigator.of(ctx);
+                final messenger = ScaffoldMessenger.of(context);
+                final newCatalog = Catalog(
+                  id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+                  name: name,
+                  description: 'Custom OPDS catalog feed',
+                  url: url,
+                  tag: 'Custom OPDS',
+                  isCustom: true,
                 );
+                await StorageService.instance.saveCustomCatalog(newCatalog);
+                if (mounted) {
+                  setState(() {
+                    _catalogs.add(newCatalog);
+                  });
+                  nav.pop();
+                  messenger.showSnackBar(
+                    SnackBar(content: Text('Added catalog "$name"')),
+                  );
+                }
               }
             },
             child: const Text('Add Catalog'),
@@ -247,11 +270,15 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
                     IconButton(
                       icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
                       tooltip: 'Remove catalog',
-                      onPressed: () {
-                        setState(() {
-                          _catalogs.removeWhere((c) => c.id == catalog.id);
-                        });
-                        Navigator.of(ctx).pop();
+                      onPressed: () async {
+                        final nav = Navigator.of(ctx);
+                        await StorageService.instance.removeCustomCatalog(catalog.id);
+                        if (mounted) {
+                          setState(() {
+                            _catalogs.removeWhere((c) => c.id == catalog.id);
+                          });
+                          nav.pop();
+                        }
                       },
                     ),
                     const SizedBox(width: 8),
@@ -264,16 +291,14 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      icon: const Icon(Icons.search_rounded, size: 18),
+                      icon: const Icon(Icons.auto_stories_rounded, size: 18),
                       label: const Text(
                         'Browse Catalog',
                         style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                       onPressed: () {
                         Navigator.of(ctx).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Browsing ${catalog.name} via OPDS...')),
-                        );
+                        _browseCatalog(catalog);
                       },
                     ),
                   ),
@@ -282,6 +307,22 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _browseCatalog(Catalog catalog) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => CatalogBrowserScreen(catalog: catalog),
+      ),
+    );
+  }
+
+  void _searchOpenLibrary(String query) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => CatalogBrowserScreen(openLibraryQuery: query),
       ),
     );
   }
@@ -347,6 +388,62 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
                       ),
                     ),
                   ),
+                  if (_searchQuery.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: primaryAccent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: primaryAccent.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => _searchOpenLibrary(_searchQuery),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: primaryAccent.withValues(alpha: 0.2),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(Icons.public_rounded, color: primaryAccent, size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Search Open Library for "$_searchQuery"',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          color: primaryAccent,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Search millions of public domain books & classics',
+                                        style: TextStyle(fontSize: 11, color: colors.textMuted),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(Icons.chevron_right_rounded, color: primaryAccent, size: 20),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
 
                   // Section Title and Add Action
