@@ -495,107 +495,125 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
           else
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final catalog = _filteredCatalogs[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: colors.surfaceCard,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: colors.border),
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () => _openCatalogDetails(catalog, colors),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: colors.activePill,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: _getCatalogIcon(catalog.id),
-                                  ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                catalog.name,
-                                                style: const TextStyle(
-                                                  fontSize: 15,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 6,
-                                                vertical: 2,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: primaryAccent
-                                                    .withValues(alpha: 0.15),
-                                                borderRadius: BorderRadius.circular(4),
-                                              ),
-                                              child: Text(
-                                                catalog.tag,
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: primaryAccent,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          catalog.description,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: colors.textMuted,
-                                            height: 1.3,
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Icon(
-                                    Icons.chevron_right_rounded,
-                                    color: colors.textMuted,
-                                    size: 20,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
+              sliver: MediaQuery.of(context).size.width >= 850
+                  ? SliverGrid(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisExtent: 110,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
                       ),
-                    );
-                  },
-                  childCount: _filteredCatalogs.length,
-                ),
-              ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => _buildCatalogCard(_filteredCatalogs[index], colors, primaryAccent),
+                        childCount: _filteredCatalogs.length,
+                      ),
+                    )
+                  : SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildCatalogCard(_filteredCatalogs[index], colors, primaryAccent),
+                        ),
+                        childCount: _filteredCatalogs.length,
+                      ),
+                    ),
             ),
         ],
       ),
     );
   }
+
+  Widget _buildCatalogCard(
+    Catalog catalog,
+    FoliateThemeColors colors,
+    Color primaryAccent,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surfaceCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _openCatalogDetails(catalog, colors),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colors.activePill,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: _getCatalogIcon(catalog.id),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              catalog.name,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: primaryAccent.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              catalog.tag,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: primaryAccent,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        catalog.description,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colors.textMuted,
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: colors.textMuted,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
+

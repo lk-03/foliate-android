@@ -343,8 +343,8 @@ class _LibraryScreenState extends State<LibraryScreen>
                   : GridView.builder(
                       physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: (MediaQuery.of(context).size.width / 135).clamp(3, 8).toInt(),
                         childAspectRatio: 0.52,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 16,
