@@ -194,4 +194,184 @@ class EpubService {
     }
     return stack.join('/');
   }
+
+  /// Extracts all readable chapters in spine reading order using pure Dart.
+  static List<EpubChapter> extractChapters(Uint8List bytes) {
+    final chapters = <EpubChapter>[];
+    try {
+      final archive = ZipDecoder().decodeBytes(bytes);
+
+      // 1. Locate package .opf from META-INF/container.xml
+      String? opfPath;
+      final containerFile = _findFileInArchive(archive, 'META-INF/container.xml');
+      if (containerFile != null) {
+        final containerContent =
+            utf8.decode(containerFile.content as List<int>, allowMalformed: true);
+        final containerXml = XmlDocument.parse(containerContent);
+        final rootfile = containerXml.findAllElements('rootfile').firstOrNull;
+        opfPath = rootfile?.getAttribute('full-path');
+      }
+
+      if (opfPath == null || opfPath.isEmpty) {
+        for (final file in archive) {
+          if (file.name.toLowerCase().endsWith('.opf')) {
+            opfPath = file.name;
+            break;
+          }
+        }
+      }
+
+      if (opfPath == null) return chapters;
+
+      final opfFile = _findFileInArchive(archive, opfPath);
+      if (opfFile == null) return chapters;
+
+      final opfContent =
+          utf8.decode(opfFile.content as List<int>, allowMalformed: true);
+      final opfXml = XmlDocument.parse(opfContent);
+      final opfDir = opfPath.contains('/')
+          ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1)
+          : '';
+
+      // 2. Build id -> href map from manifest
+      final manifestMap = <String, String>{};
+      final manifest = opfXml.findAllElements('manifest').firstOrNull;
+      if (manifest != null) {
+        for (final item in manifest.findAllElements('item')) {
+          final id = item.getAttribute('id');
+          final href = item.getAttribute('href');
+          if (id != null && href != null) {
+            manifestMap[id] = href;
+          }
+        }
+      }
+
+      // 3. Follow spine in reading order
+      final spine = opfXml.findAllElements('spine').firstOrNull;
+      if (spine != null) {
+        int chapterIndex = 1;
+        for (final itemref in spine.findAllElements('itemref')) {
+          final idref = itemref.getAttribute('idref');
+          if (idref == null) continue;
+          final href = manifestMap[idref];
+          if (href == null) continue;
+
+          final resolvedPath = _normalizePath(opfDir + Uri.decodeComponent(href));
+          final chapterFile = _findFileInArchive(archive, resolvedPath);
+          if (chapterFile == null) continue;
+
+          final rawHtml =
+              utf8.decode(chapterFile.content as List<int>, allowMalformed: true);
+          final parsed = _parseChapterContent(
+            rawHtml,
+            defaultTitle: 'Chapter $chapterIndex',
+          );
+          if (parsed.paragraphs.isNotEmpty) {
+            chapters.add(EpubChapter(
+              id: idref,
+              title: parsed.title,
+              href: href,
+              paragraphs: parsed.paragraphs,
+            ));
+            chapterIndex++;
+          }
+        }
+      }
+    } catch (_) {
+      // Fallback on parsing exceptions gracefully
+    }
+    return chapters;
+  }
+
+  static ({String title, List<String> paragraphs}) _parseChapterContent(
+    String rawHtml, {
+    required String defaultTitle,
+  }) {
+    String title = defaultTitle;
+    final paragraphs = <String>[];
+
+    try {
+      final doc = XmlDocument.parse(rawHtml);
+      final titleElem = doc.findAllElements('title').firstOrNull;
+      if (titleElem != null && titleElem.innerText.trim().isNotEmpty) {
+        title = titleElem.innerText.trim();
+      } else {
+        final heading = doc.findAllElements('h1').firstOrNull ??
+            doc.findAllElements('h2').firstOrNull ??
+            doc.findAllElements('h3').firstOrNull;
+        if (heading != null && heading.innerText.trim().isNotEmpty) {
+          title = heading.innerText.trim();
+        }
+      }
+
+      for (final el in doc.descendants.whereType<XmlElement>()) {
+        final tag = el.name.local.toLowerCase();
+        if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'li']
+            .contains(tag)) {
+          final text = el.innerText.trim();
+          if (text.isNotEmpty && !paragraphs.contains(text)) {
+            paragraphs.add(text);
+          }
+        }
+      }
+    } catch (_) {
+      final cleaned = rawHtml
+          .replaceAll(
+            RegExp(
+              r'<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>',
+              caseSensitive: false,
+            ),
+            '',
+          )
+          .replaceAll(
+            RegExp(
+              r'<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>',
+              caseSensitive: false,
+            ),
+            '',
+          );
+      final pMatches = RegExp(
+        r'<(?:p|h[1-6]|li|blockquote)[^>]*>(.*?)<\/(?:p|h[1-6]|li|blockquote)>',
+        caseSensitive: false,
+        dotAll: true,
+      ).allMatches(cleaned);
+      for (final match in pMatches) {
+        final content = match.group(1);
+        if (content != null) {
+          final text = content.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+          if (text.isNotEmpty && !paragraphs.contains(text)) {
+            paragraphs.add(text);
+          }
+        }
+      }
+      if (paragraphs.isEmpty) {
+        final stripped = cleaned.replaceAll(RegExp(r'<[^>]*>'), ' ').trim();
+        final lines = stripped
+            .split(RegExp(r'\n+'))
+            .map((l) => l.trim())
+            .where((l) => l.isNotEmpty)
+            .toList();
+        paragraphs.addAll(lines);
+      }
+    }
+
+    return (title: title, paragraphs: paragraphs);
+  }
+}
+
+/// Extracted EPUB chapter model for pure Dart reading support
+class EpubChapter {
+  final String id;
+  final String title;
+  final String href;
+  final List<String> paragraphs;
+
+  const EpubChapter({
+    required this.id,
+    required this.title,
+    required this.href,
+    required this.paragraphs,
+  });
+
+  String get plainText => paragraphs.join('\n\n');
 }

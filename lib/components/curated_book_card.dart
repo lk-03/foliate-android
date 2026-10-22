@@ -403,6 +403,138 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
   }) {
     final theme = _getCoverTheme(widget.book);
 
+    if (widget.book.coverUrl != null && widget.book.coverUrl!.isNotEmpty) {
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(isCompact ? 8 : 10),
+          border: Border.all(
+            color: colors.border.withValues(alpha: 0.6),
+            width: 0.8,
+          ),
+          color: colors.inputBackground,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              widget.book.coverUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => _buildFallbackVectorCover(theme, isCompact: isCompact),
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return _buildCoverLoadingPlaceholder(theme, isCompact: isCompact);
+              },
+            ),
+
+            // Left 3D Spine Crease & Shadow
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 7,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.55),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 7,
+              top: 0,
+              bottom: 0,
+              width: 0.8,
+              child: Container(
+                color: Colors.white.withValues(alpha: 0.15),
+              ),
+            ),
+
+            // Subtle dark top vignette for tag pill contrast
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 32,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.45),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Tag Pill Badge in Top Right
+            Positioned(
+              top: 5,
+              right: 5,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.3),
+                    width: 0.5,
+                  ),
+                ),
+                child: Text(
+                  widget.book.tag.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 7.0,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return _buildFallbackVectorCover(theme, isCompact: isCompact);
+  }
+
+  Widget _buildCoverLoadingPlaceholder(_CoverTheme theme, {required bool isCompact}) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: theme.gradient,
+        ),
+      ),
+      child: Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(theme.accent.withValues(alpha: 0.7)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFallbackVectorCover(
+    _CoverTheme theme, {
+    required bool isCompact,
+  }) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -638,9 +770,9 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cover Box (fixed height 140)
+            // Cover Box (fixed height 154 for book aspect ratio)
             SizedBox(
-              height: 140,
+              height: 154,
               width: double.infinity,
               child: _buildCoverArtwork(colors, isCompact: false),
             ),
@@ -765,6 +897,7 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
     final primaryAccent = Theme.of(context).colorScheme.primary;
 
     return Container(
+      width: 160,
       decoration: const BoxDecoration(
         color: Colors.transparent,
       ),
@@ -775,8 +908,10 @@ class _CuratedBookCardState extends State<CuratedBookCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cover Box (Expanded to fill grid space)
-            Expanded(
+            // Cover Box (fixed height 154 to maintain book proportions)
+            SizedBox(
+              height: 154,
+              width: double.infinity,
               child: _buildCoverArtwork(colors, isCompact: true),
             ),
             const SizedBox(height: 8),

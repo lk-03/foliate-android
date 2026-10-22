@@ -4,6 +4,7 @@ import '../components/components.dart';
 import '../models/models.dart';
 import '../services/storage_service.dart';
 import '../theme/theme.dart';
+import 'open_libraries_screen.dart';
 import 'reader_screen.dart';
 
 /// Reinvented Apple Books & Stitch inspired Home Dashboard.
@@ -19,6 +20,7 @@ class HomeScreen extends StatefulWidget {
   final ReadingHabits? readingHabits;
   final int? accountCreationYear;
   final VoidCallback onNavigateToLibrary;
+  final VoidCallback? onNavigateToExplore;
   final VoidCallback? onBooksChanged;
   final ValueChanged<int>? onDailyGoalChanged;
   final ValueChanged<int>? onYearlyGoalChanged;
@@ -29,6 +31,7 @@ class HomeScreen extends StatefulWidget {
     this.readingHabits,
     this.accountCreationYear,
     required this.onNavigateToLibrary,
+    this.onNavigateToExplore,
     this.onBooksChanged,
     this.onDailyGoalChanged,
     this.onYearlyGoalChanged,
@@ -292,24 +295,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
         const SizedBox(height: 14),
 
-        // Curated Horizons Cards Grid (2-Columns)
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.72,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+        // Curated Horizons Horizontal Carousel with "See More" at the end
+        SizedBox(
+          height: 330,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: _getFilteredHorizons().length + 1,
+            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            itemBuilder: (context, idx) {
+              final horizons = _getFilteredHorizons();
+              if (idx < horizons.length) {
+                final book = horizons[idx];
+                return CuratedBookCard(book: book);
+              }
+              return _buildSeeMoreCard(context, colors, primaryAccent);
+            },
           ),
-          itemCount: _getFilteredHorizons().length,
-          itemBuilder: (context, idx) {
-            final book = _getFilteredHorizons()[idx];
-            return CuratedBookCard(
-              book: book,
-              isCompact: true,
-            );
-          },
         ),
 
         const SizedBox(height: 28),
@@ -607,6 +609,116 @@ class _HomeScreenState extends State<HomeScreen> {
           'No books in your library yet. Tap + to import or browse recommendations.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 12, color: colors.textMuted),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSeeMoreCard(
+    BuildContext context,
+    FoliateThemeColors colors,
+    Color primaryAccent,
+  ) {
+    return Container(
+      width: 176,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            if (widget.onNavigateToExplore != null) {
+              widget.onNavigateToExplore!();
+            } else {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const OpenLibrariesScreen(),
+                ),
+              );
+            }
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: colors.surfaceCard.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: colors.border.withValues(alpha: 0.8),
+                width: 1.2,
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: primaryAccent.withValues(alpha: 0.12),
+                    border: Border.all(
+                      color: primaryAccent.withValues(alpha: 0.35),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.explore_rounded,
+                    size: 26,
+                    color: primaryAccent,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'See More',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Browse catalogs and discover new public domain books in Open Libraries.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    height: 1.3,
+                    color: colors.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: primaryAccent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'Explore All',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: primaryAccent,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 13,
+                        color: primaryAccent,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

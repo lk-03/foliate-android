@@ -130,6 +130,7 @@ class _MainShellState extends State<MainShell> {
         books: _books,
         readingHabits: _readingHabits,
         onNavigateToLibrary: () => _navigateToPage(1),
+        onNavigateToExplore: () => _navigateToPage(2),
         onBooksChanged: () async {
           await _reloadBooks();
           await _reloadHabits();
@@ -436,29 +437,32 @@ class _MainShellState extends State<MainShell> {
             // Bottom Theme & Settings Tiles
             Padding(
               padding: const EdgeInsets.all(10),
-              child: Column(
-                children: [
-                  ListTile(
-                    dense: true,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    leading: const Icon(Icons.palette_outlined, size: 20),
-                    title: const Text('Theme', style: TextStyle(fontSize: 13)),
-                    onTap: () => AppThemeSheet.show(context),
-                  ),
-                  ListTile(
-                    dense: true,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    leading: const Icon(Icons.settings_outlined, size: 20),
-                    title: const Text('Settings', style: TextStyle(fontSize: 13)),
-                    onTap: () => SettingsSheet.show(
-                      context,
-                      onRescan: () async {
-                        await _autoScanLinkedFolders();
-                        await _reloadBooks();
-                      },
+              child: Material(
+                color: Colors.transparent,
+                child: Column(
+                  children: [
+                    ListTile(
+                      dense: true,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      leading: const Icon(Icons.palette_outlined, size: 20),
+                      title: const Text('Theme', style: TextStyle(fontSize: 13)),
+                      onTap: () => AppThemeSheet.show(context),
                     ),
-                  ),
-                ],
+                    ListTile(
+                      dense: true,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      leading: const Icon(Icons.settings_outlined, size: 20),
+                      title: const Text('Settings', style: TextStyle(fontSize: 13)),
+                      onTap: () => SettingsSheet.show(
+                        context,
+                        onRescan: () async {
+                          await _autoScanLinkedFolders();
+                          await _reloadBooks();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

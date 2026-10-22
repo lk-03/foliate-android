@@ -27,7 +27,12 @@ class StorageService {
 
   Future<Directory> get booksDirectory async {
     if (_booksDir != null) return _booksDir!;
-    _appDocDir ??= await getApplicationDocumentsDirectory();
+    try {
+      _appDocDir ??= await getApplicationDocumentsDirectory()
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {
+      _appDocDir = Directory.systemTemp;
+    }
     _booksDir = Directory('${_appDocDir!.path}/books');
     if (!_booksDir!.existsSync()) {
       _booksDir!.createSync(recursive: true);
@@ -37,7 +42,12 @@ class StorageService {
 
   Future<Directory> get coversDirectory async {
     if (_coversDir != null) return _coversDir!;
-    _appDocDir ??= await getApplicationDocumentsDirectory();
+    try {
+      _appDocDir ??= await getApplicationDocumentsDirectory()
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {
+      _appDocDir = Directory.systemTemp;
+    }
     _coversDir = Directory('${_appDocDir!.path}/covers');
     if (!_coversDir!.existsSync()) {
       _coversDir!.createSync(recursive: true);
@@ -190,16 +200,18 @@ class StorageService {
     if (book.filePath != null) {
       final file = File(book.filePath!);
       if (file.existsSync()) {
-        return await file.readAsBytes();
+        return file.readAsBytesSync();
       }
     }
 
     // 2. Try internal books directory
-    final bDir = await booksDirectory;
-    final fallbackFile = File('${bDir.path}/${book.hash}.epub');
-    if (fallbackFile.existsSync()) {
-      return await fallbackFile.readAsBytes();
-    }
+    try {
+      final bDir = await booksDirectory;
+      final fallbackFile = File('${bDir.path}/${book.hash}.epub');
+      if (fallbackFile.existsSync()) {
+        return fallbackFile.readAsBytesSync();
+      }
+    } catch (_) {}
 
     return null;
   }

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -20,8 +21,9 @@ class ReaderWebView extends StatefulWidget {
 }
 
 class _ReaderWebViewState extends State<ReaderWebView> {
-  late final WebViewController _controller;
+  WebViewController? _controller;
   bool _isLoading = true;
+  bool _isPlatformSupported = true;
 
   @override
   void initState() {
@@ -30,34 +32,51 @@ class _ReaderWebViewState extends State<ReaderWebView> {
   }
 
   void _initController() {
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.transparent)
-      ..addJavaScriptChannel(
-        'FoliateChannel',
-        onMessageReceived: (JavaScriptMessage message) {
-          widget.bridge.handleMessage(message.message);
-        },
-      )
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageFinished: (String url) {
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-              });
-            }
-            widget.bridge.checkReady();
-          },
-          onWebResourceError: (WebResourceError error) {
-            debugPrint('ReaderWebView Resource Error: ${error.description}');
-          },
-        ),
+    if (WebViewPlatform.instance == null) {
+      _isPlatformSupported = false;
+      _isLoading = false;
+      widget.bridge.onError?.call(
+        'WebView is not available on this platform (${Platform.operatingSystem}).',
       );
+      return;
+    }
 
-    widget.bridge.attachController(_controller);
-    _controller.loadFlutterAsset('assets/reader.html');
-    widget.onWebViewCreated?.call();
+    try {
+      final controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(Colors.transparent)
+        ..addJavaScriptChannel(
+          'FoliateChannel',
+          onMessageReceived: (JavaScriptMessage message) {
+            widget.bridge.handleMessage(message.message);
+          },
+        )
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onPageFinished: (String url) {
+              if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                });
+              }
+              widget.bridge.checkReady();
+            },
+            onWebResourceError: (WebResourceError error) {
+              debugPrint('ReaderWebView Resource Error: ${error.description}');
+            },
+          ),
+        );
+
+      _controller = controller;
+      widget.bridge.attachController(controller);
+      controller.loadFlutterAsset('assets/reader.html');
+      widget.onWebViewCreated?.call();
+    } catch (e) {
+      _isPlatformSupported = false;
+      _isLoading = false;
+      debugPrint('ReaderWebView initialization error: $e');
+      widget.bridge.onError?.call('WebView failed to initialize: $e');
+    }
   }
 
   @override
@@ -68,12 +87,16 @@ class _ReaderWebViewState extends State<ReaderWebView> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isPlatformSupported || _controller == null) {
+      return const SizedBox.shrink();
+    }
+
     return SizedBox.expand(
       child: Stack(
         fit: StackFit.expand,
         children: [
           WebViewWidget(
-            controller: _controller,
+            controller: _controller!,
             gestureRecognizers: {
               Factory<OneSequenceGestureRecognizer>(
                 () => EagerGestureRecognizer(),

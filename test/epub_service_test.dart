@@ -29,4 +29,26 @@ void main() {
     expect(hash1, equals(hash2));
     expect(hash1.length, 64);
   });
+
+  test('EpubService.extractChapters extracts chapters and paragraphs from dummy.epub', () async {
+    final file = File('assets/dummy.epub');
+    expect(file.existsSync(), isTrue);
+
+    final bytes = await file.readAsBytes();
+    final chapters = EpubService.extractChapters(bytes);
+
+    expect(chapters, isNotEmpty);
+    expect(chapters.first.title, isNotEmpty);
+    expect(chapters.first.paragraphs, isNotEmpty);
+    expect(chapters.first.plainText, isNotEmpty);
+    expect(chapters.first.id, isNotEmpty);
+  });
+
+  test('EpubService.extractChapters handles corrupted or empty bytes gracefully', () {
+    final emptyChapters = EpubService.extractChapters(Uint8List(0));
+    expect(emptyChapters, isEmpty);
+
+    final invalidChapters = EpubService.extractChapters(Uint8List.fromList([0, 1, 2, 3, 4]));
+    expect(invalidChapters, isEmpty);
+  });
 }
