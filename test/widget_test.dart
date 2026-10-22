@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:foliate/main.dart';
@@ -6,12 +7,21 @@ import 'package:foliate/models/models.dart';
 import 'package:foliate/components/components.dart';
 import 'package:foliate/screens/annotations_screen.dart';
 import 'package:foliate/screens/home_screen.dart';
+import 'package:foliate/services/services.dart';
 import 'package:foliate/theme/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({
+      'foliate_first_launch_done': true,
+    });
+    StorageService.instance.setAppDocDirForTesting(Directory.systemTemp);
+  });
+
   testWidgets('FoliateApp mobile navigation smoke test', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({
+      'foliate_first_launch_done': true,
       'foliate_library_books': [
         jsonEncode(const Book(
           hash: 'test-hash-1',

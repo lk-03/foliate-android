@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../components/components.dart';
 import '../models/models.dart';
 import '../services/storage_service.dart';
@@ -31,8 +30,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  static const String _userNameKey = 'foliate_profile_user_name';
-  String _userName = 'Elena Vance';
+  String _userName = 'Reader';
   int _accountCreationYear = 2024;
   bool _isRescanning = false;
 
@@ -43,22 +41,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadProfileData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getString(_userNameKey);
+    final name = await StorageService.instance.getUserName();
     final year = await StorageService.instance.getAccountCreationYear();
     if (mounted) {
       setState(() {
-        if (saved != null && saved.isNotEmpty) {
-          _userName = saved;
-        }
+        _userName = name;
         _accountCreationYear = year;
       });
     }
   }
 
   Future<void> _saveUserName(String newName) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_userNameKey, newName);
+    await StorageService.instance.setUserName(newName);
     if (mounted) {
       setState(() => _userName = newName);
     }

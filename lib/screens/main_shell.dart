@@ -45,6 +45,33 @@ class _MainShellState extends State<MainShell> {
     await _reloadAnnotations();
     await _reloadHabits();
     _autoScanLinkedFolders();
+    _checkFirstLaunchOnboarding();
+  }
+
+  Future<void> _checkFirstLaunchOnboarding() async {
+    final isFirst = await StorageService.instance.isFirstLaunch();
+    if (isFirst && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            isDismissible: false,
+            enableDrag: false,
+            backgroundColor: Colors.transparent,
+            builder: (_) => OnboardingWelcomeSheet(
+              onCompleted: () async {
+                await _reloadBooks();
+                await _reloadHabits();
+                if (mounted) {
+                  setState(() {});
+                }
+              },
+            ),
+          );
+        }
+      });
+    }
   }
 
   Future<void> _reloadBooks() async {
