@@ -18,6 +18,7 @@ class StorageService {
   static const String _customCatalogsPrefKey = 'foliate_custom_catalogs';
   static const String _userNamePrefKey = 'foliate_profile_user_name';
   static const String _customDownloadsDirectoryPrefKey = 'foliate_custom_downloads_directory';
+  static const String _downloadHistoryPrefKey = 'foliate_download_history';
 
   static StorageService? _instance;
   static StorageService get instance => _instance ??= StorageService._();
@@ -34,6 +35,12 @@ class StorageService {
     if (dir != null) {
       _booksDir = Directory('${dir.path}/books');
       _coversDir = Directory('${dir.path}/covers');
+      if (!_booksDir!.existsSync()) {
+        _booksDir!.createSync(recursive: true);
+      }
+      if (!_coversDir!.existsSync()) {
+        _coversDir!.createSync(recursive: true);
+      }
     } else {
       _booksDir = null;
       _coversDir = null;
@@ -645,6 +652,55 @@ class StorageService {
       }
     }
     return booksDirectory;
+  }
+
+  /// Loads all tracked download tasks (active and history).
+  Future<List<DownloadTask>> getDownloadTasks() async {
+    final prefs = await SharedPreferences.getInstance();
+    final rawList = prefs.getStringList(_downloadHistoryPrefKey) ?? [];
+    return rawList
+        .map((str) {
+          try {
+            return DownloadTask.fromJson(str);
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<DownloadTask>()
+        .toList();
+  }
+
+  /// Saves a list of download tasks.
+  Future<void> saveDownloadTasks(List<DownloadTask> tasks) async {
+    final prefs = await SharedPreferences.getInstance();
+    final rawList = tasks.map((t) => t.toJson()).toList();
+    await prefs.setStringList(_downloadHistoryPrefKey, rawList);
+  }
+
+  /// Saves or updates a single download task.
+  Future<void> saveDownloadTask(DownloadTask task) async {
+    final current = await getDownloadTasks();
+    final index = current.indexWhere((t) => t.id == task.id);
+    if (index >= 0) {
+      current[index] = task;
+    } else {
+      current.insert(0, task);
+    }
+    await saveDownloadTasks(current);
+  }
+
+  /// Removes a single download task by ID.
+  Future<void> removeDownloadTask(String taskId) async {
+    final current = await getDownloadTasks();
+    current.removeWhere((t) => t.id == taskId);
+    await saveDownloadTasks(current);
+  }
+
+  /// Clears finished or cancelled downloads from history.
+  Future<void> clearFinishedDownloadTasks() async {
+    final current = await getDownloadTasks();
+    current.removeWhere((t) => t.isTerminal);
+    await saveDownloadTasks(current);
   }
 }
 

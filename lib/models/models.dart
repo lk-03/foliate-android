@@ -10,3 +10,4 @@ export 'curated_book.dart';
 export 'reading_habits.dart';
 export 'catalog_book.dart';
 export 'opds_feed.dart';
+export 'download_task.dart';
