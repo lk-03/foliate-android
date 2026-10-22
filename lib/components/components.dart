@@ -18,5 +18,6 @@ export 'onboarding_welcome_sheet.dart';
 export 'download_book_details_sheet.dart';
 export 'download_manager_sheet.dart';
 export 'download_hud_button.dart';
+export 'niche_selector_sheet.dart';
 
 

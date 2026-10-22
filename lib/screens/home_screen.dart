@@ -2,9 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../components/components.dart';
 import '../models/models.dart';
-import '../services/storage_service.dart';
+import '../services/services.dart';
 import '../theme/theme.dart';
-import 'open_libraries_screen.dart';
+import 'catalog_browser_screen.dart';
 import 'reader_screen.dart';
 
 /// Reinvented Apple Books & Stitch inspired Home Dashboard.
@@ -45,18 +45,21 @@ class _HomeScreenState extends State<HomeScreen> {
   String _userName = 'Reader';
   String _selectedGenre = 'All';
   int _accountCreationYear = 2024;
+  List<String> _userNiches = ReadingNiche.defaultNicheIds;
 
   @override
   void initState() {
     super.initState();
     _loadAccountCreationYear();
     _loadUserName();
+    _loadUserNiches();
   }
 
   @override
   void didUpdateWidget(covariant HomeScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     _loadUserName();
+    _loadUserNiches();
   }
 
   Future<void> _loadUserName() async {
@@ -70,6 +73,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final year = await StorageService.instance.getAccountCreationYear();
     if (mounted) {
       setState(() => _accountCreationYear = year);
+    }
+  }
+
+  Future<void> _loadUserNiches() async {
+    final niches = await StorageService.instance.getFavoriteNiches();
+    if (mounted) {
+      setState(() => _userNiches = niches);
     }
   }
 
@@ -95,12 +105,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<CuratedBook> _getFilteredHorizons() {
-    if (_selectedGenre == 'All') {
-      return CuratedBook.exploreHorizons;
-    }
-    return CuratedBook.exploreHorizons
-        .where((b) => b.genre.toLowerCase().contains(_selectedGenre.toLowerCase()))
-        .toList();
+    final recommendations =
+        RecommendationService.instance.getPersonalizedRecommendations(
+      favoriteNiches: _userNiches,
+      localBooks: widget.books,
+      selectedFilter: _selectedGenre,
+    );
+    return recommendations.take(5).toList();
   }
 
   @override
@@ -122,12 +133,14 @@ class _HomeScreenState extends State<HomeScreen> {
     final recentBooks = sortedBooks.take(5).toList();
     final currentBook = recentBooks.isNotEmpty ? recentBooks.first : null;
 
+    final activeNicheLabels = _userNiches.map((id) {
+      final niche = ReadingNiche.findById(id);
+      return niche?.shortLabel ?? id;
+    }).toList();
+
     final genres = [
       'All',
-      'Solarpunk',
-      'Philosophy',
-      'Sci-Fi',
-      'Magical Realism',
+      ...activeNicheLabels,
     ];
 
     return ListView(
@@ -274,6 +287,19 @@ class _HomeScreenState extends State<HomeScreen> {
         _buildSectionHeader(
           title: 'Explore Horizons',
           subtitle: 'Selected genres based on your evolving tastes',
+          actionText: 'Customize',
+          onAction: () async {
+            final updated = await NicheSelectorSheet.show(
+              context,
+              initialSelectedNiches: _userNiches,
+            );
+            if (updated != null && mounted) {
+              setState(() {
+                _userNiches = updated;
+                _selectedGenre = 'All';
+              });
+            }
+          },
           colors: colors,
         ),
         const SizedBox(height: 10),
@@ -283,35 +309,63 @@ class _HomeScreenState extends State<HomeScreen> {
           scrollDirection: Axis.horizontal,
           physics: const BouncingScrollPhysics(),
           child: Row(
-            children: genres.map((g) {
-              final isSelected = _selectedGenre == g;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: FilterChip(
-                  label: Text(g),
-                  selected: isSelected,
-                  showCheckmark: false,
-                  backgroundColor: colors.inputBackground,
-                  selectedColor: primaryAccent.withValues(alpha: 0.18),
-                  side: BorderSide(
-                    color: isSelected
-                        ? primaryAccent
-                        : colors.border.withValues(alpha: 0.4),
-                    width: isSelected ? 1.4 : 1.0,
+            children: [
+              ...genres.map((g) {
+                final isSelected = _selectedGenre == g;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: FilterChip(
+                    label: Text(g),
+                    selected: isSelected,
+                    showCheckmark: false,
+                    backgroundColor: colors.inputBackground,
+                    selectedColor: primaryAccent.withValues(alpha: 0.18),
+                    side: BorderSide(
+                      color: isSelected
+                          ? primaryAccent
+                          : colors.border.withValues(alpha: 0.4),
+                      width: isSelected ? 1.4 : 1.0,
+                    ),
+                    labelStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected ? primaryAccent : colors.textPrimary,
+                    ),
+                    onSelected: (selected) {
+                      setState(() {
+                        _selectedGenre = g;
+                      });
+                    },
                   ),
+                );
+              }),
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: ActionChip(
+                  avatar: Icon(Icons.tune_rounded, size: 14, color: primaryAccent),
+                  label: const Text('Edit Niches'),
+                  backgroundColor: colors.inputBackground,
+                  side: BorderSide(color: colors.border.withValues(alpha: 0.4)),
                   labelStyle: TextStyle(
                     fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected ? primaryAccent : colors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    color: primaryAccent,
                   ),
-                  onSelected: (selected) {
-                    setState(() {
-                      _selectedGenre = g;
-                    });
+                  onPressed: () async {
+                    final updated = await NicheSelectorSheet.show(
+                      context,
+                      initialSelectedNiches: _userNiches,
+                    );
+                    if (updated != null && mounted) {
+                      setState(() {
+                        _userNiches = updated;
+                        _selectedGenre = 'All';
+                      });
+                    }
                   },
                 ),
-              );
-            }).toList(),
+              ),
+            ],
           ),
         ),
 
@@ -651,9 +705,19 @@ class _HomeScreenState extends State<HomeScreen> {
             if (widget.onNavigateToExplore != null) {
               widget.onNavigateToExplore!();
             } else {
+              final niche = ReadingNiche.findByName(_selectedGenre);
+              final openLibraryQuery = niche != null
+                  ? 'subject:${niche.openLibrarySubject}'
+                  : (_selectedGenre != 'All')
+                      ? 'subject:${_selectedGenre.toLowerCase().replaceAll(' ', '_')}'
+                      : null;
+
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => const OpenLibrariesScreen(),
+                  builder: (_) => CatalogBrowserScreen(
+                    title: niche != null ? '${niche.shortLabel} Books' : 'Open Libraries',
+                    openLibraryQuery: openLibraryQuery,
+                  ),
                 ),
               );
             }

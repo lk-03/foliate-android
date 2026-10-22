@@ -33,6 +33,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _userName = 'Reader';
   int _accountCreationYear = 2024;
   bool _isRescanning = false;
+  List<String> _userNiches = [];
 
   @override
   void initState() {
@@ -43,12 +44,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadProfileData() async {
     final name = await StorageService.instance.getUserName();
     final year = await StorageService.instance.getAccountCreationYear();
+    final niches = await StorageService.instance.getFavoriteNiches();
     if (mounted) {
       setState(() {
         _userName = name;
         _accountCreationYear = year;
+        _userNiches = niches;
       });
     }
+  }
+
+  String _getNichesSubtitle() {
+    if (_userNiches.isEmpty) {
+      return 'Tap to select favorite genres';
+    }
+    final labels = _userNiches.map((id) {
+      final niche = ReadingNiche.findById(id);
+      return niche?.shortLabel ?? id;
+    }).take(3).toList();
+    if (_userNiches.length > 3) {
+      return '${labels.join(', ')} +${_userNiches.length - 3} more';
+    }
+    return labels.join(', ');
   }
 
   Future<void> _saveUserName(String newName) async {
@@ -837,6 +854,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
             subtitle: Text('Midnight, Light, Sepia & custom accents', style: TextStyle(fontSize: 12, color: colors.textMuted)),
             trailing: Icon(Icons.chevron_right_rounded, size: 20, color: colors.textMuted),
             onTap: () => AppThemeSheet.show(context),
+          ),
+          Divider(height: 1, color: colors.border),
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: primaryAccent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.auto_awesome_outlined, size: 20, color: primaryAccent),
+            ),
+            title: const Text('Reading Tastes & Niches', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            subtitle: Text(_getNichesSubtitle(), style: TextStyle(fontSize: 12, color: colors.textMuted)),
+            trailing: Icon(Icons.chevron_right_rounded, size: 20, color: colors.textMuted),
+            onTap: () async {
+              final updated = await NicheSelectorSheet.show(
+                context,
+                initialSelectedNiches: _userNiches,
+              );
+              if (updated != null && mounted) {
+                setState(() => _userNiches = updated);
+              }
+            },
           ),
           Divider(height: 1, color: colors.border),
           ListTile(
