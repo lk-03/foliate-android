@@ -42,6 +42,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  String _userName = 'Reader';
   String _selectedGenre = 'All';
   int _accountCreationYear = 2024;
 
@@ -49,6 +50,20 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadAccountCreationYear();
+    _loadUserName();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final name = await StorageService.instance.getUserName();
+    if (mounted) {
+      setState(() => _userName = name);
+    }
   }
 
   Future<void> _loadAccountCreationYear() async {
@@ -138,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '${_getGreeting()}, Reader',
+                  '${_getGreeting()}, $_userName',
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,

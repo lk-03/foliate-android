@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,6 +16,8 @@ class StorageService {
   static const String _readingHabitsPrefKey = 'foliate_reading_habits';
   static const String _accountCreationYearPrefKey = 'foliate_account_creation_year';
   static const String _customCatalogsPrefKey = 'foliate_custom_catalogs';
+  static const String _userNamePrefKey = 'foliate_profile_user_name';
+  static const String _customDownloadsDirectoryPrefKey = 'foliate_custom_downloads_directory';
 
   static StorageService? _instance;
   static StorageService get instance => _instance ??= StorageService._();
@@ -24,6 +27,18 @@ class StorageService {
   Directory? _appDocDir;
   Directory? _booksDir;
   Directory? _coversDir;
+
+  @visibleForTesting
+  void setAppDocDirForTesting(Directory? dir) {
+    _appDocDir = dir;
+    if (dir != null) {
+      _booksDir = Directory('${dir.path}/books');
+      _coversDir = Directory('${dir.path}/covers');
+    } else {
+      _booksDir = null;
+      _coversDir = null;
+    }
+  }
 
   Future<Directory> get booksDirectory async {
     if (_booksDir != null) return _booksDir!;
@@ -574,6 +589,62 @@ class StorageService {
     current.removeWhere((c) => c.id == catalogId);
     final rawList = current.map((c) => jsonEncode(c.toJson())).toList();
     await prefs.setStringList(_customCatalogsPrefKey, rawList);
+  }
+
+  /// Returns true if first launch onboarding has not yet been completed.
+  Future<bool> isFirstLaunch() async {
+    final prefs = await SharedPreferences.getInstance();
+    return !(prefs.getBool(_firstLaunchPrefKey) ?? false);
+  }
+
+  /// Sets the first launch completion status.
+  Future<void> setFirstLaunchDone(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_firstLaunchPrefKey, value);
+  }
+
+  /// Gets the reader's user name. Defaults to 'Reader'.
+  Future<String> getUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    final name = prefs.getString(_userNamePrefKey);
+    if (name != null && name.trim().isNotEmpty) {
+      return name.trim();
+    }
+    return 'Reader';
+  }
+
+  /// Updates the reader's user name.
+  Future<void> setUserName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_userNamePrefKey, name.trim());
+  }
+
+  /// Gets user-configured custom download folder path, or null if using default.
+  Future<String?> getDownloadsDirectoryPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_customDownloadsDirectoryPrefKey);
+  }
+
+  /// Sets user-configured custom download folder path.
+  Future<void> setDownloadsDirectoryPath(String? path) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (path == null || path.trim().isEmpty) {
+      await prefs.remove(_customDownloadsDirectoryPrefKey);
+    } else {
+      await prefs.setString(_customDownloadsDirectoryPrefKey, path.trim());
+    }
+  }
+
+  /// Returns effective directory for saved books (custom folder if valid, else booksDirectory).
+  Future<Directory> getEffectiveBooksDirectory() async {
+    final customPath = await getDownloadsDirectoryPath();
+    if (customPath != null && customPath.isNotEmpty) {
+      final customDir = Directory(customPath);
+      if (customDir.existsSync()) {
+        return customDir;
+      }
+    }
+    return booksDirectory;
   }
 }
 
