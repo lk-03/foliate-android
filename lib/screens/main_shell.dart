@@ -273,6 +273,7 @@ class _MainShellState extends State<MainShell> {
                                       ),
                                     ),
                                     const Spacer(),
+                                    const DownloadHudButton(inAppBar: true),
                                     IconButton(
                                       icon: const Icon(Icons.palette_outlined, size: 22),
                                       tooltip: 'App Theme & Accent',
@@ -330,6 +331,7 @@ class _MainShellState extends State<MainShell> {
                               ),
                             ),
                             const Spacer(),
+                            const DownloadHudButton(inAppBar: true),
                             IconButton(
                               icon: const Icon(Icons.palette_outlined, size: 22),
                               tooltip: 'App Theme & Accent',

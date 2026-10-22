@@ -15,5 +15,8 @@ export 'yearly_books_read_section.dart';
 export 'tts_floating_bar.dart';
 export 'reader_sidebar_panel.dart';
 export 'onboarding_welcome_sheet.dart';
+export 'download_book_details_sheet.dart';
+export 'download_manager_sheet.dart';
+export 'download_hud_button.dart';
 
 

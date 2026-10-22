@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../components/components.dart';
 import '../models/models.dart';
 import '../services/services.dart';
 import '../theme/theme.dart';
@@ -257,6 +258,10 @@ class _CatalogBrowserScreenState extends State<CatalogBrowserScreen> {
               ),
           ],
         ),
+        actions: const [
+          DownloadHudButton(inAppBar: true),
+          SizedBox(width: 4),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(color: colors.border, height: 1),
