@@ -19,6 +19,7 @@ class StorageService {
   static const String _userNamePrefKey = 'foliate_profile_user_name';
   static const String _customDownloadsDirectoryPrefKey = 'foliate_custom_downloads_directory';
   static const String _downloadHistoryPrefKey = 'foliate_download_history';
+  static const String _favoriteNichesPrefKey = 'foliate_favorite_reading_niches';
 
   static StorageService? _instance;
   static StorageService get instance => _instance ??= StorageService._();
@@ -701,6 +702,22 @@ class StorageService {
     final current = await getDownloadTasks();
     current.removeWhere((t) => t.isTerminal);
     await saveDownloadTasks(current);
+  }
+
+  /// Retrieves user's favorite reading niches (IDs). Defaults to default starting niches if empty.
+  Future<List<String>> getFavoriteNiches() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_favoriteNichesPrefKey);
+    if (list != null && list.isNotEmpty) {
+      return list;
+    }
+    return ReadingNiche.defaultNicheIds;
+  }
+
+  /// Sets user's favorite reading niches (IDs).
+  Future<void> setFavoriteNiches(List<String> niches) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_favoriteNichesPrefKey, niches);
   }
 }
 

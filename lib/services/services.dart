@@ -7,4 +7,5 @@ export 'dictionary_service.dart';
 export 'tts_service.dart';
 export 'opds_service.dart';
 export 'download_service.dart';
+export 'recommendation_service.dart';
 export 'keyboard_shortcuts.dart';
