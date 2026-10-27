@@ -176,21 +176,16 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
 
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const DownloadHudButton(),
-                const SizedBox(width: 8),
-                // Streak Flame Pill
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AdwaitaColors.amberStreak.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: AdwaitaColors.amberStreak.withValues(alpha: 0.3),
-                    ),
-                  ),
+            // Streak Flame Pill
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AdwaitaColors.amberStreak.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AdwaitaColors.amberStreak.withValues(alpha: 0.3),
+                ),
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -211,8 +206,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-          ],
-        ),
       ],
     ),
 

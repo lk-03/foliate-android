@@ -46,6 +46,21 @@ class _MainShellState extends State<MainShell> {
     await _reloadHabits();
     _autoScanLinkedFolders();
     _checkFirstLaunchOnboarding();
+    _checkForUpdatesSilently();
+  }
+
+  Future<void> _checkForUpdatesSilently() async {
+    try {
+      final info = await UpdateService.instance.checkForUpdate();
+      if (info != null && info.hasUpdate && mounted) {
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) {
+          UpdateAvailableDialog.show(context, updateInfo: info);
+        }
+      }
+    } catch (_) {
+      // Ignore background check errors
+    }
   }
 
   Future<void> _checkFirstLaunchOnboarding() async {
