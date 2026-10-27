@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../components/components.dart';
 import '../models/models.dart';
-import '../services/storage_service.dart';
+import '../services/services.dart';
 import '../theme/theme.dart';
 
 /// Stitch & Apple Books inspired Reader Profile Screen.
@@ -897,6 +897,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 await widget.onRescanStorage?.call();
               },
             ),
+          ),
+          Divider(height: 1, color: colors.border),
+          ListTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: primaryAccent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.system_update_alt_rounded, size: 20, color: primaryAccent),
+            ),
+            title: const Text('Check for Updates', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            subtitle: Text('Current version: ${UpdateService.currentAppVersion}', style: TextStyle(fontSize: 12, color: colors.textMuted)),
+            trailing: Icon(Icons.chevron_right_rounded, size: 20, color: colors.textMuted),
+            onTap: () async {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Checking for updates...'),
+                  duration: Duration(seconds: 1),
+                ),
+              );
+              final info = await UpdateService.instance.checkForUpdate();
+              if (!context.mounted) return;
+              if (info != null && info.hasUpdate) {
+                UpdateAvailableDialog.show(context, updateInfo: info);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Foliate is up to date.'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
           ),
           Divider(height: 1, color: colors.border),
           ListTile(

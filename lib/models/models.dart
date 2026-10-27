@@ -12,3 +12,4 @@ export 'catalog_book.dart';
 export 'opds_feed.dart';
 export 'download_task.dart';
 export 'reading_niche.dart';
+export 'app_update_info.dart';

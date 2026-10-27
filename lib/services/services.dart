@@ -9,3 +9,4 @@ export 'opds_service.dart';
 export 'download_service.dart';
 export 'recommendation_service.dart';
 export 'keyboard_shortcuts.dart';
+export 'update_service.dart';
