@@ -25,7 +25,7 @@ class Catalog {
       id: 'gutenberg',
       name: 'Project Gutenberg',
       description: 'Over 70,000 free public domain ebooks and classics',
-      url: 'https://m.gutenberg.org/ebooks.opds/',
+      url: 'https://www.gutenberg.org/ebooks.opds/',
       tag: 'Public Domain',
     ),
     Catalog(
@@ -41,13 +41,6 @@ class Catalog {
       description: 'Millions of digitized books, historic texts, and media',
       url: 'https://archive.org/services/opds/',
       tag: 'Digital Archive',
-    ),
-    Catalog(
-      id: 'feedbooks',
-      name: 'Feedbooks',
-      description: 'High quality public domain and creative commons titles',
-      url: 'https://feedbooks.com/publicdomain/catalog.atom',
-      tag: 'Curated eBooks',
     ),
   ];
 

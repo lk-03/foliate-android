@@ -9,9 +9,11 @@ enum ReaderSidePanelType {
   search,
   appearance,
   annotations,
+  bookmarks,
 }
 
-/// Docked Libadwaita Sidebar Panel for desktop and tablet displays
+/// Left-docked Libadwaita Sidebar Panel for desktop and tablet displays,
+/// matching the original desktop Foliate interface.
 class ReaderSidebarPanel extends StatelessWidget {
   final ReaderSidePanelType panelType;
   final VoidCallback onClose;
@@ -22,6 +24,8 @@ class ReaderSidebarPanel extends StatelessWidget {
   final ValueChanged<String> onChapterSelected;
   final ValueChanged<Bookmark>? onSelectBookmark;
   final ValueChanged<Bookmark>? onDeleteBookmark;
+  final VoidCallback? onBackToLibrary;
+  final ValueChanged<ReaderSidePanelType>? onPanelTypeChanged;
 
   // Search parameters
   final ValueNotifier<List<SearchSection>> searchSectionsNotifier;
@@ -51,6 +55,8 @@ class ReaderSidebarPanel extends StatelessWidget {
     required this.onChapterSelected,
     this.onSelectBookmark,
     this.onDeleteBookmark,
+    this.onBackToLibrary,
+    this.onPanelTypeChanged,
     required this.searchSectionsNotifier,
     required this.isSearchingNotifier,
     required this.totalMatchesNotifier,
@@ -64,36 +70,6 @@ class ReaderSidebarPanel extends StatelessWidget {
     this.onSelectAnnotation,
   });
 
-  String get _title {
-    switch (panelType) {
-      case ReaderSidePanelType.toc:
-        return 'Contents & Bookmarks';
-      case ReaderSidePanelType.search:
-        return 'Search in Book';
-      case ReaderSidePanelType.appearance:
-        return 'Appearance & Layout';
-      case ReaderSidePanelType.annotations:
-        return 'Highlights & Notes';
-      case ReaderSidePanelType.none:
-        return '';
-    }
-  }
-
-  IconData get _icon {
-    switch (panelType) {
-      case ReaderSidePanelType.toc:
-        return Icons.format_list_bulleted_rounded;
-      case ReaderSidePanelType.search:
-        return Icons.search_rounded;
-      case ReaderSidePanelType.appearance:
-        return Icons.tune_rounded;
-      case ReaderSidePanelType.annotations:
-        return Icons.bookmarks_rounded;
-      case ReaderSidePanelType.none:
-        return Icons.info_outline;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<FoliateThemeColors>() ??
@@ -101,10 +77,11 @@ class ReaderSidebarPanel extends StatelessWidget {
     final primaryAccent = Theme.of(context).colorScheme.primary;
 
     return Container(
-      width: 360,
+      width: 310,
       decoration: BoxDecoration(
+        color: colors.headerBar,
         border: Border(
-          left: BorderSide(color: colors.border),
+          right: BorderSide(color: colors.border, width: 1.0),
         ),
       ),
       child: Material(
@@ -112,41 +89,234 @@ class ReaderSidebarPanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header Bar
+            // 1. Top Action Bar (Reference Image 1)
             Container(
-              height: 52,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
               decoration: BoxDecoration(
                 border: Border(bottom: BorderSide(color: colors.border)),
               ),
               child: Row(
                 children: [
-                  Icon(_icon, size: 20, color: primaryAccent),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: -0.1,
-                      ),
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded, size: 20),
+                    tooltip: 'Back to Library',
+                    onPressed: onBackToLibrary ?? onClose,
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 20),
-                    tooltip: 'Close panel (Esc)',
-                    onPressed: onClose,
+                    icon: Icon(
+                      settings.twoPagesLandscape
+                          ? Icons.auto_stories_rounded
+                          : Icons.book_outlined,
+                      size: 20,
+                    ),
+                    tooltip: 'Toggle Two-Page Spread',
+                    onPressed: () {
+                      onSettingsChanged(
+                        settings.copyWith(
+                          twoPagesLandscape: !settings.twoPagesLandscape,
+                        ),
+                      );
+                    },
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: Icon(
+                      Icons.search_rounded,
+                      size: 20,
+                      color: panelType == ReaderSidePanelType.search
+                          ? primaryAccent
+                          : colors.textSecondary,
+                    ),
+                    tooltip: 'Search in Book (Ctrl+F)',
+                    onPressed: () {
+                      onPanelTypeChanged?.call(
+                        panelType == ReaderSidePanelType.search
+                            ? ReaderSidePanelType.toc
+                            : ReaderSidePanelType.search,
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.palette_outlined,
+                      size: 20,
+                      color: panelType == ReaderSidePanelType.appearance
+                          ? primaryAccent
+                          : colors.textSecondary,
+                    ),
+                    tooltip: 'Appearance & Themes',
+                    onPressed: () {
+                      onPanelTypeChanged?.call(
+                        panelType == ReaderSidePanelType.appearance
+                            ? ReaderSidePanelType.toc
+                            : ReaderSidePanelType.appearance,
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.edit_outlined,
+                      size: 20,
+                      color: panelType == ReaderSidePanelType.annotations
+                          ? primaryAccent
+                          : colors.textSecondary,
+                    ),
+                    tooltip: 'Annotations & Notes',
+                    onPressed: () {
+                      onPanelTypeChanged?.call(
+                        panelType == ReaderSidePanelType.annotations
+                            ? ReaderSidePanelType.toc
+                            : ReaderSidePanelType.annotations,
+                      );
+                    },
                   ),
                 ],
               ),
             ),
 
-            // Content Body
+            // 2. Book Metadata Header (Image 1: Cover, Title, Author)
+            Container(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: colors.border)),
+              ),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: Container(
+                      width: 34,
+                      height: 48,
+                      color: colors.activePill,
+                      child: book.coverUri != null && book.coverUri!.isNotEmpty
+                          ? Image.asset(
+                              book.coverUri!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (ctx, err, stack) => Icon(
+                                Icons.menu_book_rounded,
+                                size: 18,
+                                color: colors.textSecondary,
+                              ),
+                            )
+                          : Icon(
+                              Icons.menu_book_rounded,
+                              size: 18,
+                              color: colors.textSecondary,
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          book.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: colors.textPrimary,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          book.author.isNotEmpty ? book.author : 'Unknown Author',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 3. Body View
             Expanded(
               child: _buildBody(context, colors, primaryAccent),
             ),
+
+            // 4. Bottom Segmented Control Bar (Image 1: Chapters, Annotations, Bookmarks)
+            Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: colors.border)),
+              ),
+              child: Row(
+                children: [
+                  _buildBottomTabItem(
+                    icon: Icons.format_list_bulleted_rounded,
+                    tooltip: 'Table of Contents',
+                    isActive: panelType == ReaderSidePanelType.toc,
+                    onTap: () => onPanelTypeChanged?.call(ReaderSidePanelType.toc),
+                    colors: colors,
+                    accentColor: primaryAccent,
+                  ),
+                  const SizedBox(width: 6),
+                  _buildBottomTabItem(
+                    icon: Icons.edit_note_rounded,
+                    tooltip: 'Annotations',
+                    isActive: panelType == ReaderSidePanelType.annotations,
+                    onTap: () => onPanelTypeChanged?.call(ReaderSidePanelType.annotations),
+                    colors: colors,
+                    accentColor: primaryAccent,
+                  ),
+                  const SizedBox(width: 6),
+                  _buildBottomTabItem(
+                    icon: Icons.bookmark_outline_rounded,
+                    tooltip: 'Bookmarks',
+                    isActive: panelType == ReaderSidePanelType.bookmarks,
+                    onTap: () => onPanelTypeChanged?.call(ReaderSidePanelType.bookmarks),
+                    colors: colors,
+                    accentColor: primaryAccent,
+                  ),
+                ],
+              ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomTabItem({
+    required IconData icon,
+    required String tooltip,
+    required bool isActive,
+    required VoidCallback onTap,
+    required FoliateThemeColors colors,
+    required Color accentColor,
+  }) {
+    return Expanded(
+      child: Tooltip(
+        message: tooltip,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            height: 32,
+            decoration: BoxDecoration(
+              color: isActive
+                  ? accentColor.withValues(alpha: 0.18)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              icon,
+              size: 18,
+              color: isActive ? accentColor : colors.textSecondary,
+            ),
+          ),
         ),
       ),
     );
@@ -166,55 +336,36 @@ class ReaderSidebarPanel extends StatelessWidget {
         return _buildAppearanceView(colors, primaryAccent);
       case ReaderSidePanelType.annotations:
         return _buildAnnotationsView(colors, primaryAccent);
+      case ReaderSidePanelType.bookmarks:
+        return _buildBookmarksView(colors, primaryAccent);
       case ReaderSidePanelType.none:
         return const SizedBox.shrink();
     }
   }
 
   Widget _buildTOCView(FoliateThemeColors colors, Color primaryAccent) {
-    if (toc.isEmpty && bookmarks.isEmpty) {
+    if (toc.isEmpty) {
       return Center(
         child: Text(
-          'No table of contents or bookmarks',
-          style: TextStyle(color: colors.textMuted),
+          'No table of contents',
+          style: TextStyle(color: colors.textMuted, fontSize: 13),
         ),
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      children: [
-        if (bookmarks.isNotEmpty)
-          ExpansionTile(
-            initiallyExpanded: true,
-            leading: Icon(Icons.bookmark_rounded, size: 18, color: primaryAccent),
-            title: Text(
-              'Bookmarks (${bookmarks.length})',
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-            ),
-            children: bookmarks.map((b) {
-              return ListTile(
-                dense: true,
-                title: Text(
-                  b.chapterTitle ?? 'Page ${b.pageNumber ?? ""}',
-                  style: const TextStyle(fontSize: 12),
-                ),
-                subtitle: Text(
-                  '${b.percentage.round()}%',
-                  style: TextStyle(fontSize: 10, color: colors.textMuted),
-                ),
-                trailing: onDeleteBookmark != null
-                    ? IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded, size: 16),
-                        onPressed: () => onDeleteBookmark!(b),
-                      )
-                    : null,
-                onTap: () => onSelectBookmark?.call(b),
-              );
-            }).toList(),
-          ),
-        ...toc.map((item) => _buildTOCItemTile(item, 0, colors, primaryAccent)),
-      ],
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      itemCount: toc.length,
+      itemBuilder: (context, index) {
+        final item = toc[index];
+        final isSelected = (currentLocation?.sectionTitle != null &&
+                currentLocation!.sectionTitle == item.label) ||
+            (currentLocation?.cfi != null &&
+                item.href != null &&
+                currentLocation!.cfi.contains(item.href!));
+
+        return _buildTOCItemTile(item, 0, colors, primaryAccent, isSelected);
+      },
     );
   }
 
@@ -223,37 +374,108 @@ class ReaderSidebarPanel extends StatelessWidget {
     int depth,
     FoliateThemeColors colors,
     Color primaryAccent,
+    bool isSelected,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ListTile(
-          dense: true,
-          contentPadding: EdgeInsets.only(
-            left: 16.0 + (depth * 14.0),
-            right: 14.0,
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 2),
+          child: Material(
+            color: isSelected
+                ? AdwaitaColors.foliateGreen.withValues(alpha: 0.22)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            child: ListTile(
+            dense: true,
+            visualDensity: VisualDensity.compact,
+            contentPadding: EdgeInsets.only(
+              left: 10.0 + (depth * 12.0),
+              right: 10.0,
+            ),
+            leading: Icon(
+              Icons.chevron_right_rounded,
+              size: 14,
+              color: isSelected ? AdwaitaColors.foliateGreen : colors.textMuted,
+            ),
+            title: Text(
+              item.label.trim(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? colors.textPrimary : colors.textSecondary,
+              ),
+            ),
+            trailing: item.pageNumber != null
+                ? Text(
+                    '${item.pageNumber}',
+                    style: TextStyle(fontSize: 11, color: colors.textMuted),
+                  )
+                : null,
+            onTap: () {
+              if (item.href != null && item.href!.isNotEmpty) {
+                onChapterSelected(item.href!);
+              }
+            },
           ),
-          title: Text(
-            item.label.trim(),
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-          ),
-          trailing: item.pageNumber != null
-              ? Text(
-                  '${item.pageNumber}',
-                  style: TextStyle(fontSize: 11, color: colors.textMuted),
-                )
-              : null,
-          onTap: () {
-            if (item.href != null && item.href!.isNotEmpty) {
-              onChapterSelected(item.href!);
-            }
-          },
         ),
+      ),
         if (item.subitems.isNotEmpty)
           ...item.subitems.map(
-            (sub) => _buildTOCItemTile(sub, depth + 1, colors, primaryAccent),
+            (sub) => _buildTOCItemTile(sub, depth + 1, colors, primaryAccent, false),
           ),
       ],
+    );
+  }
+
+  Widget _buildBookmarksView(FoliateThemeColors colors, Color primaryAccent) {
+    if (bookmarks.isEmpty) {
+      return Center(
+        child: Text(
+          'No bookmarks added yet',
+          style: TextStyle(color: colors.textMuted, fontSize: 13),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      itemCount: bookmarks.length,
+      itemBuilder: (context, index) {
+        final b = bookmarks[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 6),
+          child: Material(
+            color: colors.inputBackground,
+            borderRadius: BorderRadius.circular(8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: colors.border),
+            ),
+            child: ListTile(
+            dense: true,
+            leading: Icon(Icons.bookmark_rounded, size: 16, color: primaryAccent),
+            title: Text(
+              b.chapterTitle ?? 'Page ${b.pageNumber ?? ""}',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              '${b.percentage.round()}%',
+              style: TextStyle(fontSize: 11, color: colors.textMuted),
+            ),
+            trailing: onDeleteBookmark != null
+                ? IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                    onPressed: () => onDeleteBookmark!(b),
+                  )
+                : null,
+            onTap: () => onSelectBookmark?.call(b),
+          ),
+        ),
+      );
+      },
     );
   }
 
@@ -272,17 +494,19 @@ class ReaderSidebarPanel extends StatelessWidget {
 
   Widget _buildAppearanceView(FoliateThemeColors colors, Color primaryAccent) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text('Appearance & Layout', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
           // Two-page spread toggle
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Two-page spread', style: TextStyle(fontSize: 14)),
+            title: const Text('Two-page spread', style: TextStyle(fontSize: 13)),
             subtitle: Text(
               'Show two pages side by side on wide screens',
-              style: TextStyle(fontSize: 12, color: colors.textMuted),
+              style: TextStyle(fontSize: 11, color: colors.textMuted),
             ),
             value: settings.twoPagesLandscape,
             activeThumbColor: primaryAccent,
@@ -293,89 +517,56 @@ class ReaderSidebarPanel extends StatelessWidget {
           const SizedBox(height: 12),
 
           // Font family selection
-          const Text('Font Family', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+          const Text('Font Family', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 6,
+            runSpacing: 6,
             children: [
-              _buildFontChip('Serif', 'serif', primaryAccent),
-              _buildFontChip('Sans-Serif', 'sans', primaryAccent),
-              _buildFontChip('Literata', 'literata', primaryAccent),
-              _buildFontChip('Garamond', 'ebgaramond', primaryAccent),
-              _buildFontChip('Monospace', 'monospace', primaryAccent),
+              _buildFontChip('serif', 'Serif', colors, primaryAccent),
+              _buildFontChip('sans', 'Sans', colors, primaryAccent),
+              _buildFontChip('monospace', 'Mono', colors, primaryAccent),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
           // Font size stepper
+          const Text('Font Size', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Font Size', style: TextStyle(fontSize: 14)),
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.remove_rounded, size: 18),
-                    onPressed: () {
-                      if (settings.fontSize > 10) {
-                        onSettingsChanged(settings.copyWith(fontSize: settings.fontSize - 1));
-                      }
-                    },
+              IconButton(
+                icon: const Icon(Icons.remove_rounded, size: 18),
+                onPressed: settings.fontSize > 10
+                    ? () => onSettingsChanged(settings.copyWith(fontSize: settings.fontSize - 1))
+                    : null,
+              ),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    '${settings.fontSize.toInt()} pt',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                   ),
-                  Text('${settings.fontSize.toInt()} pt', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  IconButton(
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    onPressed: () {
-                      if (settings.fontSize < 36) {
-                        onSettingsChanged(settings.copyWith(fontSize: settings.fontSize + 1));
-                      }
-                    },
-                  ),
-                ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_rounded, size: 18),
+                onPressed: settings.fontSize < 36
+                    ? () => onSettingsChanged(settings.copyWith(fontSize: settings.fontSize + 1))
+                    : null,
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
 
-          // Line height stepper
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Line Height', style: TextStyle(fontSize: 14)),
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.remove_rounded, size: 18),
-                    onPressed: () {
-                      if (settings.lineHeight > 1.1) {
-                        onSettingsChanged(settings.copyWith(lineHeight: settings.lineHeight - 0.1));
-                      }
-                    },
-                  ),
-                  Text(settings.lineHeight.toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.bold)),
-                  IconButton(
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    onPressed: () {
-                      if (settings.lineHeight < 2.5) {
-                        onSettingsChanged(settings.copyWith(lineHeight: settings.lineHeight + 0.1));
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Hyphenation toggle
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Hyphenation', style: TextStyle(fontSize: 14)),
-            value: settings.hyphenation,
-            activeThumbColor: primaryAccent,
+          // Margins slider
+          const Text('Margins', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          Slider(
+            value: settings.margin.clamp(0.02, 0.20),
+            min: 0.02,
+            max: 0.20,
+            activeColor: primaryAccent,
             onChanged: (val) {
-              onSettingsChanged(settings.copyWith(hyphenation: val));
+              onSettingsChanged(settings.copyWith(margin: val));
             },
           ),
         ],
@@ -383,14 +574,19 @@ class ReaderSidebarPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildFontChip(String label, String value, Color primaryAccent) {
-    final isSelected = settings.fontFamily == value;
+  Widget _buildFontChip(
+    String fontId,
+    String label,
+    FoliateThemeColors colors,
+    Color primaryAccent,
+  ) {
+    final isSelected = settings.fontFamily.toLowerCase() == fontId;
     return ChoiceChip(
       label: Text(label, style: const TextStyle(fontSize: 12)),
       selected: isSelected,
       selectedColor: primaryAccent.withValues(alpha: 0.2),
       onSelected: (_) {
-        onSettingsChanged(settings.copyWith(fontFamily: value));
+        onSettingsChanged(settings.copyWith(fontFamily: fontId));
       },
     );
   }
@@ -399,71 +595,70 @@ class ReaderSidebarPanel extends StatelessWidget {
     if (annotations.isEmpty) {
       return Center(
         child: Text(
-          'No highlights or notes in this book',
-          style: TextStyle(color: colors.textMuted),
+          'No annotations or highlights yet',
+          style: TextStyle(color: colors.textMuted, fontSize: 13),
         ),
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+          child: Text(
+            'Highlights & Notes',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: colors.textPrimary,
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       itemCount: annotations.length,
       itemBuilder: (context, index) {
         final ann = annotations[index];
-        return Card(
-          color: colors.surfaceCard,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          margin: const EdgeInsets.only(bottom: 10),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: Color(int.tryParse(ann.color.replaceFirst('#', '0xFF')) ?? 0xFFFFE066),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        ann.note?.isNotEmpty == true ? ann.note! : 'Highlight',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (onDeleteAnnotation != null)
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded, size: 16),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        tooltip: 'Delete',
-                        onPressed: () => onDeleteAnnotation!(ann),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                InkWell(
-                  onTap: () => onSelectAnnotation?.call(ann),
-                  child: Text(
-                    ann.text,
-                    style: TextStyle(fontSize: 12, color: colors.textMuted, fontStyle: FontStyle.italic),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
+        final highlightColor = Color(int.tryParse(ann.color) ?? 0xFFFFEB3B);
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: colors.inputBackground,
+            borderRadius: BorderRadius.circular(8),
+            border: Border(left: BorderSide(color: highlightColor, width: 3.5)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                ann.text,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, height: 1.4),
+              ),
+              if (ann.note != null && ann.note!.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  ann.note!,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                    color: colors.textSecondary,
                   ),
                 ),
               ],
-            ),
+            ],
           ),
         );
       },
-    );
+    ),
+  ),
+],
+);
   }
 }
 
@@ -493,7 +688,7 @@ class _SidebarSearchWidget extends StatefulWidget {
 }
 
 class _SidebarSearchWidgetState extends State<_SidebarSearchWidget> {
-  final TextEditingController _controller = TextEditingController();
+  final _controller = TextEditingController();
   bool _matchCase = false;
 
   @override
@@ -502,7 +697,7 @@ class _SidebarSearchWidgetState extends State<_SidebarSearchWidget> {
     super.dispose();
   }
 
-  void _submit() {
+  void _submitSearch() {
     final query = _controller.text.trim();
     if (query.isNotEmpty) {
       widget.onSearch(query, _matchCase);
@@ -513,74 +708,74 @@ class _SidebarSearchWidgetState extends State<_SidebarSearchWidget> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Input bar
+        // Search Input
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           child: TextField(
             controller: _controller,
+            style: const TextStyle(fontSize: 13),
             textInputAction: TextInputAction.search,
-            onSubmitted: (_) => _submit(),
+            onSubmitted: (_) => _submitSearch(),
             decoration: InputDecoration(
               hintText: 'Search in book...',
-              prefixIcon: const Icon(Icons.search_rounded, size: 20),
+              isDense: true,
+              prefixIcon: const Icon(Icons.search_rounded, size: 18),
               suffixIcon: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (_controller.text.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, size: 16),
-                      onPressed: () {
-                        _controller.clear();
-                        widget.onClear();
-                        setState(() {});
-                      },
-                    ),
                   IconButton(
                     icon: Icon(
                       Icons.format_size_rounded,
-                      size: 18,
+                      size: 16,
                       color: _matchCase ? widget.primaryAccent : widget.colors.textMuted,
                     ),
                     tooltip: 'Match case',
                     onPressed: () {
                       setState(() => _matchCase = !_matchCase);
-                      _submit();
+                      _submitSearch();
                     },
                   ),
+                  if (_controller.text.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.clear_rounded, size: 16),
+                      onPressed: () {
+                        _controller.clear();
+                        widget.onClear();
+                      },
+                    ),
                 ],
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: widget.colors.border),
               ),
             ),
           ),
         ),
 
-        // Result count or progress
+        // Progress or count
         ValueListenableBuilder<bool>(
           valueListenable: widget.isSearchingNotifier,
           builder: (context, isSearching, _) {
             if (isSearching) {
-              return const LinearProgressIndicator();
+              return const LinearProgressIndicator(minHeight: 2);
             }
             return ValueListenableBuilder<int>(
               valueListenable: widget.totalMatchesNotifier,
               builder: (context, totalMatches, _) {
-                if (totalMatches == 0 && _controller.text.isNotEmpty) {
+                if (totalMatches > 0) {
                   return Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text('No matches found', style: TextStyle(fontSize: 12, color: widget.colors.textMuted)),
-                  );
-                } else if (totalMatches > 0) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        '$totalMatches match${totalMatches == 1 ? '' : 'es'} found',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: widget.primaryAccent),
+                        '$totalMatches matches found',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: widget.primaryAccent,
+                        ),
                       ),
                     ),
                   );
@@ -591,7 +786,7 @@ class _SidebarSearchWidgetState extends State<_SidebarSearchWidget> {
           },
         ),
 
-        // Matches list
+        // Results
         Expanded(
           child: ValueListenableBuilder<List<SearchSection>>(
             valueListenable: widget.sectionsNotifier,
@@ -606,35 +801,24 @@ class _SidebarSearchWidgetState extends State<_SidebarSearchWidget> {
               }
 
               return ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 itemCount: sections.length,
                 itemBuilder: (context, sIndex) {
                   final section = sections[sIndex];
-                  int startIndex = 0;
-                  for (int i = 0; i < sIndex; i++) {
-                    startIndex += sections[i].subitems.length;
-                  }
-
                   return ExpansionTile(
                     initiallyExpanded: true,
                     title: Text(
                       section.label,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
-                    subtitle: Text(
-                      '${section.subitems.length} match${section.subitems.length == 1 ? '' : 'es'}',
-                      style: TextStyle(fontSize: 11, color: widget.colors.textMuted),
-                    ),
-                    children: section.subitems.asMap().entries.map((entry) {
-                      final itemIdx = startIndex + entry.key;
-                      final match = entry.value;
+                    children: section.subitems.map((match) {
                       return ListTile(
                         dense: true,
                         title: RichText(
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           text: TextSpan(
-                            style: TextStyle(fontSize: 12, color: widget.colors.textPrimary),
+                            style: TextStyle(fontSize: 11, color: widget.colors.textPrimary),
                             children: [
                               TextSpan(text: match.excerpt.pre),
                               TextSpan(
@@ -649,7 +833,7 @@ class _SidebarSearchWidgetState extends State<_SidebarSearchWidget> {
                             ],
                           ),
                         ),
-                        onTap: () => widget.onSelectMatch(match, itemIdx),
+                        onTap: () => widget.onSelectMatch(match, 0),
                       );
                     }).toList(),
                   );

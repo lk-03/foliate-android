@@ -5,6 +5,7 @@ import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
 import 'package:xml/xml.dart';
 import '../models/book.dart';
+import '../models/toc_item.dart';
 
 /// Pure Dart service to inspect EPUB files, calculate content hashes,
 /// extract Dublin Core metadata, and cache cover images without web engine overhead.
@@ -85,7 +86,7 @@ class EpubService {
           }
         }
       }
-    } catch (e) {
+    } catch (_) {
       // Fallback gracefully on parsing errors
     }
 
@@ -195,47 +196,49 @@ class EpubService {
     return stack.join('/');
   }
 
-  /// Extracts all readable chapters in spine reading order using pure Dart.
-  static List<EpubChapter> extractChapters(Uint8List bytes) {
-    final chapters = <EpubChapter>[];
+  /// Extracts Table of Contents from NCX (EPUB 2) or NAV (EPUB 3).
+  static List<TOCItem> extractToc(Uint8List bytes) {
     try {
       final archive = ZipDecoder().decodeBytes(bytes);
+      final (opfDoc, opfDir) = _getOpfDoc(archive);
+      if (opfDoc == null) return const [];
 
-      // 1. Locate package .opf from META-INF/container.xml
-      String? opfPath;
-      final containerFile = _findFileInArchive(archive, 'META-INF/container.xml');
-      if (containerFile != null) {
-        final containerContent =
-            utf8.decode(containerFile.content as List<int>, allowMalformed: true);
-        final containerXml = XmlDocument.parse(containerContent);
-        final rootfile = containerXml.findAllElements('rootfile').firstOrNull;
-        opfPath = rootfile?.getAttribute('full-path');
-      }
+      return _extractTocInternal(archive, opfDoc, opfDir);
+    } catch (_) {
+      return const [];
+    }
+  }
 
-      if (opfPath == null || opfPath.isEmpty) {
-        for (final file in archive) {
-          if (file.name.toLowerCase().endsWith('.opf')) {
-            opfPath = file.name;
-            break;
+  /// Extracts both readable chapters and complete Table of Contents.
+  static ({List<EpubChapter> chapters, List<TOCItem> toc}) extractBookContent(Uint8List bytes) {
+    final chapters = <EpubChapter>[];
+    var toc = <TOCItem>[];
+
+    try {
+      final archive = ZipDecoder().decodeBytes(bytes);
+      final (opfDoc, opfDir) = _getOpfDoc(archive);
+      if (opfDoc == null) return (chapters: chapters, toc: toc);
+
+      toc = _extractTocInternal(archive, opfDoc, opfDir);
+
+      // Build quick lookup map: normalizedHref -> TOC label
+      final tocMap = <String, String>{};
+      for (final item in toc) {
+        if (item.href != null && item.href!.isNotEmpty) {
+          final cleanHref = item.href!.split('#').first.replaceAll('\\', '/').toLowerCase();
+          tocMap.putIfAbsent(cleanHref, () => item.label);
+        }
+        for (final sub in item.subitems) {
+          if (sub.href != null && sub.href!.isNotEmpty) {
+            final cleanSub = sub.href!.split('#').first.replaceAll('\\', '/').toLowerCase();
+            tocMap.putIfAbsent(cleanSub, () => sub.label);
           }
         }
       }
 
-      if (opfPath == null) return chapters;
-
-      final opfFile = _findFileInArchive(archive, opfPath);
-      if (opfFile == null) return chapters;
-
-      final opfContent =
-          utf8.decode(opfFile.content as List<int>, allowMalformed: true);
-      final opfXml = XmlDocument.parse(opfContent);
-      final opfDir = opfPath.contains('/')
-          ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1)
-          : '';
-
-      // 2. Build id -> href map from manifest
+      // Build id -> href map from manifest
       final manifestMap = <String, String>{};
-      final manifest = opfXml.findAllElements('manifest').firstOrNull;
+      final manifest = opfDoc.findAllElements('manifest').firstOrNull;
       if (manifest != null) {
         for (final item in manifest.findAllElements('item')) {
           final id = item.getAttribute('id');
@@ -246,8 +249,8 @@ class EpubService {
         }
       }
 
-      // 3. Follow spine in reading order
-      final spine = opfXml.findAllElements('spine').firstOrNull;
+      // Follow spine in reading order
+      final spine = opfDoc.findAllElements('spine').firstOrNull;
       if (spine != null) {
         int chapterIndex = 1;
         for (final itemref in spine.findAllElements('itemref')) {
@@ -260,11 +263,14 @@ class EpubService {
           final chapterFile = _findFileInArchive(archive, resolvedPath);
           if (chapterFile == null) continue;
 
+          final cleanHref = href.split('#').first.replaceAll('\\', '/').toLowerCase();
+          final defaultTitle = tocMap[cleanHref] ?? 'Chapter $chapterIndex';
+
           final rawHtml =
               utf8.decode(chapterFile.content as List<int>, allowMalformed: true);
           final parsed = _parseChapterContent(
             rawHtml,
-            defaultTitle: 'Chapter $chapterIndex',
+            defaultTitle: defaultTitle,
           );
           if (parsed.paragraphs.isNotEmpty) {
             chapters.add(EpubChapter(
@@ -277,10 +283,149 @@ class EpubService {
           }
         }
       }
-    } catch (_) {
-      // Fallback on parsing exceptions gracefully
+    } catch (_) {}
+
+    return (chapters: chapters, toc: toc);
+  }
+
+  /// Extracts all readable chapters in spine reading order using pure Dart.
+  static List<EpubChapter> extractChapters(Uint8List bytes) {
+    return extractBookContent(bytes).chapters;
+  }
+
+  static (XmlDocument? opfDoc, String opfDir) _getOpfDoc(Archive archive) {
+    String? opfPath;
+    final containerFile = _findFileInArchive(archive, 'META-INF/container.xml');
+    if (containerFile != null) {
+      final containerContent =
+          utf8.decode(containerFile.content as List<int>, allowMalformed: true);
+      final containerXml = XmlDocument.parse(containerContent);
+      final rootfile = containerXml.findAllElements('rootfile').firstOrNull;
+      opfPath = rootfile?.getAttribute('full-path');
     }
-    return chapters;
+
+    if (opfPath == null || opfPath.isEmpty) {
+      for (final file in archive) {
+        if (file.name.toLowerCase().endsWith('.opf')) {
+          opfPath = file.name;
+          break;
+        }
+      }
+    }
+
+    if (opfPath == null) return (null, '');
+
+    final opfFile = _findFileInArchive(archive, opfPath);
+    if (opfFile == null) return (null, '');
+
+    final opfContent =
+        utf8.decode(opfFile.content as List<int>, allowMalformed: true);
+    final opfXml = XmlDocument.parse(opfContent);
+    final opfDir = opfPath.contains('/')
+        ? opfPath.substring(0, opfPath.lastIndexOf('/') + 1)
+        : '';
+    return (opfXml, opfDir);
+  }
+
+  static List<TOCItem> _extractTocInternal(
+    Archive archive,
+    XmlDocument opfDoc,
+    String opfDir,
+  ) {
+    String? ncxHref;
+    String? navHref;
+
+    for (final item in opfDoc.findAllElements('item')) {
+      final href = item.getAttribute('href');
+      final mediaType = item.getAttribute('media-type');
+      final props = item.getAttribute('properties') ?? '';
+
+      if (mediaType == 'application/x-dtbncx+xml') {
+        ncxHref = href;
+      }
+      if (props.split(' ').contains('nav')) {
+        navHref = href;
+      }
+    }
+
+    // 1. Try EPUB 3 Nav
+    if (navHref != null) {
+      final resolvedNav = _normalizePath(opfDir + Uri.decodeComponent(navHref));
+      final navFile = _findFileInArchive(archive, resolvedNav);
+      if (navFile != null) {
+        try {
+          final content = utf8.decode(navFile.content as List<int>, allowMalformed: true);
+          final doc = XmlDocument.parse(content);
+          final items = <TOCItem>[];
+          for (final a in doc.findAllElements('a')) {
+            final text = _decodeHtmlEntities(a.innerText.trim());
+            final href = a.getAttribute('href');
+            if (text.isNotEmpty && href != null) {
+              items.add(TOCItem(label: text, href: href));
+            }
+          }
+          if (items.isNotEmpty) return items;
+        } catch (_) {}
+      }
+    }
+
+    // 2. Try EPUB 2 NCX
+    if (ncxHref != null) {
+      final resolvedNcx = _normalizePath(opfDir + Uri.decodeComponent(ncxHref));
+      final ncxFile = _findFileInArchive(archive, resolvedNcx);
+      if (ncxFile != null) {
+        try {
+          final content = utf8.decode(ncxFile.content as List<int>, allowMalformed: true);
+          final doc = XmlDocument.parse(content);
+          final items = <TOCItem>[];
+          final navMap = doc.findAllElements('navMap').firstOrNull;
+          if (navMap != null) {
+            for (final np in navMap.findElements('navPoint')) {
+              final label = np.findElements('navLabel').firstOrNull?.findElements('text').firstOrNull?.innerText.trim();
+              final src = np.findElements('content').firstOrNull?.getAttribute('src');
+              if (label != null && label.isNotEmpty && src != null) {
+                final subitems = <TOCItem>[];
+                for (final child in np.findElements('navPoint')) {
+                  final subLabel = child.findElements('navLabel').firstOrNull?.findElements('text').firstOrNull?.innerText.trim();
+                  final subSrc = child.findElements('content').firstOrNull?.getAttribute('src');
+                  if (subLabel != null && subLabel.isNotEmpty && subSrc != null) {
+                    subitems.add(TOCItem(
+                      label: _decodeHtmlEntities(subLabel),
+                      href: subSrc,
+                    ));
+                  }
+                }
+                items.add(TOCItem(
+                  label: _decodeHtmlEntities(label),
+                  href: src,
+                  subitems: subitems,
+                ));
+              }
+            }
+          }
+          if (items.isNotEmpty) return items;
+        } catch (_) {}
+      }
+    }
+
+    return const [];
+  }
+
+  static String _decodeHtmlEntities(String raw) {
+    return raw
+        .replaceAll('&mdash;', '—')
+        .replaceAll('&ndash;', '–')
+        .replaceAll('&ldquo;', '“')
+        .replaceAll('&rdquo;', '”')
+        .replaceAll('&lsquo;', '‘')
+        .replaceAll('&rsquo;', '’')
+        .replaceAll('&hellip;', '…')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&apos;', "'")
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>');
   }
 
   static ({String title, List<String> paragraphs}) _parseChapterContent(
@@ -294,13 +439,13 @@ class EpubService {
       final doc = XmlDocument.parse(rawHtml);
       final titleElem = doc.findAllElements('title').firstOrNull;
       if (titleElem != null && titleElem.innerText.trim().isNotEmpty) {
-        title = titleElem.innerText.trim();
+        title = _decodeHtmlEntities(titleElem.innerText.trim());
       } else {
         final heading = doc.findAllElements('h1').firstOrNull ??
             doc.findAllElements('h2').firstOrNull ??
             doc.findAllElements('h3').firstOrNull;
         if (heading != null && heading.innerText.trim().isNotEmpty) {
-          title = heading.innerText.trim();
+          title = _decodeHtmlEntities(heading.innerText.trim());
         }
       }
 
@@ -308,7 +453,7 @@ class EpubService {
         final tag = el.name.local.toLowerCase();
         if (['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'li']
             .contains(tag)) {
-          final text = el.innerText.trim();
+          final text = _decodeHtmlEntities(el.innerText.trim());
           if (text.isNotEmpty && !paragraphs.contains(text)) {
             paragraphs.add(text);
           }
@@ -338,7 +483,9 @@ class EpubService {
       for (final match in pMatches) {
         final content = match.group(1);
         if (content != null) {
-          final text = content.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+          final text = _decodeHtmlEntities(
+            content.replaceAll(RegExp(r'<[^>]*>'), '').trim(),
+          );
           if (text.isNotEmpty && !paragraphs.contains(text)) {
             paragraphs.add(text);
           }
@@ -348,7 +495,7 @@ class EpubService {
         final stripped = cleaned.replaceAll(RegExp(r'<[^>]*>'), ' ').trim();
         final lines = stripped
             .split(RegExp(r'\n+'))
-            .map((l) => l.trim())
+            .map((l) => _decodeHtmlEntities(l.trim()))
             .where((l) => l.isNotEmpty)
             .toList();
         paragraphs.addAll(lines);

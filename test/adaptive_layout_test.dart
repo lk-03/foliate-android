@@ -82,9 +82,9 @@ void main() {
         ),
       );
 
-      expect(find.text('Contents & Bookmarks'), findsOneWidget);
+      expect(find.text('Adaptive Layout Book'), findsOneWidget);
       expect(find.text('Chapter 1: The Beginning'), findsOneWidget);
-      expect(find.text('Bookmarks (1)'), findsOneWidget);
+      expect(find.byTooltip('Bookmarks'), findsOneWidget);
     });
 
     testWidgets('ReaderSidebarPanel renders Appearance & Layout panel with two-page spread toggle', (tester) async {

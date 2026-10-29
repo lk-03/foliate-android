@@ -3649,6 +3649,7 @@ ${doc.querySelector("parsererror").innerText}`);
           ));
         }
         snap(vx, vy) {
+          if (this.#locked) return;
           const velocity = this.#vertical ? vy : vx;
           const [offset, a3, b3] = this.#scrollBounds;
           const { start, end, pages, size } = this;
@@ -3699,8 +3700,10 @@ ${doc.querySelector("parsererror").innerText}`);
           this.scrollBy(dx, dy);
         }
         #onTouchEnd() {
+          const wasScrolled = this.#touchScrolled;
           this.#touchScrolled = false;
           if (this.scrolled) return;
+          if (!wasScrolled) return;
           requestAnimationFrame(() => {
             if (globalThis.visualViewport.scale === 1)
               this.snap(this.#touchState.vx, this.#touchState.vy);

@@ -206,6 +206,21 @@ class ReaderBridge {
     await _controller?.runJavaScript('window.goPrev();');
   }
 
+  /// Navigates back in reading history
+  Future<void> historyBack() async {
+    await _controller?.runJavaScript('if (window.historyBack) window.historyBack();');
+  }
+
+  /// Navigates forward in reading history
+  Future<void> historyForward() async {
+    await _controller?.runJavaScript('if (window.historyForward) window.historyForward();');
+  }
+
+  /// Navigates to a specific integer location in the book
+  Future<void> goToLocation(int location) async {
+    await _controller?.runJavaScript('if (window.goToLocation) window.goToLocation($location);');
+  }
+
   /// Navigates to a fractional location in the book (0 to 100)
   Future<void> goToPercentage(double percentage) async {
     await _controller?.runJavaScript('window.goToPercentage($percentage);');

@@ -250,33 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
         else
           _buildEmptyLibraryPrompt(colors),
 
-        const SizedBox(height: 28),
-
-        // 4. Section: Open Library Gems (Popular books from Open Libraries)
-        _buildSectionHeader(
-          icon: Icons.public_rounded,
-          title: 'Open Library Gems',
-          subtitle: 'Curated classics free of copyright restrictions',
-          colors: colors,
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 330,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            itemCount: CuratedBook.openLibraryGems.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 14),
-            itemBuilder: (context, idx) {
-              final gem = CuratedBook.openLibraryGems[idx];
-              return CuratedBookCard(book: gem);
-            },
-          ),
-        ),
-
-        const SizedBox(height: 28),
-
-        // 5. Section: Explore Horizons (Recommending new tastes by genre)
+        // 4. Section: Explore Horizons (Recommending new tastes by genre)
         _buildSectionHeader(
           title: 'Explore Horizons',
           subtitle: 'Selected genres based on your evolving tastes',
@@ -757,7 +731,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Browse catalogs and discover new public domain books in Open Libraries.',
+                  'Explore more book catalogs and public domain recommendations.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 11,

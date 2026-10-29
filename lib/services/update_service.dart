@@ -9,7 +9,7 @@ import '../models/app_update_info.dart';
 /// streaming progress, and launching the native Android package installer.
 class UpdateService {
   static const String defaultRepository = 'lk-03/foliate-android';
-  static const String currentAppVersion = '1.0.0+1';
+  static const String currentAppVersion = '1.1.0+2';
 
   static UpdateService? _instance;
   static UpdateService get instance => _instance ??= UpdateService._();

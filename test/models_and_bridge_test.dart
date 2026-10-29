@@ -237,7 +237,7 @@ void main() {
     });
 
     test('Catalog model serialization and default catalogs', () {
-      expect(Catalog.defaultCatalogs.length, equals(4));
+      expect(Catalog.defaultCatalogs.length, equals(3));
       final catalog = Catalog.defaultCatalogs.first;
       expect(catalog.name, equals('Project Gutenberg'));
 

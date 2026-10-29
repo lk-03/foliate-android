@@ -412,28 +412,97 @@ class _CatalogBrowserScreenState extends State<CatalogBrowserScreen> {
               ),
             ),
 
-          // Books Section Title
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Available Titles (${books.length})',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ],
+          // If purely navigational feed with subsections and no books, show category tiles
+          if (subsections.isNotEmpty && books.isEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final sub = subsections[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: colors.surfaceCard,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: colors.border),
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => _navigateToSubFeed(sub),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: primaryAccent.withValues(alpha: 0.15),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(Icons.folder_open_rounded, color: primaryAccent, size: 22),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          sub.title,
+                                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                                        ),
+                                        if (sub.summary.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            sub.summary,
+                                            style: TextStyle(fontSize: 12, color: colors.textMuted),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  Icon(Icons.chevron_right_rounded, color: colors.textMuted, size: 20),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  childCount: subsections.length,
+                ),
               ),
             ),
-          ),
 
-          // Books List
-          if (books.isEmpty)
+          // Books Section Title (only if books are present or pure book section)
+          if (books.isNotEmpty || subsections.isEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Available Titles (${books.length})',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Books List (only if books list should be shown)
+          if (books.isEmpty && subsections.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
               child: Center(
@@ -452,7 +521,7 @@ class _CatalogBrowserScreenState extends State<CatalogBrowserScreen> {
                 ),
               ),
             )
-          else
+          else if (books.isNotEmpty)
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               sliver: SliverList(

@@ -59,3 +59,10 @@ stitch_android_book_reader_ui*/
 stitch_android_book_reader_ui*.zip
 stitch/
 .misc/
+
+# Local documents and release packages
+Foliate_Defense.pptx
+.~lock.*
+flutter_*.png
+*.apk
+*.tar.gz

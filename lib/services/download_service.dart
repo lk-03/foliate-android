@@ -302,14 +302,28 @@ class DownloadService {
       } catch (_) {}
       if (cancelToken.isCancelled) {
         _updateTaskStatus(bookId, DownloadStatus.cancelled);
+        throw Exception('Download cancelled by user');
       } else {
+        String friendlyError = e.toString().replaceFirst('Exception: ', '');
+        if (e is DioException) {
+          final code = e.response?.statusCode;
+          if (code == 401 || code == 403) {
+            friendlyError =
+                'This title requires borrowing or is not available for public download (HTTP $code).';
+          } else if (code == 404) {
+            friendlyError =
+                'The EPUB file for this edition was not found on the server (HTTP 404).';
+          } else if (e.message != null && e.message!.isNotEmpty) {
+            friendlyError = e.message!;
+          }
+        }
         _updateTaskStatus(
           bookId,
           DownloadStatus.failed,
-          error: e.toString().replaceFirst('Exception: ', ''),
+          error: friendlyError,
         );
+        throw Exception(friendlyError);
       }
-      rethrow;
     } finally {
       _cancelTokens.remove(bookId);
       _updateProgress(bookId, null);

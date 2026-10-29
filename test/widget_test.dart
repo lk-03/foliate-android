@@ -77,7 +77,7 @@ void main() {
     // Tap Explore tab in NavigationBar
     await tester.tap(find.text('Explore'));
     await tester.pumpAndSettle();
-    expect(find.text('Available Libraries (4)'), findsOneWidget);
+    expect(find.text('Available Libraries (${Catalog.defaultCatalogs.length})'), findsOneWidget);
     expect(find.text('Project Gutenberg'), findsWidgets);
 
     // Tap Profile tab in NavigationBar

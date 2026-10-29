@@ -212,7 +212,23 @@ class OpdsService {
 
     // If an entry only has a navigation subsection and no direct download, mark as navigation
     if (navigationUrl != null && downloadUrl == null) {
-      isNavigation = true;
+      final gutenbergMatch =
+          RegExp(r'/ebooks/(\d+)(?:\.opds)?').firstMatch(id) ??
+              RegExp(r'/ebooks/(\d+)(?:\.opds)?').firstMatch(navigationUrl);
+      if (gutenbergMatch != null) {
+        final gbId = gutenbergMatch.group(1)!;
+        downloadUrl = 'https://www.gutenberg.org/ebooks/$gbId.epub3.images';
+        coverUrl ??=
+            'https://www.gutenberg.org/cache/epub/$gbId/pg$gbId.cover.medium.jpg';
+        if (author == 'Unknown Author' && summary.isNotEmpty && summary.length < 50) {
+          author = summary;
+          summary = '';
+        }
+        isNavigation = false;
+        navigationUrl = null;
+      } else {
+        isNavigation = true;
+      }
     }
 
     return CatalogBook(
@@ -266,15 +282,44 @@ class OpdsService {
             ? 'https://covers.openlibrary.org/b/id/$coverId-M.jpg'
             : null;
 
-        // Internet Archive ID for public domain scans
-        final iaList = doc['ia'] as List<dynamic>?;
-        final publicScan = doc['public_scan_b'] as bool? ?? false;
-        final hasFullText = doc['has_fulltext'] as bool? ?? false;
-
         String? downloadUrl;
-        if (iaList != null && iaList.isNotEmpty && (publicScan || hasFullText)) {
-          final iaId = iaList.first.toString();
-          downloadUrl = 'https://archive.org/download/$iaId/$iaId.epub';
+
+        // 1. Direct Project Gutenberg public domain download
+        final gutenbergList = doc['id_project_gutenberg'] as List<dynamic>?;
+        if (gutenbergList != null && gutenbergList.isNotEmpty) {
+          final gbId = gutenbergList.first.toString().trim();
+          if (gbId.isNotEmpty) {
+            downloadUrl = 'https://www.gutenberg.org/ebooks/$gbId.epub3.images';
+          }
+        }
+
+        // 2. Direct Standard Ebooks public domain download
+        if (downloadUrl == null) {
+          final seList = doc['id_standard_ebooks'] as List<dynamic>?;
+          if (seList != null && seList.isNotEmpty) {
+            final slug = seList.first.toString().trim();
+            if (slug.isNotEmpty) {
+              final filename = slug.replaceAll('/', '_');
+              downloadUrl =
+                  'https://standardebooks.org/ebooks/$slug/downloads/$filename.epub';
+            }
+          }
+        }
+
+        // 3. Direct Internet Archive public domain download (only if not restricted lending)
+        final ebookAccess = doc['ebook_access'] as String? ?? 'no_ebook';
+        final lendingId = doc['lending_identifier_s'] as String?;
+        if (downloadUrl == null && ebookAccess == 'public') {
+          final iaList = doc['ia'] as List<dynamic>?;
+          if (iaList != null && iaList.isNotEmpty) {
+            final validIa = iaList.firstWhere(
+              (id) => id.toString() != lendingId,
+              orElse: () => '',
+            ).toString();
+            if (validIa.isNotEmpty && !validIa.contains('0000')) {
+              downloadUrl = 'https://archive.org/download/$validIa/$validIa.epub';
+            }
+          }
         }
 
         final subjects = (doc['subject'] as List<dynamic>?)

@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
@@ -65,6 +67,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
   ReaderSidePanelType _activeSidePanel = ReaderSidePanelType.none;
   List<Bookmark> _bookmarks = const [];
   List<Annotation> _annotations = const [];
+  bool _isHoveringBottom = false;
+  bool _isScrubberPopoverOpen = false;
 
   // Desktop Native Reader Fallback & Watchdog State
   Timer? _watchdogTimer;
@@ -73,10 +77,19 @@ class _ReaderScreenState extends State<ReaderScreen> {
   List<EpubChapter> _fallbackChapters = const [];
   int _fallbackChapterIndex = 0;
   final ScrollController _fallbackScrollController = ScrollController();
+  List<TwoPageSpread> _desktopSpreads = const [];
+  int _currentSpreadIndex = 0;
+  PageController? _desktopPageController;
+  List<MobilePage> _mobilePages = const [];
+  int _currentMobilePageIndex = 0;
+  PageController? _mobilePageController;
 
   @override
   void initState() {
     super.initState();
+    if (kIsWeb || Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
+      _activeSidePanel = ReaderSidePanelType.toc;
+    }
     _startWatchdogTimer();
     _setupBridgeListeners();
     _setupTtsListeners();
@@ -154,6 +167,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
   void dispose() {
     _watchdogTimer?.cancel();
     _fallbackScrollController.dispose();
+    _desktopPageController?.dispose();
+    _mobilePageController?.dispose();
     _ttsService.dispose();
     _bridge.clearTtsHighlight();
     _readingHeartbeatTimer?.cancel();
@@ -249,30 +264,81 @@ class _ReaderScreenState extends State<ReaderScreen> {
     try {
       final bytes = await StorageService.instance.getBookBytes(widget.book);
       if (bytes != null && bytes.isNotEmpty) {
-        final chapters = EpubService.extractChapters(bytes);
+        final content = EpubService.extractBookContent(bytes);
+        final chapters = content.chapters;
+        final toc = content.toc;
         if (chapters.isNotEmpty && mounted) {
+          final spreads = DesktopSpreadPaginator.paginate(chapters: chapters);
+          final mobilePages = MobilePagePaginator.paginate(chapters: chapters);
+          int initialSpread = 0;
+          int initialMobilePage = 0;
+          final targetCfi = widget.initialCfi ?? widget.book.cfi;
+          if (targetCfi != null && targetCfi.isNotEmpty) {
+            initialSpread = DesktopSpreadPaginator.findSpreadIndexForHref(spreads, targetCfi);
+            initialMobilePage = MobilePagePaginator.findPageIndexForHref(mobilePages, targetCfi);
+          } else if (widget.book.percentage > 0) {
+            if (spreads.isNotEmpty) {
+              initialSpread = ((widget.book.percentage / 100.0) * (spreads.length - 1)).round().clamp(0, spreads.length - 1);
+            }
+            if (mobilePages.isNotEmpty) {
+              initialMobilePage = ((widget.book.percentage / 100.0) * (mobilePages.length - 1)).round().clamp(0, mobilePages.length - 1);
+            }
+          }
+          final spread = spreads.isNotEmpty ? spreads[initialSpread] : null;
+          final mobilePage = mobilePages.isNotEmpty ? mobilePages[initialMobilePage] : null;
+
+          _desktopPageController?.dispose();
+          _desktopPageController = PageController(initialPage: initialSpread);
+          _mobilePageController?.dispose();
+          _mobilePageController = PageController(initialPage: initialMobilePage);
+
+          final isWide = MediaQuery.of(context).size.width >= 850;
+
           setState(() {
             _isFallbackMode = true;
             _fallbackChapters = chapters;
-            _fallbackChapterIndex = 0;
+            _desktopSpreads = spreads;
+            _mobilePages = mobilePages;
+            _currentSpreadIndex = initialSpread;
+            _currentMobilePageIndex = initialMobilePage;
+            _fallbackChapterIndex = isWide ? (spread?.chapterIndex ?? 0) : (mobilePage?.chapterIndex ?? 0);
             _isReady = true;
             _engineError = null;
-            _tableOfContents = chapters
-                .map((c) => TOCItem(label: c.title, href: c.id))
-                .toList();
-            _currentLocation = ReadingLocation(
-              cfi: chapters.first.id,
-              fraction: 0.0,
-              percentage: widget.book.percentage,
-              currentSection: 1,
-              totalSections: chapters.length,
-              sectionTitle: chapters.first.title,
-            );
+            _tableOfContents = toc.isNotEmpty
+                ? toc
+                : chapters.map((c) => TOCItem(label: c.title, href: c.id)).toList();
+            if (isWide && spreads.isNotEmpty) {
+              final safeTotal = spreads.length > 1 ? spreads.length - 1 : 1;
+              _currentLocation = ReadingLocation(
+                currentLocation: spread?.leftLoc ?? 1,
+                totalLocations: spread?.totalLocs ?? (chapters.length * 100),
+                cfi: spread?.cfi ?? chapters.first.id,
+                fraction: spreads.isNotEmpty ? initialSpread / safeTotal : 0.0,
+                percentage: spreads.isNotEmpty ? (initialSpread / safeTotal) * 100.0 : widget.book.percentage,
+                currentSection: (spread?.chapterIndex ?? 0) + 1,
+                totalSections: chapters.length,
+                sectionTitle: spread?.chapterTitle ?? chapters.first.title,
+              );
+            } else if (mobilePages.isNotEmpty) {
+              final safeTotal = mobilePages.length > 1 ? mobilePages.length - 1 : 1;
+              _currentLocation = ReadingLocation(
+                currentLocation: mobilePage?.loc ?? 1,
+                totalLocations: mobilePage?.totalLocs ?? (chapters.length * 100),
+                cfi: mobilePage?.cfi ?? chapters.first.id,
+                fraction: initialMobilePage / safeTotal,
+                percentage: (initialMobilePage / safeTotal) * 100.0,
+                currentSection: (mobilePage?.chapterIndex ?? 0) + 1,
+                totalSections: chapters.length,
+                sectionTitle: mobilePage?.chapterTitle ?? chapters.first.title,
+              );
+            }
           });
           return;
         }
       }
-    } catch (_) {}
+    } catch (e, st) {
+      debugPrint('Pure Dart reader fallback failed: $e\n$st');
+    }
 
     if (mounted) {
       setState(() {
@@ -281,8 +347,140 @@ class _ReaderScreenState extends State<ReaderScreen> {
     }
   }
 
+  void _onSpreadChanged(int index) {
+    if (index < 0 || index >= _desktopSpreads.length) return;
+    final spread = _desktopSpreads[index];
+    final total = _desktopSpreads.length > 1 ? _desktopSpreads.length - 1 : 1;
+    final pct = (index / total) * 100.0;
+    if (_mobilePages.isNotEmpty) {
+      _currentMobilePageIndex = MobilePagePaginator.findPageIndexForLoc(_mobilePages, spread.leftLoc);
+    }
+    setState(() {
+      _currentSpreadIndex = index;
+      _fallbackChapterIndex = spread.chapterIndex;
+      _currentLocation = ReadingLocation(
+        currentLocation: spread.leftLoc,
+        totalLocations: spread.totalLocs,
+        fraction: index / total,
+        percentage: pct,
+        currentSection: spread.chapterIndex + 1,
+        totalSections: _fallbackChapters.length,
+        sectionTitle: spread.chapterTitle,
+        cfi: spread.cfi,
+      );
+    });
+    StorageService.instance.updateBookProgress(
+      widget.book.hash,
+      percentage: pct,
+      cfi: spread.cfi,
+    );
+  }
+
+  void _desktopPrevSpread() {
+    if (_desktopPageController != null && _currentSpreadIndex > 0) {
+      _desktopPageController!.previousPage(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  void _desktopNextSpread() {
+    if (_desktopPageController != null && _currentSpreadIndex < _desktopSpreads.length - 1) {
+      _desktopPageController!.nextPage(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  void _onMobilePageChanged(int index) {
+    if (index < 0 || index >= _mobilePages.length) return;
+    final page = _mobilePages[index];
+    final safeTotal = _mobilePages.length > 1 ? _mobilePages.length - 1 : 1;
+    final pct = (index / safeTotal) * 100.0;
+    if (_desktopSpreads.isNotEmpty) {
+      _currentSpreadIndex = DesktopSpreadPaginator.findSpreadIndexForLoc(_desktopSpreads, page.loc);
+    }
+    setState(() {
+      _currentMobilePageIndex = index;
+      _fallbackChapterIndex = page.chapterIndex;
+      _currentLocation = ReadingLocation(
+        currentLocation: page.loc,
+        totalLocations: page.totalLocs,
+        fraction: index / safeTotal,
+        percentage: pct,
+        currentSection: page.chapterIndex + 1,
+        totalSections: _fallbackChapters.length,
+        sectionTitle: page.chapterTitle,
+        cfi: page.cfi,
+      );
+    });
+    StorageService.instance.updateBookProgress(
+      widget.book.hash,
+      percentage: pct,
+      cfi: page.cfi,
+    );
+    _checkBookmarkStatus();
+  }
+
+  void _mobilePrevPage() {
+    if (_mobilePageController == null || !_mobilePageController!.hasClients) return;
+    final currentPage = _mobilePageController!.page?.round() ?? _currentMobilePageIndex;
+    if (currentPage > 0) {
+      _mobilePageController!.animateToPage(
+        currentPage - 1,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  void _mobileNextPage() {
+    if (_mobilePageController == null || !_mobilePageController!.hasClients) return;
+    final currentPage = _mobilePageController!.page?.round() ?? _currentMobilePageIndex;
+    if (currentPage < _mobilePages.length - 1) {
+      _mobilePageController!.animateToPage(
+        currentPage + 1,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  void _onDesktopScrubberSliderChanged(double percentage) {
+    if (_desktopSpreads.isNotEmpty) {
+      final spreadIdx = ((percentage / 100.0) * (_desktopSpreads.length - 1))
+          .round()
+          .clamp(0, _desktopSpreads.length - 1);
+      _desktopPageController?.jumpToPage(spreadIdx);
+      _onSpreadChanged(spreadIdx);
+    } else {
+      _fallbackScrubToPercentage(percentage);
+    }
+  }
+
+  void _onDesktopLocationSubmitted(int loc) {
+    final isWide = MediaQuery.of(context).size.width >= 850;
+    if (isWide && _desktopSpreads.isNotEmpty) {
+      final spreadIdx = DesktopSpreadPaginator.findSpreadIndexForLoc(_desktopSpreads, loc);
+      _desktopPageController?.jumpToPage(spreadIdx);
+      _onSpreadChanged(spreadIdx);
+    } else if (_mobilePages.isNotEmpty) {
+      final pageIdx = MobilePagePaginator.findPageIndexForLoc(_mobilePages, loc);
+      _mobilePageController?.jumpToPage(pageIdx);
+      _onMobilePageChanged(pageIdx);
+    }
+  }
+
   void _goToFallbackChapter(int index) {
     if (index < 0 || index >= _fallbackChapters.length) return;
+    if (_desktopSpreads.isNotEmpty) {
+      final spreadIdx = DesktopSpreadPaginator.findSpreadIndexForChapter(_desktopSpreads, index);
+      _desktopPageController?.jumpToPage(spreadIdx);
+      _onSpreadChanged(spreadIdx);
+      return;
+    }
     setState(() {
       _fallbackChapterIndex = index;
       final ch = _fallbackChapters[index];
@@ -307,19 +505,65 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   void _fallbackPrevChapter() {
-    if (_fallbackChapterIndex > 0) {
+    final isWide = MediaQuery.of(context).size.width >= 850;
+    if (isWide && _desktopSpreads.isNotEmpty) {
+      _desktopPrevSpread();
+    } else if (_mobilePages.isNotEmpty) {
+      _mobilePrevPage();
+    } else if (_fallbackChapterIndex > 0) {
       _goToFallbackChapter(_fallbackChapterIndex - 1);
     }
   }
 
   void _fallbackNextChapter() {
-    if (_fallbackChapterIndex < _fallbackChapters.length - 1) {
+    final isWide = MediaQuery.of(context).size.width >= 850;
+    if (isWide && _desktopSpreads.isNotEmpty) {
+      _desktopNextSpread();
+    } else if (_mobilePages.isNotEmpty) {
+      _mobileNextPage();
+    } else if (_fallbackChapterIndex < _fallbackChapters.length - 1) {
       _goToFallbackChapter(_fallbackChapterIndex + 1);
+    }
+  }
+
+  void _fallbackScrubToPercentage(double percentage) {
+    final isWide = MediaQuery.of(context).size.width >= 850;
+    if (isWide && _desktopSpreads.isNotEmpty) {
+      _onDesktopScrubberSliderChanged(percentage);
+      return;
+    }
+    if (_mobilePages.isNotEmpty) {
+      final pageIdx = ((percentage / 100.0) * (_mobilePages.length - 1))
+          .round()
+          .clamp(0, _mobilePages.length - 1);
+      _mobilePageController?.jumpToPage(pageIdx);
+      _onMobilePageChanged(pageIdx);
+      return;
+    }
+    if (_fallbackChapters.isEmpty) return;
+    final targetIdx = ((percentage / 100.0) * (_fallbackChapters.length - 1))
+        .round()
+        .clamp(0, _fallbackChapters.length - 1);
+    if (targetIdx != _fallbackChapterIndex) {
+      _goToFallbackChapter(targetIdx);
     }
   }
 
   void _navigateToHref(String href) {
     if (_isFallbackMode) {
+      final isWide = MediaQuery.of(context).size.width >= 850;
+      if (isWide && _desktopSpreads.isNotEmpty) {
+        final spreadIdx = DesktopSpreadPaginator.findSpreadIndexForHref(_desktopSpreads, href);
+        _desktopPageController?.jumpToPage(spreadIdx);
+        _onSpreadChanged(spreadIdx);
+        return;
+      }
+      if (_mobilePages.isNotEmpty) {
+        final pageIdx = MobilePagePaginator.findPageIndexForHref(_mobilePages, href);
+        _mobilePageController?.jumpToPage(pageIdx);
+        _onMobilePageChanged(pageIdx);
+        return;
+      }
       final index = _fallbackChapters.indexWhere(
         (c) =>
             c.id == href ||
@@ -337,7 +581,14 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   void _goNext() {
     if (_isFallbackMode) {
-      _fallbackNextChapter();
+      final isWide = MediaQuery.of(context).size.width >= 850;
+      if (isWide && _desktopSpreads.isNotEmpty) {
+        _desktopNextSpread();
+      } else if (_mobilePages.isNotEmpty) {
+        _mobileNextPage();
+      } else {
+        _fallbackNextChapter();
+      }
     } else {
       _bridge.goNext();
     }
@@ -345,9 +596,95 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   void _goPrev() {
     if (_isFallbackMode) {
-      _fallbackPrevChapter();
+      final isWide = MediaQuery.of(context).size.width >= 850;
+      if (isWide && _desktopSpreads.isNotEmpty) {
+        _desktopPrevSpread();
+      } else if (_mobilePages.isNotEmpty) {
+        _mobilePrevPage();
+      } else {
+        _fallbackPrevChapter();
+      }
     } else {
       _bridge.goPrev();
+    }
+  }
+
+  void _navigateSection(int delta) {
+    if (_isFallbackMode) {
+      final isWide = MediaQuery.of(context).size.width >= 850;
+      final nextIdx = (_fallbackChapterIndex + delta).clamp(0, _fallbackChapters.length - 1);
+      if (isWide && _desktopSpreads.isNotEmpty) {
+        final spreadIdx = DesktopSpreadPaginator.findSpreadIndexForChapter(_desktopSpreads, nextIdx);
+        _desktopPageController?.jumpToPage(spreadIdx);
+        _onSpreadChanged(spreadIdx);
+      } else if (_mobilePages.isNotEmpty) {
+        final pageIdx = MobilePagePaginator.findPageIndexForChapter(_mobilePages, nextIdx);
+        _mobilePageController?.jumpToPage(pageIdx);
+        _onMobilePageChanged(pageIdx);
+      } else if (nextIdx != _fallbackChapterIndex) {
+        _goToFallbackChapter(nextIdx);
+      }
+    } else if (_tableOfContents.isNotEmpty) {
+      final currentSec = _currentLocation?.currentSection ?? 0;
+      final nextSec = (currentSec + delta).clamp(0, _tableOfContents.length - 1);
+      if (nextSec != currentSec) {
+        final href = _tableOfContents[nextSec].href;
+        if (href != null && href.isNotEmpty) {
+          _navigateToHref(href);
+        }
+      }
+    }
+  }
+
+  void _navigateToFirstSection() {
+    if (_isFallbackMode) {
+      final isWide = MediaQuery.of(context).size.width >= 850;
+      if (isWide && _desktopSpreads.isNotEmpty) {
+        _desktopPageController?.jumpToPage(0);
+        _onSpreadChanged(0);
+      } else if (_mobilePages.isNotEmpty) {
+        _mobilePageController?.jumpToPage(0);
+        _onMobilePageChanged(0);
+      } else if (_fallbackChapters.isNotEmpty) {
+        _goToFallbackChapter(0);
+      }
+    } else if (_tableOfContents.isNotEmpty) {
+      final href = _tableOfContents.first.href;
+      if (href != null && href.isNotEmpty) {
+        _navigateToHref(href);
+      }
+    }
+  }
+
+  void _navigateToLastSection() {
+    if (_isFallbackMode) {
+      final isWide = MediaQuery.of(context).size.width >= 850;
+      if (isWide && _desktopSpreads.isNotEmpty) {
+        final lastChapter = _fallbackChapters.length - 1;
+        final spreadIdx = DesktopSpreadPaginator.findSpreadIndexForChapter(_desktopSpreads, lastChapter);
+        _desktopPageController?.jumpToPage(spreadIdx);
+        _onSpreadChanged(spreadIdx);
+      } else if (_mobilePages.isNotEmpty) {
+        final lastPage = _mobilePages.length - 1;
+        _mobilePageController?.jumpToPage(lastPage);
+        _onMobilePageChanged(lastPage);
+      } else if (_fallbackChapters.isNotEmpty) {
+        _goToFallbackChapter(_fallbackChapters.length - 1);
+      }
+    } else if (_tableOfContents.isNotEmpty) {
+      final href = _tableOfContents.last.href;
+      if (href != null && href.isNotEmpty) {
+        _navigateToHref(href);
+      }
+    }
+  }
+
+
+  void _toggleTts() {
+    if (_isTtsActive) {
+      _stopTts();
+    } else {
+      _startTts();
     }
   }
 
@@ -1143,7 +1480,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
         // Underlying Reader View: Native pure-Dart fallback on desktop or Foliate WebView
         Positioned.fill(
           child: _isFallbackMode
-              ? _buildFallbackReaderBody(readerBg, readerFg, themeAccent)
+              ? _buildFallbackReaderBody(
+                  readerBg,
+                  readerFg,
+                  themeAccent,
+                  isWide: isWide,
+                )
               : PageCurlOverlay(
                   enabled: true,
                   settings: _settings,
@@ -1164,66 +1506,21 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 ),
         ),
 
-        // Desktop Reader Header Controls (when isWide && _showControls && !_isSearchActive)
-        if (isWide && _showControls && !_isSearchActive)
+        // Desktop Open Sidebar Button when sidebar is collapsed
+        if (isWide && !showSidePanel)
           Positioned(
             top: 12 + MediaQuery.of(context).padding.top,
             left: 16,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    Icons.menu_book_rounded,
-                    color: _activeSidePanel == ReaderSidePanelType.toc
-                        ? themeAccent
-                        : readerFg.withValues(alpha: 0.75),
-                    size: 22,
-                  ),
-                  tooltip: 'Table of Contents (Ctrl+T)',
-                  onPressed: _openTOC,
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.search_rounded,
-                    color: _activeSidePanel == ReaderSidePanelType.search
-                        ? themeAccent
-                        : readerFg.withValues(alpha: 0.75),
-                    size: 22,
-                  ),
-                  tooltip: 'Search (Ctrl+F)',
-                  onPressed: _openSearch,
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.palette_outlined,
-                    color: _activeSidePanel == ReaderSidePanelType.appearance
-                        ? themeAccent
-                        : readerFg.withValues(alpha: 0.75),
-                    size: 22,
-                  ),
-                  tooltip: 'Appearance & Layout (Ctrl+A)',
-                  onPressed: _openAppearance,
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.bookmarks_outlined,
-                    color: _activeSidePanel == ReaderSidePanelType.annotations
-                        ? themeAccent
-                        : readerFg.withValues(alpha: 0.75),
-                    size: 22,
-                  ),
-                  tooltip: 'Annotations & Bookmarks (Ctrl+B)',
-                  onPressed: () {
-                    setState(() {
-                      _activeSidePanel =
-                          _activeSidePanel == ReaderSidePanelType.annotations
-                              ? ReaderSidePanelType.none
-                              : ReaderSidePanelType.annotations;
-                    });
-                  },
-                ),
-              ],
+            child: IconButton(
+              icon: Icon(
+                Icons.menu_rounded,
+                color: readerFg.withValues(alpha: 0.75),
+                size: 22,
+              ),
+              tooltip: 'Sidebar (Ctrl+T)',
+              onPressed: () {
+                setState(() => _activeSidePanel = ReaderSidePanelType.toc);
+              },
             ),
           ),
 
@@ -1239,8 +1536,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
               ),
             ),
 
-          // Top Center Chapter Title (when controls are hidden - Reference Image 1)
-          if (!_showControls && !_isSearchActive)
+          // Top Center Chapter Title (Mobile only when controls are hidden)
+          if (!isWide && !_showControls && !_isSearchActive)
             Positioned(
               top: 14 + MediaQuery.of(context).padding.top,
               left: 28,
@@ -1261,8 +1558,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
               ),
             ),
 
-          // Minimal Reading Page Number (Bottom Center when controls are hidden - Reference Image 1)
-          if (!_showControls && !_isSearchActive && !_isTtsActive)
+          // Minimal Reading Page Number (Mobile only when controls are hidden)
+          if (!isWide && !_showControls && !_isSearchActive && !_isTtsActive)
             Positioned(
               bottom: 12 + MediaQuery.of(context).padding.bottom,
               left: 0,
@@ -1282,8 +1579,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
               ),
             ),
 
-          // Chapter / Book Progress Metric in Top Center (when controls are visible - Reference Image 2)
-          if (_showControls && !_isSearchActive)
+          // Chapter / Book Progress Metric in Top Center (Mobile only when controls are visible)
+          if (!isWide && _showControls && !_isSearchActive)
             ReaderProgressIndicator(
               location: _currentLocation,
               percentage: _currentLocation?.percentage ?? widget.book.percentage,
@@ -1308,22 +1605,22 @@ class _ReaderScreenState extends State<ReaderScreen> {
               child: _buildFloatingSearchBar(colors),
             ),
 
-          // Top Right Close Button (X mark - Reference Image 2)
-          if (_showControls && !_isSearchActive)
+          // Top Right Close Button (Mobile only)
+          if (!isWide && _showControls && !_isSearchActive)
             ReaderCloseButton(
               onClose: () => Navigator.of(context).pop(),
               accentColor: themeAccent,
             ),
 
-          // Animated Silk Ribbon Bookmark (Top Right when bookmarked & controls hidden)
-          if (!_showControls && _isBookmarked)
+          // Animated Silk Ribbon Bookmark (Mobile only when bookmarked & controls hidden)
+          if (!isWide && !_showControls && _isBookmarked)
             SilkRibbonBookmark(
               isBookmarked: _isBookmarked,
               onToggle: _toggleBookmark,
             ),
 
-          // Bottom Center Page Metric (when controls are visible - Reference Image 2: "74 of 709")
-          if (_showControls && !_isSearchActive && !_isTtsActive)
+          // Bottom Center Page Metric (Mobile only when controls are visible)
+          if (!isWide && _showControls && !_isSearchActive && !_isTtsActive)
             Positioned(
               bottom: 16 + MediaQuery.of(context).padding.bottom,
               left: 64,
@@ -1346,8 +1643,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
               ),
             ),
 
-          // Floating Bottom Page Scrubber Slider (when enabled in settings)
-          if (_showControls && !_isSearchActive && _settings.showPageSlider && !_isTtsActive)
+          // Floating Bottom Page Scrubber Slider (Mobile only)
+          if (!isWide && _showControls && !_isSearchActive && _settings.showPageSlider && !_isTtsActive)
             ReaderPageSliderBar(
               progressPercentage: (_currentLocation?.percentage ?? widget.book.percentage),
               location: _currentLocation,
@@ -1367,14 +1664,75 @@ class _ReaderScreenState extends State<ReaderScreen> {
               },
             ),
 
-          // Floating Action Capsule (Bottom Right)
-          if (_showControls && !_isSearchActive && _selectedText == null && !_isTtsActive)
+          // Floating Action Capsule (Mobile only)
+          if (!isWide && _showControls && !_isSearchActive && _selectedText == null && !_isTtsActive)
             Positioned(
               bottom: 12 + MediaQuery.of(context).padding.bottom,
               right: 18,
               child: FloatingReaderCapsule(
                 accentColor: themeAccent,
                 onTap: _showReaderMenuSheet,
+              ),
+            ),
+
+          // Desktop Foliate Bottom Reading Scrubber (Image 2 & 3)
+          if (isWide)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: AnimatedSlide(
+                offset: (_isHoveringBottom || _isScrubberPopoverOpen)
+                    ? Offset.zero
+                    : const Offset(0, 1.05),
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                child: DesktopReadingScrubber(
+                  location: _currentLocation,
+                  percentage: _currentLocation?.percentage ?? widget.book.percentage,
+                  toc: _tableOfContents,
+                  accentColor: themeAccent,
+                  readerFg: readerFg,
+                  readerBg: readerBg,
+                  isTtsActive: _isTtsActive,
+                  onPrevPage: () {
+                    _resetInactivityTimer();
+                    _goPrev();
+                  },
+                  onNextPage: () {
+                    _resetInactivityTimer();
+                    _goNext();
+                  },
+                  onUndo: () {
+                    _bridge.historyBack();
+                  },
+                  onRedo: () {
+                    _bridge.historyForward();
+                  },
+                  onScrubPercentage: (val) {
+                    _resetInactivityTimer();
+                    if (_isFallbackMode) {
+                      _fallbackScrubToPercentage(val);
+                    } else {
+                      _bridge.goToPercentage(val);
+                    }
+                  },
+                  onToggleTts: _toggleTts,
+                  onFirstSection: _navigateToFirstSection,
+                  onPrevSection: () => _navigateSection(-1),
+                  onNextSection: () => _navigateSection(1),
+                  onLastSection: _navigateToLastSection,
+                  onLocationSubmitted: (loc) {
+                    if (_isFallbackMode) {
+                      _onDesktopLocationSubmitted(loc);
+                    } else {
+                      _bridge.goToLocation(loc);
+                    }
+                  },
+                  onPopoverVisibilityChanged: (isOpen) {
+                    setState(() => _isScrubberPopoverOpen = isOpen);
+                  },
+                ),
               ),
             ),
 
@@ -1495,7 +1853,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
     final body = showSidePanel
         ? Row(
             children: [
-              Expanded(child: readerStack),
               ReaderSidebarPanel(
                 panelType: _activeSidePanel,
                 book: widget.book,
@@ -1536,10 +1893,32 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 onClose: () {
                   setState(() => _activeSidePanel = ReaderSidePanelType.none);
                 },
+                onBackToLibrary: () => Navigator.of(context).pop(),
+                onPanelTypeChanged: (type) {
+                  setState(() => _activeSidePanel = type);
+                },
               ),
+              Expanded(child: readerStack),
             ],
           )
         : readerStack;
+
+    final interactiveBody = MouseRegion(
+      onHover: (event) {
+        if (!isWide) return;
+        final screenHeight = MediaQuery.of(context).size.height;
+        final isNearBottom = (screenHeight - event.position.dy) <= 75;
+        if (isNearBottom != _isHoveringBottom) {
+          setState(() => _isHoveringBottom = isNearBottom);
+        }
+      },
+      onExit: (_) {
+        if (_isHoveringBottom) {
+          setState(() => _isHoveringBottom = false);
+        }
+      },
+      child: body,
+    );
 
     return Shortcuts(
       shortcuts: FoliateShortcuts.readerShortcuts,
@@ -1616,7 +1995,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
           autofocus: true,
           child: Scaffold(
             backgroundColor: readerBg,
-            body: body,
+            body: interactiveBody,
           ),
         ),
       ),
@@ -1626,9 +2005,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
   Widget _buildFallbackReaderBody(
     Color readerBg,
     Color readerFg,
-    Color themeAccent,
-  ) {
-    if (_fallbackChapters.isEmpty) {
+    Color themeAccent, {
+    bool isWide = false,
+  }) {
+    if (_fallbackChapters.isEmpty && _desktopSpreads.isEmpty) {
       return Center(
         child: Text(
           'No readable text found in this book.',
@@ -1637,7 +2017,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
       );
     }
 
-    final currentChapter = _fallbackChapters[_fallbackChapterIndex];
     final fontFamily = _settings.fontFamily;
     final fontSize = _settings.fontSize;
     final lineHeight = _settings.lineHeight;
@@ -1659,6 +2038,175 @@ class _ReaderScreenState extends State<ReaderScreen> {
         break;
     }
 
+    final effectiveFontFamily = (fontFamily.isEmpty || fontFamily.toLowerCase() == 'serif')
+        ? 'Georgia'
+        : fontFamily;
+    const fontFallbacks = [
+      'Georgia',
+      'Garamond',
+      'Palatino Linotype',
+      'Palatino',
+      'Liberation Serif',
+      'Times New Roman',
+      'serif',
+    ];
+
+    // Desktop Two-Page Spread Horizontal Paged Reader (Foliate Linux UX)
+    if (isWide && _desktopSpreads.isNotEmpty) {
+      return Focus(
+        autofocus: true,
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent) {
+            if (event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+                event.logicalKey == LogicalKeyboardKey.pageUp) {
+              _desktopPrevSpread();
+              return KeyEventResult.handled;
+            } else if (event.logicalKey == LogicalKeyboardKey.arrowRight ||
+                event.logicalKey == LogicalKeyboardKey.pageDown ||
+                event.logicalKey == LogicalKeyboardKey.space) {
+              _desktopNextSpread();
+              return KeyEventResult.handled;
+            }
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Container(
+          color: readerBg,
+          child: Stack(
+            children: [
+              PageView.builder(
+                controller: _desktopPageController,
+                itemCount: _desktopSpreads.length,
+                onPageChanged: _onSpreadChanged,
+                physics: const ClampingScrollPhysics(),
+                itemBuilder: (context, index) {
+                  final spread = _desktopSpreads[index];
+                  return _buildDesktopSpreadView(
+                    spread: spread,
+                    effectiveFontFamily: effectiveFontFamily,
+                    fontFallbacks: fontFallbacks,
+                    fontSize: fontSize,
+                    lineHeight: lineHeight,
+                    align: align,
+                    readerFg: readerFg,
+                    readerBg: readerBg,
+                  );
+                },
+              ),
+              // Horizontal click navigation zones (margins)
+              Positioned.fill(
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 120,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: _desktopPrevSpread,
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: _toggleControls,
+                      ),
+                    ),
+                    SizedBox(
+                      width: 120,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: _desktopNextSpread,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Mobile Single-Page Horizontal Swipeable Reader with Vertical Space
+    if (_mobilePages.isNotEmpty) {
+      final edgeZoneWidth = (MediaQuery.of(context).size.width * 0.22).clamp(50.0, 96.0);
+      return Focus(
+        autofocus: true,
+        onKeyEvent: (node, event) {
+          if (event is KeyDownEvent) {
+            if (event.logicalKey == LogicalKeyboardKey.arrowLeft ||
+                event.logicalKey == LogicalKeyboardKey.pageUp) {
+              _mobilePrevPage();
+              return KeyEventResult.handled;
+            } else if (event.logicalKey == LogicalKeyboardKey.arrowRight ||
+                event.logicalKey == LogicalKeyboardKey.pageDown ||
+                event.logicalKey == LogicalKeyboardKey.space) {
+              _mobileNextPage();
+              return KeyEventResult.handled;
+            }
+          }
+          return KeyEventResult.ignored;
+        },
+        child: Container(
+          color: readerBg,
+          child: Stack(
+            children: [
+              PageView.builder(
+                controller: _mobilePageController,
+                itemCount: _mobilePages.length,
+                onPageChanged: _onMobilePageChanged,
+                physics: const ClampingScrollPhysics(),
+                itemBuilder: (context, index) {
+                  final page = _mobilePages[index];
+                  return _buildMobilePageView(
+                    page: page,
+                    effectiveFontFamily: effectiveFontFamily,
+                    fontFallbacks: fontFallbacks,
+                    fontSize: fontSize,
+                    lineHeight: lineHeight,
+                    align: align,
+                    readerFg: readerFg,
+                    readerBg: readerBg,
+                  );
+                },
+              ),
+              // Mobile click navigation zones: left -> prev, center -> HUD toggle, right -> next
+              Positioned.fill(
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: edgeZoneWidth,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _mobilePrevPage,
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: _toggleControls,
+                      ),
+                    ),
+                    SizedBox(
+                      width: edgeZoneWidth,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _mobileNextPage,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Mobile fallback column layout
+    final currentChapter = _fallbackChapters.isNotEmpty
+        ? _fallbackChapters[_fallbackChapterIndex.clamp(0, _fallbackChapters.length - 1)]
+        : null;
+
     final horizontalPadding = (_settings.margin * 300.0).clamp(20.0, 120.0);
 
     return GestureDetector(
@@ -1669,40 +2217,26 @@ class _ReaderScreenState extends State<ReaderScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        currentChapter.title,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: readerFg.withValues(alpha: 0.6),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: themeAccent.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'Desktop Native Reader',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: themeAccent,
+              if (currentChapter != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          currentChapter.title,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: readerFg.withValues(alpha: 0.6),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
               Expanded(
                 child: SingleChildScrollView(
                   controller: _fallbackScrollController,
@@ -1714,34 +2248,38 @@ class _ReaderScreenState extends State<ReaderScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          currentChapter.title,
-                          style: TextStyle(
-                            fontFamily: fontFamily,
-                            fontSize: fontSize * 1.35,
-                            fontWeight: FontWeight.bold,
-                            color: readerFg,
-                            height: 1.3,
+                        if (currentChapter != null) ...[
+                          Text(
+                            currentChapter.title,
+                            style: TextStyle(
+                              fontFamily: effectiveFontFamily,
+                              fontFamilyFallback: fontFallbacks,
+                              fontSize: fontSize * 1.35,
+                              fontWeight: FontWeight.bold,
+                              color: readerFg,
+                              height: 1.3,
+                            ),
+                            textAlign: align,
                           ),
-                          textAlign: align,
-                        ),
-                        const SizedBox(height: 24),
-                        ...currentChapter.paragraphs.map(
-                          (paragraph) => Padding(
-                            padding: const EdgeInsets.only(bottom: 16.0),
-                            child: Text(
-                              paragraph,
-                              textAlign: align,
-                              style: TextStyle(
-                                fontFamily: fontFamily,
-                                fontSize: fontSize,
-                                height: lineHeight,
-                                color: readerFg,
+                          const SizedBox(height: 24),
+                          ...currentChapter.paragraphs.map(
+                            (paragraph) => Padding(
+                              padding: const EdgeInsets.only(bottom: 16.0),
+                              child: Text(
+                                paragraph,
+                                textAlign: align,
+                                style: TextStyle(
+                                  fontFamily: effectiveFontFamily,
+                                  fontFamilyFallback: fontFallbacks,
+                                  fontSize: fontSize,
+                                  height: lineHeight,
+                                  color: readerFg,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 48),
+                        ],
+                        const SizedBox(height: 36),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -1780,9 +2318,247 @@ class _ReaderScreenState extends State<ReaderScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 48),
                       ],
                     ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDesktopSpreadView({
+    required TwoPageSpread spread,
+    required String effectiveFontFamily,
+    required List<String> fontFallbacks,
+    required double fontSize,
+    required double lineHeight,
+    required TextAlign align,
+    required Color readerFg,
+    required Color readerBg,
+  }) {
+    return Container(
+      color: readerBg,
+      child: Center(
+        child: SelectionArea(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 1350),
+            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 32),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Left Page
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (spread.isChapterStart && spread.chapterTitle != null && spread.chapterTitle!.isNotEmpty) ...[
+                        Text(
+                          spread.chapterTitle!,
+                          style: TextStyle(
+                            fontFamily: effectiveFontFamily,
+                            fontFamilyFallback: fontFallbacks,
+                            fontSize: fontSize * 1.35,
+                            fontWeight: FontWeight.bold,
+                            color: readerFg,
+                            height: 1.3,
+                          ),
+                          textAlign: align == TextAlign.justify ? TextAlign.left : align,
+                        ),
+                        const SizedBox(height: 24),
+                      ] else ...[
+                        const SizedBox(height: 16),
+                      ],
+                      Expanded(
+                        child: SingleChildScrollView(
+                          physics: const NeverScrollableScrollPhysics(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: spread.leftParagraphs.map(
+                              (p) => Padding(
+                                padding: const EdgeInsets.only(bottom: 14.0),
+                                child: Text(
+                                  p,
+                                  textAlign: align,
+                                  style: TextStyle(
+                                    fontFamily: effectiveFontFamily,
+                                    fontFamilyFallback: fontFallbacks,
+                                    fontSize: fontSize,
+                                    height: lineHeight,
+                                    color: readerFg,
+                                  ),
+                                ),
+                              ),
+                            ).toList(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Loc. ${spread.leftLoc} of ${spread.totalLocs}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontFamily: effectiveFontFamily,
+                            fontFamilyFallback: fontFallbacks,
+                            color: readerFg.withValues(alpha: 0.5),
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Center Gutter (central spine of the book)
+                const SizedBox(width: 56),
+
+                // Right Page
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          physics: const NeverScrollableScrollPhysics(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: spread.rightParagraphs.map(
+                              (p) => Padding(
+                                padding: const EdgeInsets.only(bottom: 14.0),
+                                child: Text(
+                                  p,
+                                  textAlign: align,
+                                  style: TextStyle(
+                                    fontFamily: effectiveFontFamily,
+                                    fontFamilyFallback: fontFallbacks,
+                                    fontSize: fontSize,
+                                    height: lineHeight,
+                                    color: readerFg,
+                                  ),
+                                ),
+                              ),
+                            ).toList(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.center,
+                        child: Text(
+                          'Loc. ${spread.rightLoc} of ${spread.totalLocs}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontFamily: effectiveFontFamily,
+                            fontFamilyFallback: fontFallbacks,
+                            color: readerFg.withValues(alpha: 0.5),
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobilePageView({
+    required MobilePage page,
+    required String effectiveFontFamily,
+    required List<String> fontFallbacks,
+    required double fontSize,
+    required double lineHeight,
+    required TextAlign align,
+    required Color readerFg,
+    required Color readerBg,
+  }) {
+    final mediaQuery = MediaQuery.of(context);
+    final topSafe = mediaQuery.padding.top;
+    final bottomSafe = mediaQuery.padding.bottom;
+
+    // Ample vertical space for separate pages during swipe animation:
+    // Ensures clean breathing room above and below the page content,
+    // keeping it clear of the top header title and bottom indicators.
+    final topVerticalSpace = topSafe + 56.0;
+    final bottomVerticalSpace = bottomSafe + 60.0;
+    final horizontalPadding = (_settings.margin * 240.0).clamp(24.0, 56.0);
+
+    return Container(
+      color: readerBg,
+      padding: EdgeInsets.only(
+        top: topVerticalSpace,
+        bottom: bottomVerticalSpace,
+        left: horizontalPadding,
+        right: horizontalPadding,
+      ),
+      child: Center(
+        child: SelectionArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (page.isChapterStart && page.chapterTitle != null && page.chapterTitle!.isNotEmpty) ...[
+                Text(
+                  page.chapterTitle!,
+                  style: TextStyle(
+                    fontFamily: effectiveFontFamily,
+                    fontFamilyFallback: fontFallbacks,
+                    fontSize: fontSize * 1.3,
+                    fontWeight: FontWeight.bold,
+                    color: readerFg,
+                    height: 1.3,
+                  ),
+                  textAlign: align == TextAlign.justify ? TextAlign.left : align,
+                ),
+                const SizedBox(height: 20),
+              ] else ...[
+                const SizedBox(height: 8),
+              ],
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: page.paragraphs.map(
+                      (p) => Padding(
+                        padding: const EdgeInsets.only(bottom: 14.0),
+                        child: Text(
+                          p,
+                          textAlign: align,
+                          style: TextStyle(
+                            fontFamily: effectiveFontFamily,
+                            fontFamilyFallback: fontFallbacks,
+                            fontSize: fontSize,
+                            height: lineHeight,
+                            color: readerFg,
+                          ),
+                        ),
+                      ),
+                    ).toList(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.center,
+                child: Text(
+                  'Loc. ${page.loc} of ${page.totalLocs}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontFamily: effectiveFontFamily,
+                    fontFamilyFallback: fontFallbacks,
+                    color: readerFg.withValues(alpha: 0.5),
+                    letterSpacing: 0.2,
                   ),
                 ),
               ),

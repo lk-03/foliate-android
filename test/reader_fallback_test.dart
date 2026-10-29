@@ -71,10 +71,9 @@ void main() {
       // Verify the reader did not get stuck in indefinite "Opening book..."
       expect(find.text('Opening book...'), findsNothing);
 
-      // Verify fallback mode rendered content with chapter navigation
+      // Verify fallback mode rendered content with mobile swipeable PageView
       expect(find.byType(SelectionArea), findsOneWidget);
-      expect(find.text('Next Chapter'), findsOneWidget);
-      expect(find.text('Previous Chapter'), findsOneWidget);
+      expect(find.byType(PageView), findsOneWidget);
     });
 
     testWidgets('ReaderScreen displays clean error card when book bytes cannot be loaded', (WidgetTester tester) async {

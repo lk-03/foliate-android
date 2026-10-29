@@ -373,10 +373,25 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
                     child: TextField(
                       controller: _searchController,
                       style: const TextStyle(fontSize: 14),
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (query) {
+                        final clean = query.trim();
+                        if (clean.isNotEmpty) {
+                          _searchOpenLibrary(clean);
+                        }
+                      },
                       decoration: InputDecoration(
-                        hintText: 'Search open catalogs and libraries...',
+                        hintText: 'Search Open Library by title, author, or subject...',
                         hintStyle: TextStyle(fontSize: 13, color: colors.textMuted),
-                        prefixIcon: Icon(Icons.search_rounded, size: 20, color: colors.textMuted),
+                        prefixIcon: IconButton(
+                          icon: Icon(Icons.search_rounded, size: 20, color: colors.textMuted),
+                          onPressed: () {
+                            final clean = _searchController.text.trim();
+                            if (clean.isNotEmpty) {
+                              _searchOpenLibrary(clean);
+                            }
+                          },
+                        ),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.clear_rounded, size: 18),
@@ -388,6 +403,43 @@ class _OpenLibrariesScreenState extends State<OpenLibrariesScreen> {
                       ),
                     ),
                   ),
+                  if (_searchQuery.isEmpty) ...[
+                    const SizedBox(height: 10),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          Text(
+                            'Try: ',
+                            style: TextStyle(fontSize: 11, color: colors.textMuted, fontWeight: FontWeight.w600),
+                          ),
+                          ...[
+                            'The Metamorphosis',
+                            'Frankenstein',
+                            'Pride and Prejudice',
+                            'Moby Dick',
+                            'Sherlock Holmes',
+                          ].map((suggestion) {
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 6.0),
+                              child: ActionChip(
+                                visualDensity: VisualDensity.compact,
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                label: Text(suggestion, style: const TextStyle(fontSize: 11)),
+                                backgroundColor: colors.surfaceCard,
+                                side: BorderSide(color: colors.border),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                onPressed: () {
+                                  _searchController.text = suggestion;
+                                  _searchOpenLibrary(suggestion);
+                                },
+                              ),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                  ],
                   if (_searchQuery.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Container(
